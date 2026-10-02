@@ -321,6 +321,14 @@ namespace Pawfect.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("InventoryItemId"));
 
+                    b.Property<string>("BatchNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateOnly?>("ExpiryDate")
                         .HasColumnType("date");
 
@@ -331,8 +339,17 @@ namespace Pawfect.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
+                    b.Property<DateOnly?>("ReceivedDate")
+                        .HasColumnType("date");
+
                     b.Property<int>("ReorderLevel")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Supplier")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Unit")
+                        .HasColumnType("text");
 
                     b.Property<decimal>("UnitPrice")
                         .HasPrecision(12, 2)

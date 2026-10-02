@@ -29,6 +29,7 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<UserAdminService>();
 builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<InventoryService>();
 
 var app = builder.Build();
 
