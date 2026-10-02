@@ -10,37 +10,37 @@
     <aside class="sidebar">
         <div class="brand">
             <div class="logo"><MudIcon Icon="@Icons.Material.Filled.Pets" Color="Color.Inherit" /></div>
-            <div>
+            <div class="brand-text">
                 <div class="brand-name">Pawfect Admin</div>
                 <div class="brand-sub">Pet Care. Made Simple.</div>
             </div>
         </div>
 
         <nav>
-            <NavLink class="nav-item" href="admin" Match="NavLinkMatch.All">
-                <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Color="Color.Inherit" /> Dashboard
+            <NavLink class="nav-item" href="admin" Match="NavLinkMatch.All" title="Dashboard">
+                <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Color="Color.Inherit" /><span class="label">Dashboard</span>
             </NavLink>
-            <NavLink class="nav-item" href="admin/users">
-                <MudIcon Icon="@Icons.Material.Outlined.ManageAccounts" Size="Size.Small" Color="Color.Inherit" /> Employee &amp; User Management
+            <NavLink class="nav-item" href="admin/users" title="Employee &amp; User Management">
+                <MudIcon Icon="@Icons.Material.Outlined.ManageAccounts" Size="Size.Small" Color="Color.Inherit" /><span class="label">Employee &amp; User Management</span>
+            </NavLink>
+            <NavLink class="nav-item" href="admin/services" title="Service Catalog">
+                <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" Color="Color.Inherit" /><span class="label">Service Catalog</span>
             </NavLink>
             <span class="nav-item disabled" title="Coming soon">
-                <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" Color="Color.Inherit" /> Service Catalog
+                <MudIcon Icon="@Icons.Material.Outlined.Inventory2" Size="Size.Small" Color="Color.Inherit" /><span class="label">Inventory &amp; FIFO</span>
             </span>
             <span class="nav-item disabled" title="Coming soon">
-                <MudIcon Icon="@Icons.Material.Outlined.Inventory2" Size="Size.Small" Color="Color.Inherit" /> Inventory &amp; FIFO
+                <MudIcon Icon="@Icons.Material.Outlined.Assessment" Size="Size.Small" Color="Color.Inherit" /><span class="label">Reports &amp; Financial Auditing</span>
             </span>
             <span class="nav-item disabled" title="Coming soon">
-                <MudIcon Icon="@Icons.Material.Outlined.Assessment" Size="Size.Small" Color="Color.Inherit" /> Reports &amp; Financial Auditing
-            </span>
-            <span class="nav-item disabled" title="Coming soon">
-                <MudIcon Icon="@Icons.Material.Outlined.History" Size="Size.Small" Color="Color.Inherit" /> Audit Trail / Activity Logs
+                <MudIcon Icon="@Icons.Material.Outlined.History" Size="Size.Small" Color="Color.Inherit" /><span class="label">Audit Trail / Activity Logs</span>
             </span>
         </nav>
 
         <div class="spacer"></div>
-        <button type="button" class="nav-item logout"
+        <button type="button" class="nav-item logout" title="Log Out"
                 @onclick="@(() => Nav.NavigateTo("/Identity/Account/Logout", forceLoad: true))">
-            <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" Color="Color.Inherit" /> Log Out
+            <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" Color="Color.Inherit" /><span class="label">Log Out</span>
         </button>
     </aside>
 

@@ -28,6 +28,7 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<UserAdminService>();
+builder.Services.AddScoped<CatalogService>();
 
 var app = builder.Build();
 

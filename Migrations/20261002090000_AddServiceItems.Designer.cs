@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pawfect.Data;
@@ -11,9 +12,11 @@ using Pawfect.Data;
 namespace Pawfect.Migrations
 {
     [DbContext(typeof(PawfectDbContext))]
-    partial class PawfectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261002090000_AddServiceItems")]
+    partial class AddServiceItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -231,6 +231,7 @@
                             <label class="check"><input type="checkbox" @bind="_emp.IsActive" /> Active</label>
                             break;
                         case ModalKind.User:
+                            <div class="fields">
                             <h3>@(_userEditing ? "Edit User" : "Add User")</h3>
                             <label>Full name<input type="text" @bind="_user.FullName" /></label>
                             <label>Username<input type="text" @bind="_user.Username" /></label>
@@ -244,6 +245,7 @@
                                     @foreach (var r in UserAdminService.Roles) { <option value="@r">@r</option> }
                                 </select>
                             </label>
+                            </div>
                             break;
                         case ModalKind.Confirm:
                             <h3>Confirm delete</h3>

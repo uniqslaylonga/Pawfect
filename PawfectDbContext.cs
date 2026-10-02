@@ -18,6 +18,7 @@ public class PawfectDbContext : IdentityDbContext
     public DbSet<InventoryItem> InventoryItems { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Employee> Employees { get; set; }
+    public DbSet<ServiceItem> ServiceItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,5 +31,7 @@ public class PawfectDbContext : IdentityDbContext
         modelBuilder.Entity<Appointment>().Property(a => a.Price).HasPrecision(12, 2);
         modelBuilder.Entity<RetailSale>().Property(s => s.Total).HasPrecision(12, 2);
         modelBuilder.Entity<InventoryItem>().Property(i => i.UnitPrice).HasPrecision(12, 2);
+        modelBuilder.Entity<ServiceItem>().Property(i => i.MinPrice).HasPrecision(12, 2);
+        modelBuilder.Entity<ServiceItem>().Property(i => i.MaxPrice).HasPrecision(12, 2);
     }
 }
