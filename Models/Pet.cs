@@ -1,10 +1,13 @@
-﻿namespace Pawfect.Models;
+using Microsoft.AspNetCore.Identity;
+
+namespace Pawfect.Models;
 
 public class Pet
 {
     public int PetId { get; set; }
 
-    public int OwnerId { get; set; }
+    // Id of the logged-in Identity user (AspNetUsers.Id)
+    public string OwnerId { get; set; } = string.Empty;
 
     public string PetName { get; set; } = string.Empty;
 
@@ -18,10 +21,10 @@ public class Pet
 
     public string? BehavioralTraits { get; set; }
 
-    public DateTime DateCreated { get; set; } = DateTime.Now;
+    public DateTime DateCreated { get; set; } = DateTime.UtcNow;
 
     public bool IsActive { get; set; } = true;
 
     // Navigation property
-    public User? Owner { get; set; }
+    public IdentityUser? Owner { get; set; }
 }

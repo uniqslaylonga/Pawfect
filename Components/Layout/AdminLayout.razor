@@ -1,0 +1,67 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo"><MudIcon Icon="@Icons.Material.Filled.Pets" Color="Color.Inherit" /></div>
+            <div>
+                <div class="brand-name">Pawfect Admin</div>
+                <div class="brand-sub">Pet Care. Made Simple.</div>
+            </div>
+        </div>
+
+        <nav>
+            <NavLink class="nav-item" href="admin" Match="NavLinkMatch.All">
+                <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Color="Color.Inherit" /> Dashboard
+            </NavLink>
+            <span class="nav-item disabled" title="Coming soon">
+                <MudIcon Icon="@Icons.Material.Outlined.ManageAccounts" Size="Size.Small" Color="Color.Inherit" /> Employee &amp; User Management
+            </span>
+            <span class="nav-item disabled" title="Coming soon">
+                <MudIcon Icon="@Icons.Material.Outlined.Sell" Size="Size.Small" Color="Color.Inherit" /> Service Catalog
+            </span>
+            <span class="nav-item disabled" title="Coming soon">
+                <MudIcon Icon="@Icons.Material.Outlined.Inventory2" Size="Size.Small" Color="Color.Inherit" /> Inventory &amp; FIFO
+            </span>
+            <span class="nav-item disabled" title="Coming soon">
+                <MudIcon Icon="@Icons.Material.Outlined.Assessment" Size="Size.Small" Color="Color.Inherit" /> Reports &amp; Financial Auditing
+            </span>
+            <span class="nav-item disabled" title="Coming soon">
+                <MudIcon Icon="@Icons.Material.Outlined.History" Size="Size.Small" Color="Color.Inherit" /> Audit Trail / Activity Logs
+            </span>
+        </nav>
+
+        <div class="spacer"></div>
+        <button type="button" class="nav-item logout"
+                @onclick="@(() => Nav.NavigateTo("/Identity/Account/Logout", forceLoad: true))">
+            <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" Color="Color.Inherit" /> Log Out
+        </button>
+    </aside>
+
+    <main class="main">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#3B82C4",
+            Secondary = "#C8742B"
+        }
+    };
+}

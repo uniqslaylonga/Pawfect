@@ -1,0 +1,25 @@
+<script src="/Identity/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+<script src="/Identity/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+<script>
+    (function () {
+        document.querySelectorAll('input[type="password"]').forEach(function (input) {
+            var parent = input.parentElement;
+            parent.style.position = 'relative';
+            input.style.paddingRight = '4rem';
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = 'Show';
+            btn.setAttribute('aria-label', 'Show password');
+            btn.style.cssText = 'position:absolute;right:.75rem;border:0;background:transparent;color:#2F6F73;font-size:.85rem;font-weight:500;cursor:pointer;z-index:5;padding:.25rem .5rem;';
+            btn.style.top = (input.offsetTop + input.offsetHeight / 2) + 'px';
+            btn.style.transform = 'translateY(-50%)';
+            btn.addEventListener('click', function () {
+                var reveal = input.type === 'password';
+                input.type = reveal ? 'text' : 'password';
+                btn.textContent = reveal ? 'Hide' : 'Show';
+                btn.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+            });
+            parent.appendChild(btn);
+        });
+    })();
+</script>

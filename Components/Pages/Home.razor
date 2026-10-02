@@ -1,20 +1,32 @@
-﻿@page "/"
+@page "/"
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Nav
 
 <PageTitle>Pawfect</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+<MudText Typo="Typo.h3" Class="mb-1">Pawfect</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">Pet Shop and Grooming Business Management System</MudText>
 
-    <MudText Typo="Typo.h3">
-        Pawfect
-    </MudText>
+<AuthorizeView>
+    <Authorized>
+        <MudText Class="mb-4">Welcome back, @context.User.Identity?.Name.</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pets"
+                   StartIcon="@Icons.Material.Filled.Pets">Go to my pets</MudButton>
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Info">Register or log in (top right) to manage your pets.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
 
-    <MudText Typo="Typo.body1" Class="mb-4">
-        Pet Shop and Grooming Business Management System
-    </MudText>
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
 
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary">
-        Test Button
-    </MudButton>
-
-</MudContainer>
+        // Admins go straight to the admin dashboard
+        if (state.User.IsInRole("Admin"))
+        {
+            Nav.NavigateTo("/admin");
+        }
+    }
+}

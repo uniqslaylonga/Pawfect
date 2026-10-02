@@ -1,23 +1,60 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
 
-<div class="page">
-    <div class="sidebar">
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+        <MudIcon Icon="@Icons.Material.Filled.Pets" Class="mr-2" />
+        <MudText Typo="Typo.h6">Pawfect</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-3">@context.User.Identity?.Name</MudText>
+                <MudButton Color="Color.Inherit" Variant="Variant.Outlined"
+                           OnClick="@(() => Nav.NavigateTo("/Identity/Account/Logout", forceLoad: true))">Log out</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Inherit"
+                           OnClick="@(() => Nav.NavigateTo("/Identity/Account/Register", forceLoad: true))">Register</MudButton>
+                <MudButton Color="Color.Inherit" Variant="Variant.Outlined"
+                           OnClick="@(() => Nav.NavigateTo("/Identity/Account/Login", forceLoad: true))">Log in</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
         <NavMenu />
-    </div>
+    </MudDrawer>
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6 mb-6">
             @Body
-        </article>
-    </main>
-</div>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#2F6F73",
+            Secondary = "#C8742B",
+            AppbarBackground = "#2F6F73"
+        }
+    };
+}

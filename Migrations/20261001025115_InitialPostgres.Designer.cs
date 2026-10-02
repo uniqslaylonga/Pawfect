@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pawfect.Data;
@@ -11,9 +12,11 @@ using Pawfect.Data;
 namespace Pawfect.Migrations
 {
     [DbContext(typeof(PawfectDbContext))]
-    partial class PawfectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001025115_InitialPostgres")]
+    partial class InitialPostgres
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -222,96 +225,6 @@ namespace Pawfect.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Pawfect.Models.Appointment", b =>
-                {
-                    b.Property<int>("AppointmentId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AppointmentId"));
-
-                    b.Property<string>("CustomerId")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("PetId")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("Price")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.Property<DateTime>("ScheduledAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ServiceName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("AppointmentId");
-
-                    b.ToTable("Appointments");
-                });
-
-            modelBuilder.Entity("Pawfect.Models.AuditLog", b =>
-                {
-                    b.Property<int>("AuditLogId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("AuditLogId"));
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Details")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserName")
-                        .HasColumnType("text");
-
-                    b.HasKey("AuditLogId");
-
-                    b.ToTable("AuditLogs");
-                });
-
-            modelBuilder.Entity("Pawfect.Models.InventoryItem", b =>
-                {
-                    b.Property<int>("InventoryItemId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("InventoryItemId"));
-
-                    b.Property<DateOnly?>("ExpiryDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ReorderLevel")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.HasKey("InventoryItemId");
-
-                    b.ToTable("InventoryItems");
-                });
-
             modelBuilder.Entity("Pawfect.Models.Pet", b =>
                 {
                     b.Property<int>("PetId")
@@ -357,26 +270,6 @@ namespace Pawfect.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("Pets");
-                });
-
-            modelBuilder.Entity("Pawfect.Models.RetailSale", b =>
-                {
-                    b.Property<int>("RetailSaleId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("RetailSaleId"));
-
-                    b.Property<DateTime>("SoldAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("Total")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)");
-
-                    b.HasKey("RetailSaleId");
-
-                    b.ToTable("RetailSales");
                 });
 
             modelBuilder.Entity("Pawfect.Models.VaccinationRecord", b =>
