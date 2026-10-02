@@ -1,0 +1,552 @@
+@page "/admin/users"
+@layout AdminLayout
+@using Pawfect.Services
+@inject EmployeeService EmployeeSvc
+@inject UserAdminService UserSvc
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>Employee &amp; User Management - Pawfect Admin</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Employee &amp; User Management</h1>
+        <p>Manage your staff and system users.</p>
+    </div>
+    <AdminTopTools />
+</div>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        @if (_openMenu is not null)
+        {
+            <div class="menu-away" @onclick="() => _openMenu = null"></div>
+        }
+
+        @* ================= EMPLOYEE MANAGEMENT ================= *@
+        <section class="panel">
+            <div class="panel-head">
+                <div class="panel-title">
+                    <span class="ico"><MudIcon Icon="@Icons.Material.Outlined.Groups" Color="Color.Inherit" /></span>
+                    <div>
+                        <h2>Employee Management</h2>
+                        <p>View, add, edit, and manage employee records.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-primary" @onclick="OpenAddEmployee">
+                    <MudIcon Icon="@Icons.Material.Outlined.Add" Size="Size.Small" Color="Color.Inherit" /> Add Employee
+                </button>
+            </div>
+
+            <div class="stats five">
+                @foreach (var s in EmployeeStats)
+                {
+                    <div class="stat">
+                        <span class="ico"><MudIcon Icon="@s.Icon" Color="Color.Inherit" /></span>
+                        <div>
+                            <div class="stat-label">@s.Label</div>
+                            <div class="stat-value">@s.Value</div>
+                            <div class="trend @s.TrendClass">@s.TrendText</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="filters">
+                <div class="search">
+                    <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" Color="Color.Inherit" />
+                    <input type="text" placeholder="Search employees..." @bind="_empSearch" @bind:event="oninput" @bind:after="() => _empPage = 1" />
+                </div>
+                <select @bind="_empRole" @bind:after="() => _empPage = 1">
+                    <option value="">All Roles</option>
+                    @foreach (var r in Employee.Roles) { <option value="@r">@r</option> }
+                </select>
+                <select @bind="_empStatus" @bind:after="() => _empPage = 1">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Name</th><th>Role</th><th>Department</th><th>Email</th><th>Status</th><th class="right">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var e in PagedEmployees)
+                        {
+                            <tr>
+                                <td>@e.Code</td>
+                                <td><span class="who"><span class="avatar"><MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" Color="Color.Inherit" /></span>@e.FullName</span></td>
+                                <td><span class="pill role-@Slug(e.Role)">@e.Role</span></td>
+                                <td>@e.Department</td>
+                                <td>@e.Email</td>
+                                <td><span class="pill @(e.IsActive ? "active" : "inactive")">@(e.IsActive ? "Active" : "Inactive")</span></td>
+                                <td class="right actions">
+                                    <button type="button" class="icon-btn" title="Edit" @onclick="() => OpenEditEmployee(e)">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" Color="Color.Inherit" />
+                                    </button>
+                                    <span class="menu-host">
+                                        <button type="button" class="icon-btn" title="More" @onclick="() => ToggleMenu($"e:{e.EmployeeId}")">
+                                            <MudIcon Icon="@Icons.Material.Outlined.MoreVert" Size="Size.Small" Color="Color.Inherit" />
+                                        </button>
+                                        @if (_openMenu == $"e:{e.EmployeeId}")
+                                        {
+                                            <div class="menu">
+                                                <button type="button" @onclick="() => ToggleEmployee(e)">@(e.IsActive ? "Deactivate" : "Activate")</button>
+                                                <button type="button" class="danger" @onclick="() => AskDeleteEmployee(e)">Delete</button>
+                                            </div>
+                                        }
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        @if (!PagedEmployees.Any())
+                        {
+                            <tr><td colspan="7" class="empty">No employees found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-foot">
+                <span>@ShowingText(_empPage, FilteredEmployees.Count(), "employees")</span>
+                @Pager(_empPage, PageCount(FilteredEmployees.Count()), p => _empPage = p)
+            </div>
+        </section>
+
+        @* ================= USER MANAGEMENT ================= *@
+        <section class="panel">
+            <div class="panel-head">
+                <div class="panel-title">
+                    <span class="ico"><MudIcon Icon="@Icons.Material.Outlined.Person" Color="Color.Inherit" /></span>
+                    <div>
+                        <h2>User Management</h2>
+                        <p>Manage system users and their access levels.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-primary" @onclick="OpenAddUser">
+                    <MudIcon Icon="@Icons.Material.Outlined.Add" Size="Size.Small" Color="Color.Inherit" /> Add User
+                </button>
+            </div>
+
+            <div class="stats four">
+                @foreach (var s in UserStats)
+                {
+                    <div class="stat">
+                        <span class="ico"><MudIcon Icon="@s.Icon" Color="Color.Inherit" /></span>
+                        <div>
+                            <div class="stat-label">@s.Label</div>
+                            <div class="stat-value">@s.Value</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="filters">
+                <div class="search">
+                    <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" Color="Color.Inherit" />
+                    <input type="text" placeholder="Search users..." @bind="_userSearch" @bind:event="oninput" @bind:after="() => _userPage = 1" />
+                </div>
+                <select @bind="_userRole" @bind:after="() => _userPage = 1">
+                    <option value="">All Roles</option>
+                    @foreach (var r in UserAdminService.Roles) { <option value="@r">@r</option> }
+                </select>
+                <select @bind="_userStatus" @bind:after="() => _userPage = 1">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Username</th><th>Full Name</th><th>Role</th><th>Email</th><th>Status</th><th class="right">Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in PagedUsers)
+                        {
+                            <tr>
+                                <td>@UserCode(u)</td>
+                                <td><span class="who"><span class="avatar"><MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" Color="Color.Inherit" /></span>@u.Username</span></td>
+                                <td>@u.FullName</td>
+                                <td><span class="pill role-@Slug(u.Role)">@u.Role</span></td>
+                                <td>@u.Email</td>
+                                <td><span class="pill @(u.Active ? "active" : "inactive")">@(u.Active ? "Active" : "Inactive")</span></td>
+                                <td class="right actions">
+                                    <button type="button" class="icon-btn" title="Edit" @onclick="() => OpenEditUser(u)">
+                                        <MudIcon Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" Color="Color.Inherit" />
+                                    </button>
+                                    <span class="menu-host">
+                                        <button type="button" class="icon-btn" title="More" @onclick="() => ToggleMenu($"u:{u.Id}")">
+                                            <MudIcon Icon="@Icons.Material.Outlined.MoreVert" Size="Size.Small" Color="Color.Inherit" />
+                                        </button>
+                                        @if (_openMenu == $"u:{u.Id}")
+                                        {
+                                            <div class="menu">
+                                                <button type="button" @onclick="() => ToggleUser(u)">@(u.Active ? "Deactivate" : "Activate")</button>
+                                                <button type="button" class="danger" @onclick="() => AskDeleteUser(u)">Delete</button>
+                                            </div>
+                                        }
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        @if (!PagedUsers.Any())
+                        {
+                            <tr><td colspan="7" class="empty">No users found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-foot">
+                <span>@ShowingText(_userPage, FilteredUsers.Count(), "users")</span>
+                @Pager(_userPage, PageCount(FilteredUsers.Count()), p => _userPage = p)
+            </div>
+        </section>
+
+        @if (_message is not null)
+        {
+            <div class="toast" @onclick="() => _message = null">@_message</div>
+        }
+
+        @* ================= MODAL ================= *@
+        @if (_modal != Modal.None)
+        {
+            <div class="overlay" @onclick="CloseModal">
+                <div class="modal" @onclick:stopPropagation="true">
+                    @switch (_modal)
+                    {
+                        case Modal.Employee:
+                            <h3>@(_empEditing ? "Edit Employee" : "Add Employee")</h3>
+                            <label>Full name<input type="text" @bind="_emp.FullName" /></label>
+                            <label>Email<input type="email" @bind="_emp.Email" /></label>
+                            <label>Role
+                                <select @bind="_emp.Role">
+                                    @foreach (var r in Employee.Roles) { <option value="@r">@r</option> }
+                                </select>
+                            </label>
+                            <label class="check"><input type="checkbox" @bind="_emp.IsActive" /> Active</label>
+                            break;
+                        case Modal.User:
+                            <h3>@(_userEditing ? "Edit User" : "Add User")</h3>
+                            <label>Full name<input type="text" @bind="_user.FullName" /></label>
+                            <label>Username<input type="text" @bind="_user.Username" /></label>
+                            <label>Email<input type="email" @bind="_user.Email" /></label>
+                            @if (!_userEditing)
+                            {
+                                <label>Password<input type="password" @bind="_user.Password" /></label>
+                            }
+                            <label>Role
+                                <select @bind="_user.Role">
+                                    @foreach (var r in UserAdminService.Roles) { <option value="@r">@r</option> }
+                                </select>
+                            </label>
+                            break;
+                        case Modal.Confirm:
+                            <h3>Confirm delete</h3>
+                            <p class="confirm-text">@_confirmText</p>
+                            break;
+                    }
+
+                    @if (_error is not null)
+                    {
+                        <div class="form-error">@_error</div>
+                    }
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-ghost" @onclick="CloseModal">Cancel</button>
+                        @if (_modal == Modal.Confirm)
+                        {
+                            <button type="button" class="btn-danger" @onclick="ConfirmDelete">Delete</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn-primary" @onclick="SaveModal">Save</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Warning">This page is for administrators only. Please log in with an admin account.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private const int PageSize = 5;
+    private enum Modal { None, Employee, User, Confirm }
+    private record StatCard(string Label, int Value, string Icon, string TrendText = "", string TrendClass = "na");
+    private class UserForm
+    {
+        public string Id = "";
+        public string FullName = "", Username = "", Email = "", Password = "", Role = "Staff";
+    }
+
+    private List<Employee> _employees = new();
+    private List<UserRow> _users = new();
+    private string _actor = "Admin", _actorId = "";
+
+    private string _empSearch = "", _empRole = "", _empStatus = "";
+    private string _userSearch = "", _userRole = "", _userStatus = "";
+    private int _empPage = 1, _userPage = 1;
+
+    private string? _openMenu, _message, _error, _confirmText;
+    private Modal _modal = Modal.None;
+    private Employee _emp = new();
+    private UserForm _user = new();
+    private bool _empEditing, _userEditing;
+    private Func<Task>? _confirmAction;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!state.User.IsInRole("Admin")) return;
+        _actor = state.User.Identity?.Name ?? "Admin";
+        _actorId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        await LoadEmployees();
+        await LoadUsers();
+    }
+
+    private async Task LoadEmployees() => _employees = await EmployeeSvc.LoadAsync();
+    private async Task LoadUsers() => _users = await UserSvc.LoadAsync();
+
+    // ---------- filtering / paging ----------
+    private IEnumerable<Employee> FilteredEmployees => _employees.Where(e =>
+        (_empRole == "" || e.Role == _empRole) &&
+        (_empStatus == "" || (_empStatus == "Active") == e.IsActive) &&
+        (string.IsNullOrWhiteSpace(_empSearch) ||
+            e.FullName.Contains(_empSearch, StringComparison.OrdinalIgnoreCase) ||
+            e.Email.Contains(_empSearch, StringComparison.OrdinalIgnoreCase) ||
+            e.Code.Contains(_empSearch, StringComparison.OrdinalIgnoreCase)));
+
+    private IEnumerable<Employee> PagedEmployees =>
+        FilteredEmployees.Skip((Math.Min(_empPage, PageCount(FilteredEmployees.Count())) - 1) * PageSize).Take(PageSize);
+
+    private IEnumerable<UserRow> FilteredUsers => _users.Where(u =>
+        (_userRole == "" || u.Role == _userRole) &&
+        (_userStatus == "" || (_userStatus == "Active") == u.Active) &&
+        (string.IsNullOrWhiteSpace(_userSearch) ||
+            u.Username.Contains(_userSearch, StringComparison.OrdinalIgnoreCase) ||
+            u.FullName.Contains(_userSearch, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(_userSearch, StringComparison.OrdinalIgnoreCase)));
+
+    private IEnumerable<UserRow> PagedUsers =>
+        FilteredUsers.Skip((Math.Min(_userPage, PageCount(FilteredUsers.Count())) - 1) * PageSize).Take(PageSize);
+
+    private static int PageCount(int total) => Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
+
+    private string ShowingText(int page, int total, string noun)
+    {
+        if (total == 0) return $"Showing 0 of 0 {noun}";
+        page = Math.Min(page, PageCount(total));
+        var from = (page - 1) * PageSize + 1;
+        var to = Math.Min(page * PageSize, total);
+        return $"Showing {from}–{to} of {total} {noun}";
+    }
+
+    private RenderFragment Pager(int current, int pages, Action<int> go) => __builder =>
+    {
+        current = Math.Min(current, pages);
+        var start = Math.Max(1, Math.Min(current - 2, pages - 4));
+        var end = Math.Min(pages, start + 4);
+        <div class="pager">
+            <button type="button" disabled="@(current <= 1)" @onclick="() => go(current - 1)">‹</button>
+            @for (var p = start; p <= end; p++)
+            {
+                var page = p;
+                <button type="button" class="@(page == current ? "on" : "")" @onclick="() => go(page)">@page</button>
+            }
+            <button type="button" disabled="@(current >= pages)" @onclick="() => go(current + 1)">›</button>
+        </div>
+    };
+
+    // ---------- stat cards ----------
+    private IEnumerable<StatCard> EmployeeStats
+    {
+        get
+        {
+            var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            StatCard Make(string label, string icon, Func<Employee, bool> pick)
+            {
+                var now = _employees.Count(pick);
+                var prior = _employees.Count(e => pick(e) && e.DateCreated < monthStart);
+                var (text, cls) = Trend(now, prior);
+                return new StatCard(label, now, icon, text, cls);
+            }
+            yield return Make("Total Employees", Icons.Material.Outlined.Groups, _ => true);
+            yield return Make("Admin", Icons.Material.Outlined.AdminPanelSettings, e => e.Role == "Admin");
+            yield return Make("Cashier", Icons.Material.Outlined.PointOfSale, e => e.Role == "Cashier");
+            yield return Make("Front Desk", Icons.Material.Outlined.Phone, e => e.Role == "Front Desk");
+            yield return Make("Groomers", Icons.Material.Outlined.ContentCut, e => e.Role == "Groomer");
+        }
+    }
+
+    private IEnumerable<StatCard> UserStats
+    {
+        get
+        {
+            yield return new("Total Users", _users.Count, Icons.Material.Outlined.Groups);
+            yield return new("Admin", _users.Count(u => u.Role == "Admin"), Icons.Material.Outlined.AdminPanelSettings);
+            yield return new("Staff", _users.Count(u => u.Role == "Staff"), Icons.Material.Outlined.Badge);
+            yield return new("Customer", _users.Count(u => u.Role == "Customer"), Icons.Material.Outlined.People);
+        }
+    }
+
+    private static (string Text, string Class) Trend(int now, int prior)
+    {
+        if (prior == 0) return ("N/A vs. last month", "na");
+        var pct = (now - prior) * 100.0 / prior;
+        return ($"{(pct >= 0 ? "↑" : "↓")} {Math.Abs(pct):0}% vs. last month", pct >= 0 ? "up" : "down");
+    }
+
+    private static string Slug(string s) => s.Replace(" ", "").ToLowerInvariant();
+
+    // IdentityUser ids are GUID strings, so show a short, stable code
+    private string UserCode(UserRow u)
+    {
+        var i = _users.FindIndex(x => x.Id == u.Id) + 1;
+        return $"USR-{i:000}";
+    }
+
+    // ---------- menu / modal plumbing ----------
+    private void ToggleMenu(string key) => _openMenu = _openMenu == key ? null : key;
+
+    private void CloseModal()
+    {
+        _modal = Modal.None;
+        _error = null;
+        _confirmAction = null;
+    }
+
+    private async Task SaveModal()
+    {
+        _error = null;
+        if (_modal == Modal.Employee) await SaveEmployee();
+        else if (_modal == Modal.User) await SaveUser();
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_confirmAction is not null) await _confirmAction();
+        CloseModal();
+    }
+
+    private void Flash(string text) => _message = text;
+
+    private static bool LooksLikeEmail(string s) =>
+        !string.IsNullOrWhiteSpace(s) && s.Contains('@') && s.Contains('.') && !s.Contains(' ');
+
+    // ---------- employees ----------
+    private void OpenAddEmployee()
+    {
+        _emp = new Employee();
+        _empEditing = false;
+        _error = null;
+        _modal = Modal.Employee;
+    }
+
+    private void OpenEditEmployee(Employee e)
+    {
+        _emp = new Employee { EmployeeId = e.EmployeeId, FullName = e.FullName, Email = e.Email, Role = e.Role, IsActive = e.IsActive };
+        _empEditing = true;
+        _error = null;
+        _modal = Modal.Employee;
+    }
+
+    private async Task SaveEmployee()
+    {
+        _emp.FullName = _emp.FullName.Trim();
+        _emp.Email = _emp.Email.Trim();
+        if (_emp.FullName == "") { _error = "Full name is required."; return; }
+        if (!LooksLikeEmail(_emp.Email)) { _error = "Enter a valid email address."; return; }
+
+        var err = _empEditing
+            ? await EmployeeSvc.UpdateAsync(_emp, _actor)
+            : await EmployeeSvc.AddAsync(_emp, _actor);
+        if (err is not null) { _error = err; return; }
+
+        CloseModal();
+        await LoadEmployees();
+        Flash(_empEditing ? "Employee updated." : "Employee added.");
+    }
+
+    private async Task ToggleEmployee(Employee e)
+    {
+        _openMenu = null;
+        await EmployeeSvc.SetActiveAsync(e.EmployeeId, !e.IsActive, _actor);
+        await LoadEmployees();
+    }
+
+    private void AskDeleteEmployee(Employee e)
+    {
+        _openMenu = null;
+        _confirmText = $"Delete {e.FullName} ({e.Code})? This can't be undone.";
+        _confirmAction = async () =>
+        {
+            await EmployeeSvc.DeleteAsync(e.EmployeeId, _actor);
+            await LoadEmployees();
+            Flash("Employee deleted.");
+        };
+        _error = null;
+        _modal = Modal.Confirm;
+    }
+
+    // ---------- users ----------
+    private void OpenAddUser()
+    {
+        _user = new UserForm();
+        _userEditing = false;
+        _error = null;
+        _modal = Modal.User;
+    }
+
+    private void OpenEditUser(UserRow u)
+    {
+        _user = new UserForm { Id = u.Id, FullName = u.FullName == u.Username ? "" : u.FullName, Username = u.Username, Email = u.Email, Role = u.Role };
+        _userEditing = true;
+        _error = null;
+        _modal = Modal.User;
+    }
+
+    private async Task SaveUser()
+    {
+        if (string.IsNullOrWhiteSpace(_user.Username)) { _error = "Username is required."; return; }
+        if (!LooksLikeEmail(_user.Email.Trim())) { _error = "Enter a valid email address."; return; }
+        if (!_userEditing && string.IsNullOrWhiteSpace(_user.Password)) { _error = "Password is required."; return; }
+
+        var err = _userEditing
+            ? await UserSvc.UpdateAsync(_user.Id, _user.FullName, _user.Username, _user.Email, _user.Role, _actorId, _actor)
+            : await UserSvc.CreateAsync(_user.FullName, _user.Username, _user.Email, _user.Password, _user.Role, _actor);
+        if (err is not null) { _error = err; return; }
+
+        CloseModal();
+        await LoadUsers();
+        Flash(_userEditing ? "User updated." : "User created.");
+    }
+
+    private async Task ToggleUser(UserRow u)
+    {
+        _openMenu = null;
+        var err = await UserSvc.SetActiveAsync(u.Id, !u.Active, _actorId, _actor);
+        if (err is not null) Flash(err);
+        await LoadUsers();
+    }
+
+    private void AskDeleteUser(UserRow u)
+    {
+        _openMenu = null;
+        _confirmText = $"Delete user {u.Username}? This can't be undone.";
+        _confirmAction = async () =>
+        {
+            var err = await UserSvc.DeleteAsync(u.Id, _actorId, _actor);
+            await LoadUsers();
+            Flash(err ?? "User deleted.");
+        };
+        _error = null;
+        _modal = Modal.Confirm;
+    }
+}

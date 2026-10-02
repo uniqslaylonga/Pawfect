@@ -26,6 +26,8 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 .AddEntityFrameworkStores<PawfectDbContext>();
 
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<EmployeeService>();
+builder.Services.AddScoped<UserAdminService>();
 
 var app = builder.Build();
 

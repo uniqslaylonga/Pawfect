@@ -17,6 +17,7 @@ public class PawfectDbContext : IdentityDbContext
     public DbSet<RetailSale> RetailSales { get; set; }
     public DbSet<InventoryItem> InventoryItems { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Employee> Employees { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
