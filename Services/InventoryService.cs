@@ -35,6 +35,7 @@ public class InventoryService(PawfectDbContext db)
             return "That batch number is already used.";
 
         db.InventoryItems.Add(item);
+        if (item.Quantity > 0) Move(item, "Stock In", item.Quantity, "New batch received", actor);
         await db.SaveChangesAsync();
         await Log("Inventory added", $"{item.Name} batch {item.BatchNumber} - {item.Quantity} pcs received", actor);
         return null;
@@ -47,6 +48,7 @@ public class InventoryService(PawfectDbContext db)
         if (!string.IsNullOrWhiteSpace(form.BatchNumber) && await BatchTaken(form.BatchNumber, form.InventoryItemId))
             return "That batch number is already used.";
 
+        var oldQty = i.Quantity;
         i.Name = form.Name.Trim();
         i.Unit = form.Unit;
         i.Category = form.Category;
@@ -57,6 +59,7 @@ public class InventoryService(PawfectDbContext db)
         i.Quantity = form.Quantity;
         i.ReorderLevel = form.ReorderLevel;
         i.UnitPrice = form.UnitPrice;
+        if (i.Quantity != oldQty) Move(i, "Adjustment", i.Quantity - oldQty, "Batch edited", actor);
         await db.SaveChangesAsync();
         await Log("Inventory updated", $"{i.Name} batch {i.BatchNumber} updated", actor);
         return null;
@@ -67,6 +70,8 @@ public class InventoryService(PawfectDbContext db)
         var list = await db.InventoryItems.Where(i => ids.Contains(i.InventoryItemId)).ToListAsync();
         if (list.Count == 0) return;
         db.InventoryItems.RemoveRange(list);
+        foreach (var d in list.Where(x => x.Quantity > 0))
+            Move(d, "Adjustment", -d.Quantity, "Batch removed", actor);
         await db.SaveChangesAsync();
         await Log("Inventory removed",
             list.Count == 1 ? $"{list[0].Name} batch {list[0].BatchNumber} removed" : $"{list.Count} batches removed", actor);
@@ -81,6 +86,11 @@ public class InventoryService(PawfectDbContext db)
         if (newQty < 0) return "Quantity can't go below zero.";
         var old = i.Quantity;
         i.Quantity = newQty;
+        if (newQty != old)
+        {
+            if (setExact) Move(i, "Adjustment", newQty - old, "Quantity set manually", actor);
+            else Move(i, "Stock In", amount, "Stock added to batch", actor);
+        }
         await db.SaveChangesAsync();
         await Log("Stock updated", $"{i.Name} batch {i.BatchNumber}: {old} -> {newQty} pcs", actor);
         return null;
@@ -112,11 +122,25 @@ public class InventoryService(PawfectDbContext db)
             b.Quantity -= take;
             left -= take;
             used.Add($"{b.BatchNumber} (-{take})");
+            Move(b, "Stock Out", -take, "Used (FIFO)", actor);
         }
         await db.SaveChangesAsync();
         await Log("Stock used (FIFO)", $"{product}: {qty} pcs from {string.Join(", ", used)}", actor);
         return null;
     }
+
+    // Records a stock movement; saved together with the stock change by the caller's SaveChanges.
+    private void Move(InventoryItem i, string type, int qty, string reason, string actor) =>
+        db.InventoryMovements.Add(new InventoryMovement
+        {
+            ProductName = i.Name,
+            Category = i.Category,
+            BatchNumber = i.BatchNumber,
+            MovementType = type,
+            Quantity = qty,
+            Reason = reason,
+            UserName = actor
+        });
 
     private async Task<string> NextBatchNumber(DateOnly received)
     {

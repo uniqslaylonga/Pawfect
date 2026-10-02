@@ -360,6 +360,45 @@ namespace Pawfect.Migrations
                     b.ToTable("InventoryItems");
                 });
 
+            modelBuilder.Entity("Pawfect.Models.InventoryMovement", b =>
+                {
+                    b.Property<int>("InventoryMovementId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("InventoryMovementId"));
+
+                    b.Property<string>("BatchNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Category")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MovementType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("text");
+
+                    b.HasKey("InventoryMovementId");
+
+                    b.ToTable("InventoryMovements");
+                });
+
             modelBuilder.Entity("Pawfect.Models.Pet", b =>
                 {
                     b.Property<int>("PetId")
@@ -415,12 +454,39 @@ namespace Pawfect.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("RetailSaleId"));
 
+                    b.Property<string>("Category")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProductName")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReferenceNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("SoldAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StaffName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Total")
                         .HasPrecision(12, 2)
                         .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("RetailSaleId");
 

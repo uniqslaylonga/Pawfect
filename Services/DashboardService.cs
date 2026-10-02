@@ -68,7 +68,7 @@ public class DashboardService(PawfectDbContext db)
             .Where(a => a.Status == "Completed" && a.ScheduledAt >= from)
             .Select(a => new { a.ScheduledAt, a.Price }).ToListAsync();
         var sales = await db.RetailSales
-            .Where(s => s.SoldAt >= from)
+            .Where(s => s.SoldAt >= from && s.TransactionType != "Adjustment")
             .Select(s => new { s.SoldAt, s.Total }).ToListAsync();
 
         var revenue = services.Select(x => (When: ToLocal(x.ScheduledAt), Amount: x.Price))
@@ -103,7 +103,7 @@ public class DashboardService(PawfectDbContext db)
         // ---- Appointments vs retail sales (last 30 days) ----
         var last30 = ToUtc(today.AddDays(-29));
         data.Appointments = await db.Appointments.CountAsync(a => a.Status != "Cancelled" && a.ScheduledAt >= last30);
-        data.Sales = await db.RetailSales.CountAsync(s => s.SoldAt >= last30);
+        data.Sales = await db.RetailSales.CountAsync(s => s.SoldAt >= last30 && s.TransactionType == "Sale");
 
         // ---- Alerts ----
         var low = await db.InventoryItems

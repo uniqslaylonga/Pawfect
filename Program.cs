@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Pawfect.Data;
+using Pawfect.Models;
 using Pawfect.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,11 +26,36 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 .AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<PawfectDbContext>();
 
+// Record every sign-in in the audit trail (never let a logging problem block a login).
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnSignedIn = async context =>
+    {
+        try
+        {
+            var db = context.HttpContext.RequestServices.GetRequiredService<PawfectDbContext>();
+            db.AuditLogs.Add(new AuditLog
+            {
+                Action = "User login",
+                Details = "Signed in",
+                UserName = context.Principal?.Identity?.Name
+            });
+            await db.SaveChangesAsync();
+        }
+        catch
+        {
+            // ignore
+        }
+    };
+});
+
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<UserAdminService>();
 builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<AuditTrailService>();
 
 var app = builder.Build();
 

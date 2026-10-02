@@ -16,6 +16,7 @@ public class PawfectDbContext : IdentityDbContext
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<RetailSale> RetailSales { get; set; }
     public DbSet<InventoryItem> InventoryItems { get; set; }
+    public DbSet<InventoryMovement> InventoryMovements { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<Employee> Employees { get; set; }
     public DbSet<ServiceItem> ServiceItems { get; set; }
