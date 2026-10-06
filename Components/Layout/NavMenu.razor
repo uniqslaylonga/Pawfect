@@ -1,7 +1,11 @@
-<MudNavMenu>
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Home</MudNavLink>
-    <MudNavLink Href="/pets" Icon="@Icons.Material.Filled.Pets">My Pets</MudNavLink>
-    <AuthorizeView Roles="Admin">
-        <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.Dashboard">Admin Dashboard</MudNavLink>
-    </AuthorizeView>
-</MudNavMenu>
+<NavLink class="nav-item" href="" Match="NavLinkMatch.All" title="Home">
+    <MudIcon Icon="@Icons.Material.Outlined.Home" Size="Size.Small" Color="Color.Inherit" /><span class="label">Home</span>
+</NavLink>
+<NavLink class="nav-item" href="pets" title="My Pets">
+    <MudIcon Icon="@Icons.Material.Outlined.Pets" Size="Size.Small" Color="Color.Inherit" /><span class="label">My Pets</span>
+</NavLink>
+<AuthorizeView Roles="Admin">
+    <NavLink class="nav-item" href="admin" title="Admin Dashboard">
+        <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Color="Color.Inherit" /><span class="label">Admin Dashboard</span>
+    </NavLink>
+</AuthorizeView>

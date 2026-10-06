@@ -4,19 +4,26 @@
 
 <PageTitle>Pawfect</PageTitle>
 
-<MudText Typo="Typo.h3" Class="mb-1">Pawfect</MudText>
-<MudText Typo="Typo.body1" Class="mb-6">Pet Shop and Grooming Business Management System</MudText>
+<div class="page-head">
+    <div>
+        <h1>Pawfect</h1>
+        <p>Pet Shop and Grooming Business Management System</p>
+    </div>
+</div>
 
-<AuthorizeView>
-    <Authorized>
-        <MudText Class="mb-4">Welcome back, @context.User.Identity?.Name.</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pets"
-                   StartIcon="@Icons.Material.Filled.Pets">Go to my pets</MudButton>
-    </Authorized>
-    <NotAuthorized>
-        <MudAlert Severity="Severity.Info">Register or log in (top right) to manage your pets.</MudAlert>
-    </NotAuthorized>
-</AuthorizeView>
+<div class="card">
+    <AuthorizeView>
+        <Authorized>
+            <p>Welcome back, @context.User.Identity?.Name.</p>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pets"
+                       StartIcon="@Icons.Material.Filled.Pets">Go to my pets</MudButton>
+        </Authorized>
+        <NotAuthorized>
+            <p>Register or log in to manage your pets.</p>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/Identity/Account/Login" ForceLoad="true">Log in</MudButton>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
 
 @code {
     protected override async Task OnInitializedAsync()

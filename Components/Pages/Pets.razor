@@ -7,10 +7,13 @@
 
 <AuthorizeView>
     <Authorized>
-        <MudText Typo="Typo.h4" Class="mb-4">My Pets</MudText>
+        <div class="page-head">
+            <h1>My Pets</h1>
+            <p>Add and manage your pets.</p>
+        </div>
 
-        <MudPaper Class="pa-4 mb-6" Elevation="1">
-            <MudText Typo="Typo.h6" Class="mb-2">Add a pet</MudText>
+        <div class="card">
+            <div class="card-title">Add a pet</div>
             <MudForm @ref="_form">
                 <MudGrid>
                     <MudItem xs="12" sm="6">
@@ -43,9 +46,10 @@
             </MudForm>
             <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" OnClick="AddPetAsync"
                        Disabled="_saving">Save pet</MudButton>
-        </MudPaper>
+        </div>
 
-        <MudTable Items="_pets" Hover="true" Dense="true" Elevation="1" Loading="_loading">
+        <div class="card table">
+        <MudTable Items="_pets" Hover="true" Dense="true" Elevation="0" Loading="_loading">
             <HeaderContent>
                 <MudTh>Name</MudTh>
                 <MudTh>Species</MudTh>
@@ -67,6 +71,7 @@
                 <MudText>No pets yet. Add your first one above.</MudText>
             </NoRecordsContent>
         </MudTable>
+        </div>
     </Authorized>
     <NotAuthorized>
         <MudAlert Severity="Severity.Warning">Please log in (top right) to see your pets.</MudAlert>

@@ -1,0 +1,10 @@
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Remember where the person was going so we can send them back after login.
+        var target = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+        Nav.NavigateTo($"Identity/Account/Login?returnUrl={Uri.EscapeDataString(target)}", forceLoad: true);
+    }
+}
