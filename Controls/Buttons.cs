@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing.Drawing2D;
 
 namespace MyApp.Controls;
@@ -218,19 +218,21 @@ internal sealed class IconButton : Control
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
     protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
 
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        if (_hover)
+        if (_hover && Enabled)
         {
             using var b = new SolidBrush(Theme.Subtle);
             g.FillEllipse(b, 0, 0, Width - 1, Height - 1);
         }
 
-        TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(12f), ClientRectangle, Theme.TextSoft,
+        TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(12f), ClientRectangle,
+            Enabled ? Theme.TextSoft : Color.FromArgb(190, 200, 214),
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
             TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
 
