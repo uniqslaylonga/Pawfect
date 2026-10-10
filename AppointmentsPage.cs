@@ -338,4 +338,9 @@ internal partial class AppointmentsPage : UserControl
     /// <summary>"View All" on Upcoming Today: jump to this week.</summary>
     private void upcomingLink_Click(object? sender, EventArgs e)
         => SetRange(WeekStart(DateTime.Today));
+
+    private void calendarCard_Paint(object sender, PaintEventArgs e)
+    {
+
+    }
 }
