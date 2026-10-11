@@ -1,8 +1,13 @@
+using Microsoft.Data.SqlClient;
+
 namespace MyApp;
 
 
 internal partial class LoginForm : Form
 {
+    /// <summary>Set when the sign-in succeeds.</summary>
+    public UserAccount? SignedInUser { get; private set; }
+
     public LoginForm()
     {
         InitializeComponent();
@@ -46,7 +51,24 @@ internal partial class LoginForm : Form
             return;
         }
 
+        UserAccount? user;
+        try
+        {
+            user = Auth.SignIn(email, passwordField.Value);
+        }
+        catch (SqlException)
+        {
+            errorLabel.Text = "Can't reach the database.";
+            return;
+        }
 
+        if (user is null)
+        {
+            errorLabel.Text = "Incorrect email or password.";
+            return;
+        }
+
+        SignedInUser = user;
         DialogResult = DialogResult.OK;
         Close();
     }

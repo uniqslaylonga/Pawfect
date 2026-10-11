@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using MyApp.Controls;
 
 namespace MyApp;
@@ -7,10 +7,26 @@ namespace MyApp;
 internal partial class MainForm : Form
 {
     private readonly AppointmentsPage appointmentsPage;
+    private readonly BillingPage billingPage;
+    private readonly LookupPage lookupPage;
     private readonly string _dashboardTitle;
     private readonly string _dashboardSubtitle;
 
     public bool LoggedOut { get; private set; }
+
+    /// <summary>The signed-in account. Set by <see cref="ApplyUser"/> right after the login succeeds.</summary>
+    public UserAccount? CurrentUser { get; private set; }
+
+    public bool IsAdmin => CurrentUser?.Role == UserRole.Admin;
+
+    /// <summary>Shows who is signed in (name + role) and is the place to hide admin-only items from staff.</summary>
+    public void ApplyUser(UserAccount user)
+    {
+        CurrentUser = user;
+        userNameLabel.Text = user.Name;
+        userRoleLabel.Text = user.Role.ToString();
+        // Admin-only pages: when you add them, hide their nav items with  someNav.Visible = IsAdmin;
+    }
 
     public MainForm()
     {
@@ -23,9 +39,23 @@ internal partial class MainForm : Form
         appointmentsPage = new AppointmentsPage { Dock = DockStyle.Fill, Visible = false };
         contentPanel.Controls.Add(appointmentsPage);
         appointmentsPage.BringToFront();
-        dashboardNav.Click += (_, _) => ShowPage(appointments: false);
-        appointmentsNav.Click += (_, _) => ShowPage(appointments: true);
-        viewAppointmentsTile.Click += (_, _) => ShowPage(appointments: true);
+
+        // Counter POS & Billing lives in the same content area too.
+        billingPage = new BillingPage { Dock = DockStyle.Fill, Visible = false };
+        contentPanel.Controls.Add(billingPage);
+        billingPage.BringToFront();
+        billingPage.OngoingAppointmentsRequested += (_, _) => ShowPage(Page.Appointments);
+
+        // Customer & Pet Lookup shares the content area as well.
+        lookupPage = new LookupPage { Dock = DockStyle.Fill, Visible = false };
+        contentPanel.Controls.Add(lookupPage);
+        lookupPage.BringToFront();
+
+        dashboardNav.Click += (_, _) => ShowPage(Page.Dashboard);
+        appointmentsNav.Click += (_, _) => ShowPage(Page.Appointments);
+        billingNav.Click += (_, _) => ShowPage(Page.Billing);
+        lookupNav.Click += (_, _) => ShowPage(Page.Lookup);
+        viewAppointmentsTile.Click += (_, _) => ShowPage(Page.Appointments);
 
         greetingLabel.Text = GreetingText();
         dateLabel.Text = DateTime.Now.ToString("MMM d, yyyy", CultureInfo.CurrentCulture) + "   \u00B7   Today";
@@ -43,16 +73,29 @@ internal partial class MainForm : Form
         }
     }
 
-    private void ShowPage(bool appointments)
+    private enum Page { Dashboard, Appointments, Billing, Lookup }
+
+    private void ShowPage(Page page)
     {
-        bodyPanel.Visible = !appointments;
-        appointmentsPage.Visible = appointments;
-        dashboardNav.Active = !appointments;
-        appointmentsNav.Active = appointments;
-        pageTitle.Text = appointments ? "Appointments" : _dashboardTitle;
-        pageSubtitle.Text = appointments
-            ? "Manage and track customer appointments and services."
-            : _dashboardSubtitle;
+        bodyPanel.Visible = page == Page.Dashboard;
+        appointmentsPage.Visible = page == Page.Appointments;
+        billingPage.Visible = page == Page.Billing;
+        lookupPage.Visible = page == Page.Lookup;
+        dashboardNav.Active = page == Page.Dashboard;
+        appointmentsNav.Active = page == Page.Appointments;
+        billingNav.Active = page == Page.Billing;
+        lookupNav.Active = page == Page.Lookup;
+
+        (pageTitle.Text, pageSubtitle.Text) = page switch
+        {
+            Page.Appointments => ("Appointments", "Manage and track customer appointments and services."),
+            Page.Billing => ("Counter POS & Billing", "Process grooming services and retail sales in one transaction."),
+            Page.Lookup => ("Customer & Pet Lookup", "Find customer information and their pets, view visit history, and manage records."),
+            _ => (_dashboardTitle, _dashboardSubtitle),
+        };
+
+        // The receipt shows whoever is signed in.
+        if (page == Page.Billing) billingPage.CashierName = userNameLabel.Text;
     }
 
     private static string GreetingText()

@@ -2348,7 +2348,7 @@ namespace MyApp
             brandName.Name = "brandName";
             brandName.Size = new Size(170, 22);
             brandName.TabIndex = 1;
-            brandName.Text = "Pawfect Employee";
+            brandName.Text = "Pawfect Dashboard";
             brandName.TextAlign = ContentAlignment.MiddleLeft;
             brandName.UseMnemonic = false;
             // 

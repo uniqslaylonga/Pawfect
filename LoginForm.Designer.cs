@@ -143,7 +143,7 @@ namespace MyApp
             subtitleLabel.Name = "subtitleLabel";
             subtitleLabel.Size = new Size(316, 20);
             subtitleLabel.TabIndex = 1;
-            subtitleLabel.Text = "Sign in to your staff account";
+            subtitleLabel.Text = "Sign in to your account";
             subtitleLabel.TextAlign = ContentAlignment.MiddleLeft;
             subtitleLabel.UseMnemonic = false;
             // 

@@ -278,6 +278,7 @@ internal sealed class AppointmentRowView : Control
     public event EventHandler? EditClicked;
     public event EventHandler? MoreClicked;
 
+    [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public bool Checked
     {
         get => _checked;
