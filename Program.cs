@@ -30,14 +30,27 @@ internal static class Program
         while (true)
         {
             using var login = new LoginForm();
-            if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is null)
+            if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is not { } user)
                 break;
 
-            using var main = new MainForm();
-            main.ApplyUser(login.SignedInUser);
-            Application.Run(main);
+            // Admins land on the admin dashboard; everyone else gets the staff dashboard.
+            bool loggedOut;
+            if (user.Role == UserRole.Admin)
+            {
+                using var admin = new AdminForm();
+                admin.ApplyUser(user);
+                Application.Run(admin);
+                loggedOut = admin.LoggedOut;
+            }
+            else
+            {
+                using var main = new MainForm();
+                main.ApplyUser(user);
+                Application.Run(main);
+                loggedOut = main.LoggedOut;
+            }
 
-            if (!main.LoggedOut)
+            if (!loggedOut)
                 break;
         }
     }
