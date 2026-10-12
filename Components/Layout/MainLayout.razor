@@ -1,0 +1,64 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo"><MudIcon Icon="@Icons.Material.Filled.Pets" Color="Color.Inherit" /></div>
+            <div class="brand-text">
+                <div class="brand-name">Pawfect</div>
+                <div class="brand-sub">Pet Care. Made Simple.</div>
+            </div>
+        </div>
+
+        <nav>
+            <NavMenu />
+        </nav>
+
+        <div class="spacer"></div>
+        <AuthorizeView>
+            <Authorized>
+                <button type="button" class="nav-item logout" title="Log Out"
+                        @onclick="@(() => Nav.NavigateTo("/Identity/Account/Logout", forceLoad: true))">
+                    <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" Color="Color.Inherit" /><span class="label">Log Out</span>
+                </button>
+            </Authorized>
+            <NotAuthorized>
+                <button type="button" class="nav-item plain" title="Log in"
+                        @onclick="@(() => Nav.NavigateTo("/Identity/Account/Login", forceLoad: true))">
+                    <MudIcon Icon="@Icons.Material.Outlined.Login" Size="Size.Small" Color="Color.Inherit" /><span class="label">Log in</span>
+                </button>
+                <button type="button" class="nav-item plain" title="Register"
+                        @onclick="@(() => Nav.NavigateTo("/Identity/Account/Register", forceLoad: true))">
+                    <MudIcon Icon="@Icons.Material.Outlined.PersonAdd" Size="Size.Small" Color="Color.Inherit" /><span class="label">Register</span>
+                </button>
+            </NotAuthorized>
+        </AuthorizeView>
+    </aside>
+
+    <main class="main">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#3B82C4",
+            Secondary = "#C8742B"
+        }
+    };
+}

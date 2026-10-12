@@ -1,57 +1,115 @@
-using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
+using Pawfect.Data;
+using Pawfect.Models;
+using Pawfect.Services;
 
-namespace MyApp;
+var builder = WebApplication.CreateBuilder(args);
 
-internal static class Program
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+builder.Services.AddMudServices();
+builder.Services.AddRazorPages(); // needed for the Identity login/register pages
+builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddDbContext<PawfectDbContext>(options =>
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    ));
+
+builder.Services.AddDefaultIdentity<IdentityUser>(options =>
 {
-    [STAThread]
-    private static void Main()
-    {
-        ApplicationConfiguration.Initialize();
+    options.SignIn.RequireConfirmedAccount = false;
+})
+.AddRoles<IdentityRole>()
+.AddEntityFrameworkStores<PawfectDbContext>();
 
-        // First run: the Users table has no admin yet, so create one before showing the login.
+// Record every sign-in in the audit trail (never let a logging problem block a login).
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnSignedIn = async context =>
+    {
         try
         {
-            if (!Auth.AnyAdminExists())
+            var db = context.HttpContext.RequestServices.GetRequiredService<PawfectDbContext>();
+            db.AuditLogs.Add(new AuditLog
             {
-                using var setup = new CreateAdminForm();
-                if (setup.ShowDialog() != DialogResult.OK)
-                    return;
-            }
+                Action = "User login",
+                Details = "Signed in",
+                UserName = context.Principal?.Identity?.Name
+            });
+            await db.SaveChangesAsync();
         }
-        catch (SqlException ex)
+        catch
         {
-            MessageBox.Show(
-                "Can't connect to the database.\n\nCheck the connection string in Database.cs and make sure you ran Sql/setup.sql.\n\n" + ex.Message,
-                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
+            // ignore
         }
+    };
+});
 
-        while (true)
-        {
-            using var login = new LoginForm();
-            if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is not { } user)
-                break;
+builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<EmployeeService>();
+builder.Services.AddScoped<UserAdminService>();
+builder.Services.AddScoped<CatalogService>();
+builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<AuditTrailService>();
 
-            // Admins land on the admin dashboard; everyone else gets the staff dashboard.
-            bool loggedOut;
-            if (user.Role == UserRole.Admin)
-            {
-                using var admin = new AdminForm();
-                admin.ApplyUser(user);
-                Application.Run(admin);
-                loggedOut = admin.LoggedOut;
-            }
-            else
-            {
-                using var main = new MainForm();
-                main.ApplyUser(user);
-                Application.Run(main);
-                loggedOut = main.LoggedOut;
-            }
+var app = builder.Build();
 
-            if (!loggedOut)
-                break;
-        }
+// Development only: apply migrations, create roles, and create a TEST admin account.
+// Remove the admin part before deploying anywhere public.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+
+    services.GetRequiredService<PawfectDbContext>().Database.Migrate();
+
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+    foreach (var role in new[] { "Admin", "Staff" })
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
     }
+
+    const string adminEmail = "admin@pawfect.test";
+    const string adminPassword = "Admin123!";
+
+    var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
+    var admin = await userManager.FindByEmailAsync(adminEmail);
+    if (admin is null)
+    {
+        admin = new IdentityUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
+        var created = await userManager.CreateAsync(admin, adminPassword);
+        if (!created.Succeeded)
+            throw new InvalidOperationException("Could not create test admin: " +
+                string.Join("; ", created.Errors.Select(e => e.Description)));
+    }
+    if (!await userManager.IsInRoleAsync(admin, "Admin"))
+        await userManager.AddToRoleAsync(admin, "Admin");
 }
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseAntiforgery();
+
+app.MapStaticAssets();
+
+app.MapRazorPages();
+
+app.MapRazorComponents<Pawfect.Components.App>()
+    .AddInteractiveServerRenderMode();
+
+app.Run();

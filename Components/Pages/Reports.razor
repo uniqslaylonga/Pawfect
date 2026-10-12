@@ -1,0 +1,853 @@
+@page "/admin/reports"
+@layout AdminLayout
+@using System.Globalization
+@using Pawfect.Services
+@inject ReportService ReportSvc
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
+
+<PageTitle>Reports &amp; Financial Auditing - Pawfect Admin</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Reports &amp; Financial Auditing</h1>
+        <p>Access sales audit logs, track inventory movement, and download audit-ready reports.</p>
+    </div>
+    <AdminTopTools />
+</div>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        @if (_openMenu is not null)
+        {
+            <div class="menu-away" @onclick="() => _openMenu = null"></div>
+        }
+
+        <div class="layout">
+            <div class="main-col">
+                <section class="panel head-card">
+                    <div class="panel-title">
+                        <span class="ico"><MudIcon Icon="@Icons.Material.Outlined.Assessment" Color="Color.Inherit" /></span>
+                        <div>
+                            <h2>Reports &amp; Financial Auditing</h2>
+                            <p>Sales audit logs, inventory movement report, and export options for audit summaries.</p>
+                        </div>
+                    </div>
+                    <div class="head-actions">
+                        <button type="button" class="btn-ghost" @onclick="OpenRecord">
+                            <MudIcon Icon="@Icons.Material.Outlined.Add" Size="Size.Small" Color="Color.Inherit" /> Record Transaction
+                        </button>
+                        <button type="button" class="btn-primary" @onclick="PrintReport">
+                            <MudIcon Icon="@Icons.Material.Outlined.FileDownload" Size="Size.Small" Color="Color.Inherit" /> Download Report
+                        </button>
+                    </div>
+                </section>
+
+                <div class="stats">
+                    @foreach (var c in Cards)
+                    {
+                        <div class="stat">
+                            <div class="stat-top">
+                                <span class="stat-label">@c.Label</span>
+                                <span class="ico sm @c.Tone"><MudIcon Icon="@c.Icon" Size="Size.Small" Color="Color.Inherit" /></span>
+                            </div>
+                            <div class="stat-value">@c.Value</div>
+                            <div class="trend @c.TrendClass">@c.Trend</div>
+                        </div>
+                    }
+                    <div class="stat">
+                        <div class="stat-top">
+                            <span class="stat-label">Audit Period</span>
+                            <span class="ico sm tone-blue"><MudIcon Icon="@Icons.Material.Outlined.CalendarMonth" Size="Size.Small" Color="Color.Inherit" /></span>
+                        </div>
+                        <div class="stat-value period">@DateText(_from) – @DateText(_to)</div>
+                        <div class="trend na">@PeriodDays @(PeriodDays == 1 ? "day" : "days")</div>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="tabs">
+                        <button type="button" class="@(_tab == "sales" ? "on" : "")" @onclick='() => SetTab("sales")'>Sales Audit Logs</button>
+                        <button type="button" class="@(_tab == "movement" ? "on" : "")" @onclick='() => SetTab("movement")'>Inventory Movement Report</button>
+                        <button type="button" class="@(_tab == "summary" ? "on" : "")" @onclick='() => SetTab("summary")'>Audit Summary</button>
+                    </div>
+
+                    <div class="filters">
+                        <select @bind="_category" @bind:after="OnFilterChanged">
+                            <option value="">All Categories</option>
+                            @foreach (var cat in CategoryOptions) { <option value="@cat">@cat</option> }
+                        </select>
+                        <select @bind="_staff" @bind:after="OnFilterChanged">
+                            <option value="">All Staff</option>
+                            @foreach (var st in StaffOptions) { <option value="@st">@st</option> }
+                        </select>
+                        <div class="range">
+                            <input type="date" title="From" @bind="_from" @bind:after="OnRangeChanged" />
+                            <span>to</span>
+                            <input type="date" title="To" @bind="_to" @bind:after="OnRangeChanged" />
+                        </div>
+                        @if (_tab == "sales" && _selected.Count > 0)
+                        {
+                            <button type="button" class="btn-primary sm" @onclick='() => SetStatus(_selected.ToList(), "Audited")'>Mark audited (@_selected.Count)</button>
+                            <button type="button" class="btn-ghost sm" @onclick='() => SetStatus(_selected.ToList(), "Flagged")'>Flag (@_selected.Count)</button>
+                        }
+                    </div>
+
+                    @if (_tab == "sales")
+                    {
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="chk"><input type="checkbox" checked="@AllPageSelected" @onchange="TogglePage" /></th>
+                                        <th>Date &amp; Time</th><th>Transaction Type</th><th>Product / Service</th><th>Quantity</th>
+                                        <th>Amount</th><th>Reference No.</th><th>Status</th><th class="right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in PagedSales)
+                                    {
+                                        <tr>
+                                            <td class="chk"><input type="checkbox" checked="@_selected.Contains(s.RetailSaleId)" @onchange="() => ToggleSelect(s.RetailSaleId)" /></td>
+                                            <td>
+                                                <div class="dt">@LocalDate(s.SoldAt)</div>
+                                                <div class="muted">@LocalTime(s.SoldAt)</div>
+                                            </td>
+                                            <td><span class="pill ty-@Slug(s.TransactionType)">@s.TransactionType</span></td>
+                                            <td>
+                                                <div class="svc">
+                                                    <span class="svc-ico @Slug(s.Category)"><MudIcon Icon="@CatIcon(s.Category)" Size="Size.Small" Color="Color.Inherit" /></span>
+                                                    <div class="svc-text">
+                                                        <div class="svc-name">@(s.ProductName ?? "—")</div>
+                                                        <div class="svc-desc">@(s.Category ?? "Uncategorized")</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>@s.Quantity @(s.Quantity == 1 ? "pc" : "pcs")</td>
+                                            <td class="@(s.Total < 0 ? "neg" : "price")">@Peso(s.Total)</td>
+                                            <td class="ref">@ReportService.DisplayRef(s)</td>
+                                            <td><span class="pill st-@Slug(s.Status)">@s.Status</span></td>
+                                            <td class="right actions">@RowActions(s)</td>
+                                        </tr>
+                                    }
+                                    @if (!PagedSales.Any())
+                                    {
+                                        <tr><td colspan="9" class="empty">@SalesEmptyText</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else if (_tab == "movement")
+                    {
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date &amp; Time</th><th>Movement</th><th>Product</th><th>Batch #</th>
+                                        <th>Quantity</th><th>Reason</th><th>By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var m in PagedMoves)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="dt">@LocalDate(m.Timestamp)</div>
+                                                <div class="muted">@LocalTime(m.Timestamp)</div>
+                                            </td>
+                                            <td><span class="pill mv-@Slug(m.MovementType)">@m.MovementType</span></td>
+                                            <td>
+                                                <div class="svc">
+                                                    <span class="svc-ico @Slug(m.Category)"><MudIcon Icon="@CatIcon(m.Category)" Size="Size.Small" Color="Color.Inherit" /></span>
+                                                    <div class="svc-text">
+                                                        <div class="svc-name">@m.ProductName</div>
+                                                        <div class="svc-desc">@(m.Category ?? "Uncategorized")</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="ref">@(m.BatchNumber ?? "—")</td>
+                                            <td class="@(m.Quantity < 0 ? "neg" : "pos")">@(m.Quantity > 0 ? "+" : "")@m.Quantity pcs</td>
+                                            <td>@(m.Reason ?? "—")</td>
+                                            <td class="muted">@(m.UserName ?? "—")</td>
+                                        </tr>
+                                    }
+                                    @if (!PagedMoves.Any())
+                                    {
+                                        <tr><td colspan="7" class="empty">@MovesEmptyText</td></tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="sum-grid">
+                            <div class="sum-box">
+                                <h4>Audit status of transactions</h4>
+                                @foreach (var l in StatusLines)
+                                {
+                                    <div class="report-row"><span><span class="pill st-@Slug(l.Label)">@l.Label</span></span><span>@l.Count · @Peso(l.Amount)</span></div>
+                                }
+                            </div>
+                            <div class="sum-box">
+                                <h4>Transaction types</h4>
+                                @foreach (var l in TypeLines)
+                                {
+                                    <div class="report-row"><span><span class="pill ty-@Slug(l.Label)">@l.Label</span></span><span>@l.Count · @Peso(l.Amount)</span></div>
+                                }
+                            </div>
+                            <div class="sum-box">
+                                <h4>Inventory movement</h4>
+                                @foreach (var l in MovementLines)
+                                {
+                                    <div class="report-row"><span><span class="pill mv-@Slug(l.Label)">@l.Label</span></span><span>@l.Count entries · @l.Units pcs</span></div>
+                                }
+                            </div>
+                            <div class="sum-box">
+                                <h4>Top products (net sales)</h4>
+                                @foreach (var t in TopProducts)
+                                {
+                                    <div class="report-row"><span>@t.Label</span><span>@Peso(t.Amount)</span></div>
+                                }
+                                @if (!TopProducts.Any())
+                                {
+                                    <div class="empty left">No sales in this period.</div>
+                                }
+                            </div>
+                        </div>
+
+                        <h4 class="flag-title">Flagged transactions (@FlaggedRows.Count)</h4>
+                        @if (FlaggedRows.Count == 0)
+                        {
+                            <div class="empty left">No discrepancies found in this period.</div>
+                        }
+                        else
+                        {
+                            <div class="report">
+                                @foreach (var f in FlaggedRows)
+                                {
+                                    <div class="report-row"><span>@ReportService.DisplayRef(f) · @(f.ProductName ?? "—")</span><span>@Peso(f.Total)</span></div>
+                                }
+                            </div>
+                        }
+                    }
+
+                    @if (_tab != "summary")
+                    {
+                        <div class="table-foot">
+                            <span>@ShowingText()</span>
+                            @Pager()
+                        </div>
+                    }
+                </section>
+            </div>
+
+            <aside class="side-col">
+                <section class="panel side">
+                    <div class="side-head">
+                        <h3 class="side-title"><MudIcon Icon="@Icons.Material.Outlined.Description" Size="Size.Small" Color="Color.Inherit" /> QUICK REPORTS</h3>
+                        <button type="button" class="link" @onclick='() => SetTab("summary")'>View All →</button>
+                    </div>
+                    <button type="button" class="qr" @onclick='() => SetTab("sales")'>
+                        <span class="qr-ico"><MudIcon Icon="@Icons.Material.Outlined.ReceiptLong" Size="Size.Small" Color="Color.Inherit" /></span>
+                        <span class="qr-body"><b>Sales Audit Log</b><small>Detailed sales transactions and reconciliations</small></span>
+                        <MudIcon Icon="@Icons.Material.Outlined.ChevronRight" Size="Size.Small" Color="Color.Inherit" />
+                    </button>
+                    <button type="button" class="qr" @onclick='() => SetTab("movement")'>
+                        <span class="qr-ico"><MudIcon Icon="@Icons.Material.Outlined.Inventory2" Size="Size.Small" Color="Color.Inherit" /></span>
+                        <span class="qr-body"><b>Inventory Movement Report</b><small>Track stock in/out and adjustments</small></span>
+                        <MudIcon Icon="@Icons.Material.Outlined.ChevronRight" Size="Size.Small" Color="Color.Inherit" />
+                    </button>
+                    <button type="button" class="qr" @onclick="OpenFinancial">
+                        <span class="qr-ico"><MudIcon Icon="@Icons.Material.Outlined.Payments" Size="Size.Small" Color="Color.Inherit" /></span>
+                        <span class="qr-body"><b>Financial Summary</b><small>Revenue by source for the period</small></span>
+                        <MudIcon Icon="@Icons.Material.Outlined.ChevronRight" Size="Size.Small" Color="Color.Inherit" />
+                    </button>
+                    <button type="button" class="qr" @onclick="PrintReport">
+                        <span class="qr-ico"><MudIcon Icon="@Icons.Material.Outlined.PictureAsPdf" Size="Size.Small" Color="Color.Inherit" /></span>
+                        <span class="qr-body"><b>Download Printable Report</b><small>Get audit-ready PDF</small></span>
+                        <MudIcon Icon="@Icons.Material.Outlined.ChevronRight" Size="Size.Small" Color="Color.Inherit" />
+                    </button>
+                </section>
+
+                <section class="panel side">
+                    <div class="side-head">
+                        <h3 class="side-title"><MudIcon Icon="@Icons.Material.Outlined.History" Size="Size.Small" Color="Color.Inherit" /> RECENT AUDIT ACTIVITY</h3>
+                        <a class="link" href="admin/audit">View All →</a>
+                    </div>
+                    @foreach (var a in _data.RecentActivity)
+                    {
+                        <div class="act-row">
+                            <span class="act-dot @ActivityDot(a.Action)"></span>
+                            <div class="act-body">
+                                <b>@a.Action</b>
+                                <small>@RefOf(a.Details)</small>
+                            </div>
+                            <div class="act-when">
+                                <div>@LocalDate(a.Timestamp)</div>
+                                <div>@LocalTime(a.Timestamp)</div>
+                            </div>
+                        </div>
+                    }
+                    @if (_data.RecentActivity.Count == 0)
+                    {
+                        <div class="empty left">No audit activity yet.</div>
+                    }
+                </section>
+
+                <section class="panel side">
+                    <h3 class="side-title"><MudIcon Icon="@Icons.Material.Outlined.FileDownload" Size="Size.Small" Color="Color.Inherit" /> EXPORT OPTIONS</h3>
+                    <div class="exp-grid">
+                        <button type="button" class="exp-tile" @onclick="PrintReport">
+                            <span class="exp-ico pdf"><MudIcon Icon="@Icons.Material.Outlined.PictureAsPdf" Size="Size.Small" Color="Color.Inherit" /></span>
+                            <b>Download PDF</b><small>(Full Report)</small>
+                        </button>
+                        <button type="button" class="exp-tile" @onclick="ExportCsv">
+                            <span class="exp-ico xls"><MudIcon Icon="@Icons.Material.Outlined.TableChart" Size="Size.Small" Color="Color.Inherit" /></span>
+                            <b>Download Excel</b><small>(@(_tab == "movement" ? "Movements" : "Transactions"))</small>
+                        </button>
+                    </div>
+                    <div class="hint">PDF opens your browser's print dialog - choose "Save as PDF". Excel downloads a .csv file that opens in Excel.</div>
+                </section>
+            </aside>
+        </div>
+
+        @if (_message is not null)
+        {
+            <div class="toast" @onclick="() => _message = null">@_message</div>
+        }
+
+        @if (_modal != ModalKind.None)
+        {
+            <div class="overlay" @onclick="CloseModal">
+                <div class="modal @(_modal == ModalKind.Record || _modal == ModalKind.Financial || _modal == ModalKind.Detail ? "wide" : "")" @onclick:stopPropagation="true">
+                    @switch (_modal)
+                    {
+                        case ModalKind.Record:
+                            <h3>Record Transaction</h3>
+                            <div class="row2">
+                                <label>Type
+                                    <select @bind="_form.Type">
+                                        @foreach (var t in RetailSale.Types) { <option value="@t">@t</option> }
+                                    </select>
+                                </label>
+                                <label>Date &amp; time<input type="datetime-local" @bind="_form.When" /></label>
+                            </div>
+                            <label>Product / service
+                                <input type="text" list="product-list" placeholder="e.g. Premium Dog Food (2kg)" @bind="_form.Product" @bind:after="OnProductChanged" />
+                                <datalist id="product-list">
+                                    @foreach (var p in _data.Products.Keys.OrderBy(k => k)) { <option value="@p"></option> }
+                                </datalist>
+                            </label>
+                            <div class="row2">
+                                <label>Category
+                                    <select @bind="_form.Category">
+                                        @foreach (var cat in InventoryItem.Categories) { <option value="@cat">@cat</option> }
+                                    </select>
+                                </label>
+                                <label>Quantity<input type="number" min="1" @bind="_form.Qty" /></label>
+                            </div>
+                            <label>@(_form.Type == "Adjustment" ? "Amount (₱, negative to reduce)" : "Amount (₱, total)")
+                                <input type="number" step="0.01" @bind="_form.Amount" />
+                            </label>
+                            <label>Notes (optional)<input type="text" @bind="_form.Notes" /></label>
+                            <span class="hint">New transactions start as Pending until they are audited. Returns are saved as negative amounts.</span>
+                            break;
+                        case ModalKind.Detail:
+                            <h3>Transaction details</h3>
+                            <div class="report">
+                                @foreach (var line in DetailLines())
+                                {
+                                    <div class="report-row"><span>@line.Label</span><span>@line.Value</span></div>
+                                }
+                            </div>
+                            break;
+                        case ModalKind.Financial:
+                            <h3>Financial Summary</h3>
+                            <div class="report">
+                                @foreach (var line in FinancialLines())
+                                {
+                                    <div class="report-row @(line.Head ? "head" : "")"><span>@line.Label</span><span>@line.Value</span></div>
+                                }
+                            </div>
+                            break;
+                    }
+
+                    @if (_error is not null)
+                    {
+                        <div class="form-error">@_error</div>
+                    }
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn-ghost" @onclick="CloseModal">@(_modal == ModalKind.Record ? "Cancel" : "Close")</button>
+                        @if (_modal == ModalKind.Record)
+                        {
+                            <button type="button" class="btn-primary" @onclick="SaveRecord">Save</button>
+                        }
+                        else if (_modal == ModalKind.Financial)
+                        {
+                            <button type="button" class="btn-primary" @onclick="CopyFinancial">Copy summary</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <MudAlert Severity="Severity.Warning">This page is for administrators only. Please log in with an admin account.</MudAlert>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private const int PageSize = 10;
+    private enum ModalKind { None, Record, Detail, Financial }
+    private record StatCard(string Label, string Value, string Icon, string Tone, string Trend, string TrendClass);
+    private record ReportLine(string Label, string Value, bool Head = false);
+    private record SumLine(string Label, int Count, decimal Amount);
+    private record MoveLine(string Label, int Count, int Units);
+
+    private class TxForm
+    {
+        public string Type = "Sale", Product = "", Category = "Pet Food", Notes = "";
+        public int Qty = 1;
+        public decimal Amount;
+        public DateTime When = PhTime.Now;
+    }
+
+    private ReportData _data = new();
+    private DateOnly _from, _to;
+    private string _actor = "Admin";
+
+    private string _tab = "sales", _category = "", _staff = "";
+    private int _pageNo = 1;
+    private readonly HashSet<int> _selected = new();
+
+    private string? _openMenu, _message, _error;
+    private ModalKind _modal = ModalKind.None;
+    private TxForm _form = new();
+    private RetailSale? _detail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (!state.User.IsInRole("Admin")) return;
+        _actor = state.User.Identity?.Name ?? "Admin";
+
+        var today = PhTime.Today;
+        _from = new DateOnly(today.Year, today.Month, 1);
+        _to = _from.AddMonths(1).AddDays(-1);
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        _data = await ReportSvc.LoadAsync(_from, _to);
+        var ids = _data.Sales.Select(s => s.RetailSaleId).ToHashSet();
+        _selected.RemoveWhere(id => !ids.Contains(id));
+    }
+
+    // ---------- derived data (all computed from the database rows) ----------
+    private int PeriodDays => Math.Max(1, _to.DayNumber - _from.DayNumber + 1);
+
+    private IEnumerable<StatCard> Cards
+    {
+        get
+        {
+            var audited = _data.Sales.Where(s => s.TransactionType != "Adjustment" && s.Status == "Audited").Sum(s => s.Total);
+            var (t1, c1) = Trend(audited, _data.PrevAuditedSales, true);
+            yield return new StatCard("Total Sales (Audited)", Peso(audited), Icons.Material.Outlined.Payments, "", t1, c1);
+
+            var units = _data.Movements.Sum(m => Math.Abs(m.Quantity));
+            var (t2, c2) = Trend(units, _data.PrevMovementUnits, true);
+            yield return new StatCard("Total Inventory Movement", $"{units:N0} items", Icons.Material.Outlined.Inventory2, "tone-blue", t2, c2);
+
+            var flagged = _data.Sales.Count(s => s.Status == "Flagged");
+            var (t3, c3) = flagged == 0 && _data.PrevDiscrepancies == 0
+                ? ("No discrepancies", "up")
+                : Trend(flagged, _data.PrevDiscrepancies, false);
+            yield return new StatCard("Discrepancies Found", flagged.ToString("N0"), Icons.Material.Outlined.WarningAmber, "tone-red", t3, c3);
+        }
+    }
+
+    private static (string Text, string Cls) Trend(decimal cur, decimal prev, bool upIsGood)
+    {
+        if (prev == 0) return (cur == 0 ? "No data yet" : "No earlier period to compare", "na");
+        var pct = (cur - prev) / Math.Abs(prev) * 100;
+        if (Math.Round(pct) == 0) return ("No change vs. last period", "na");
+        var arrow = pct > 0 ? "↑" : "↓";
+        var good = (pct > 0) == upIsGood;
+        return ($"{arrow} {Math.Abs(pct):0}% vs. last period", good ? "up" : "down");
+    }
+
+    private IEnumerable<string> CategoryOptions => InventoryItem.Categories
+        .Concat(_data.Sales.Select(s => s.Category ?? "")).Concat(_data.Movements.Select(m => m.Category ?? ""))
+        .Where(c => c != "").Distinct().OrderBy(c => c);
+
+    private IEnumerable<string> StaffOptions => _data.Sales.Select(s => s.StaffName ?? "")
+        .Concat(_data.Movements.Select(m => m.UserName ?? ""))
+        .Where(n => n != "").Distinct().OrderBy(n => n);
+
+    private IEnumerable<RetailSale> FilteredSales => _data.Sales.Where(s =>
+        (_category == "" || s.Category == _category) && (_staff == "" || s.StaffName == _staff));
+
+    private IEnumerable<InventoryMovement> FilteredMoves => _data.Movements.Where(m =>
+        (_category == "" || m.Category == _category) && (_staff == "" || m.UserName == _staff));
+
+    private int RowCount => _tab == "movement" ? FilteredMoves.Count() : FilteredSales.Count();
+    private int PageCount => Math.Max(1, (int)Math.Ceiling(RowCount / (double)PageSize));
+    private int CurrentPage => Math.Min(_pageNo, PageCount);
+    private IEnumerable<RetailSale> PagedSales => FilteredSales.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
+    private IEnumerable<InventoryMovement> PagedMoves => FilteredMoves.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
+
+    private string SalesEmptyText => _data.Sales.Count == 0
+        ? "No transactions in this period. Click Record Transaction to log one."
+        : "No transactions match your filters.";
+    private string MovesEmptyText => _data.Movements.Count == 0
+        ? "No stock movement in this period. Movements are recorded whenever inventory is added, used or adjusted."
+        : "No movements match your filters.";
+
+    private string ShowingText()
+    {
+        var total = RowCount;
+        var noun = _tab == "movement" ? "movements" : "audit logs";
+        if (total == 0) return $"Showing 0 of 0 {noun}";
+        var from = (CurrentPage - 1) * PageSize + 1;
+        var to = Math.Min(CurrentPage * PageSize, total);
+        return $"Showing {from}–{to} of {total} {noun}";
+    }
+
+    // summary tab
+    private IEnumerable<SumLine> StatusLines => RetailSale.Statuses.Select(st =>
+    {
+        var l = FilteredSales.Where(s => s.Status == st).ToList();
+        return new SumLine(st, l.Count, l.Sum(s => s.Total));
+    });
+
+    private IEnumerable<SumLine> TypeLines => RetailSale.Types.Select(t =>
+    {
+        var l = FilteredSales.Where(s => s.TransactionType == t).ToList();
+        return new SumLine(t, l.Count, l.Sum(s => s.Total));
+    });
+
+    private IEnumerable<MoveLine> MovementLines => InventoryMovement.Types.Select(t =>
+    {
+        var l = FilteredMoves.Where(m => m.MovementType == t).ToList();
+        return new MoveLine(t, l.Count, l.Sum(m => Math.Abs(m.Quantity)));
+    });
+
+    private List<SumLine> TopProducts => FilteredSales
+        .Where(s => s.TransactionType != "Adjustment" && !string.IsNullOrWhiteSpace(s.ProductName))
+        .GroupBy(s => s.ProductName!)
+        .Select(g => new SumLine(g.Key, g.Count(), g.Sum(s => s.Total)))
+        .OrderByDescending(x => x.Amount).Take(5).ToList();
+
+    private List<RetailSale> FlaggedRows => FilteredSales.Where(s => s.Status == "Flagged").ToList();
+
+    // ---------- tabs / filters / paging ----------
+    private void SetTab(string tab)
+    {
+        _tab = tab;
+        _pageNo = 1;
+        _selected.Clear();
+        _openMenu = null;
+    }
+
+    private void OnFilterChanged()
+    {
+        _pageNo = 1;
+        _selected.Clear();
+    }
+
+    private async Task OnRangeChanged()
+    {
+        if (_to < _from) _to = _from;
+        _pageNo = 1;
+        _selected.Clear();
+        await Reload();
+    }
+
+    private bool AllPageSelected => PagedSales.Any() && PagedSales.All(s => _selected.Contains(s.RetailSaleId));
+
+    private void TogglePage()
+    {
+        var ids = PagedSales.Select(s => s.RetailSaleId).ToList();
+        if (AllPageSelected) foreach (var id in ids) _selected.Remove(id);
+        else foreach (var id in ids) _selected.Add(id);
+    }
+
+    private void ToggleSelect(int id)
+    {
+        if (!_selected.Remove(id)) _selected.Add(id);
+    }
+
+    private RenderFragment Pager() => __builder =>
+    {
+        var cur = CurrentPage;
+        var pages = PageCount;
+        var start = Math.Max(1, Math.Min(cur - 2, pages - 4));
+        var end = Math.Min(pages, start + 4);
+        <div class="pager">
+            <button type="button" disabled="@(cur <= 1)" @onclick="() => _pageNo = cur - 1">‹</button>
+            @for (var n = start; n <= end; n++)
+            {
+                var pg = n;
+                <button type="button" class="@(pg == cur ? "on" : "")" @onclick="() => _pageNo = pg">@pg</button>
+            }
+            <button type="button" disabled="@(cur >= pages)" @onclick="() => _pageNo = cur + 1">›</button>
+        </div>
+    };
+
+    private RenderFragment RowActions(RetailSale s) => __builder =>
+    {
+        var key = "s:" + s.RetailSaleId;
+        <span class="menu-host">
+            <button type="button" class="icon-btn" title="More" @onclick="() => ToggleMenu(key)">
+                <MudIcon Icon="@Icons.Material.Outlined.MoreHoriz" Size="Size.Small" Color="Color.Inherit" />
+            </button>
+            @if (_openMenu == key)
+            {
+                <div class="menu">
+                    <button type="button" @onclick="() => OpenDetail(s)">View details</button>
+                    @if (s.Status != "Audited")
+                    {
+                        <button type="button" @onclick='() => SetOne(s.RetailSaleId, "Audited")'>Mark as audited</button>
+                    }
+                    @if (s.Status != "Flagged")
+                    {
+                        <button type="button" class="danger" @onclick='() => SetOne(s.RetailSaleId, "Flagged")'>Flag discrepancy</button>
+                    }
+                    @if (s.Status != "Pending")
+                    {
+                        <button type="button" @onclick='() => SetOne(s.RetailSaleId, "Pending")'>Mark as pending</button>
+                    }
+                </div>
+            }
+        </span>
+    };
+
+    // ---------- helpers ----------
+    private static string Peso(decimal v) =>
+        (v < 0 ? "-" : "") + "₱" + Math.Abs(v).ToString("N2", CultureInfo.InvariantCulture);
+
+    private static string DateText(DateOnly d) => d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+    private static string LocalDate(DateTime utc) => PhTime.ToLocal(utc).ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+    private static string LocalTime(DateTime utc) => PhTime.ToLocal(utc).ToString("hh:mm tt", CultureInfo.InvariantCulture);
+    private static string Slug(string? c) => new string((c ?? "").Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+    private static string RefOf(string? details) => string.IsNullOrWhiteSpace(details) ? "" : details.Split(" - ")[0];
+
+    private static string ActivityDot(string action) => action switch
+    {
+        "Sale logged" or "Transaction audited" => "tone-green",
+        "Return logged" => "tone-red",
+        "Adjustment logged" => "tone-purple",
+        "Transaction flagged" => "tone-amber",
+        _ => ""
+    };
+
+    private static string CatIcon(string? c) => c switch
+    {
+        "Pet Food" => Icons.Material.Outlined.Fastfood,
+        "Grooming" => Icons.Material.Outlined.ContentCut,
+        "Accessories" => Icons.Material.Outlined.Sell,
+        "Supplies" => Icons.Material.Outlined.Inventory2,
+        "Health" => Icons.Material.Outlined.HealthAndSafety,
+        "Toys" => Icons.Material.Outlined.Toys,
+        "Treats" => Icons.Material.Outlined.Cookie,
+        _ => Icons.Material.Outlined.Pets
+    };
+
+    private void ToggleMenu(string key) => _openMenu = _openMenu == key ? null : key;
+    private void Flash(string text) => _message = text;
+
+    private void CloseModal()
+    {
+        _modal = ModalKind.None;
+        _error = null;
+        _detail = null;
+    }
+
+    // ---------- record a transaction ----------
+    private void OpenRecord()
+    {
+        _form = new TxForm { When = PhTime.Now };
+        _error = null;
+        _modal = ModalKind.Record;
+    }
+
+    private void OnProductChanged()
+    {
+        if (_data.Products.TryGetValue(_form.Product.Trim(), out var cat)) _form.Category = cat;
+    }
+
+    private async Task SaveRecord()
+    {
+        var err = await ReportSvc.RecordAsync(new RetailSale
+        {
+            TransactionType = _form.Type,
+            ProductName = _form.Product,
+            Category = _form.Category,
+            Quantity = _form.Qty,
+            Total = _form.Amount,
+            SoldAt = PhTime.ToUtc(_form.When),
+            Notes = _form.Notes
+        }, _actor);
+        if (err is not null) { _error = err; return; }
+
+        // make sure the new row is inside the period being viewed
+        var d = DateOnly.FromDateTime(_form.When);
+        if (d < _from) _from = d;
+        if (d > _to) _to = d;
+
+        CloseModal();
+        await Reload();
+        Flash("Transaction recorded.");
+    }
+
+    // ---------- audit status ----------
+    private Task SetOne(int id, string status) => SetStatus(new List<int> { id }, status);
+
+    private async Task SetStatus(List<int> ids, string status)
+    {
+        _openMenu = null;
+        await ReportSvc.SetStatusAsync(ids, status, _actor);
+        _selected.Clear();
+        await Reload();
+        Flash(status switch
+        {
+            "Audited" => "Marked as audited.",
+            "Flagged" => "Flagged as a discrepancy.",
+            _ => "Marked as pending."
+        });
+    }
+
+    private void OpenDetail(RetailSale s)
+    {
+        _openMenu = null;
+        _detail = s;
+        _error = null;
+        _modal = ModalKind.Detail;
+    }
+
+    private List<ReportLine> DetailLines()
+    {
+        if (_detail is null) return new();
+        var s = _detail;
+        return new List<ReportLine>
+        {
+            new("Reference No.", ReportService.DisplayRef(s)),
+            new("Date & time", $"{LocalDate(s.SoldAt)} {LocalTime(s.SoldAt)}"),
+            new("Type", s.TransactionType),
+            new("Product / service", s.ProductName ?? "—"),
+            new("Category", s.Category ?? "—"),
+            new("Quantity", s.Quantity.ToString("N0")),
+            new("Amount", Peso(s.Total)),
+            new("Status", s.Status),
+            new("Recorded by", s.StaffName ?? "—"),
+            new("Notes", string.IsNullOrWhiteSpace(s.Notes) ? "—" : s.Notes!)
+        };
+    }
+
+    // ---------- financial summary ----------
+    private void OpenFinancial()
+    {
+        _error = null;
+        _modal = ModalKind.Financial;
+    }
+
+    private List<ReportLine> FinancialLines()
+    {
+        var sales = _data.Sales;
+        var gross = sales.Where(s => s.TransactionType == "Sale").Sum(s => s.Total);
+        var returns = sales.Where(s => s.TransactionType == "Return").Sum(s => s.Total);
+        var net = gross + returns;
+        var adj = sales.Where(s => s.TransactionType == "Adjustment").Sum(s => s.Total);
+        return new List<ReportLine>
+        {
+            new($"Financial summary — {DateText(_from)} to {DateText(_to)}", "", true),
+            new("Retail sales", Peso(gross)),
+            new("Returns", Peso(returns)),
+            new("Net retail revenue", Peso(net)),
+            new("Service revenue (completed appointments)", Peso(_data.ServiceRevenue)),
+            new("Total revenue", Peso(net + _data.ServiceRevenue), true),
+            new("Retail audit status", "", true),
+            new("Audited", Peso(NetOf("Audited"))),
+            new("Pending", Peso(NetOf("Pending"))),
+            new("Flagged", Peso(NetOf("Flagged"))),
+            new("Other", "", true),
+            new("Adjustments logged (not counted as revenue)", Peso(adj)),
+            new("Expenses & profit/loss", "Not tracked yet")
+        };
+
+        decimal NetOf(string status) => sales.Where(s => s.TransactionType != "Adjustment" && s.Status == status).Sum(s => s.Total);
+    }
+
+    private async Task CopyFinancial()
+    {
+        var text = string.Join("\n", FinancialLines().Select(l => l.Value == "" ? l.Label : $"{l.Label}: {l.Value}"));
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Flash("Summary copied to clipboard.");
+        }
+        catch
+        {
+            _error = "Couldn't copy automatically. Select the text and copy it instead.";
+            return;
+        }
+        CloseModal();
+    }
+
+    // ---------- export ----------
+    private static readonly string[] SalesHeaders =
+        { "Date & Time", "Type", "Product / Service", "Category", "Quantity", "Amount (PHP)", "Reference No.", "Status", "Recorded By" };
+    private static readonly string[] MoveHeaders =
+        { "Date & Time", "Movement", "Product", "Category", "Batch #", "Quantity", "Reason", "By" };
+
+    private static string Stamp(DateTime utc) => PhTime.ToLocal(utc).ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    private List<string[]> SalesRows(IEnumerable<RetailSale> src) => src.Select(s => new[]
+    {
+        Stamp(s.SoldAt), s.TransactionType, s.ProductName ?? "", s.Category ?? "", s.Quantity.ToString(),
+        s.Total.ToString("0.00", CultureInfo.InvariantCulture), ReportService.DisplayRef(s), s.Status, s.StaffName ?? ""
+    }).ToList();
+
+    private List<string[]> MoveRows(IEnumerable<InventoryMovement> src) => src.Select(m => new[]
+    {
+        Stamp(m.Timestamp), m.MovementType, m.ProductName, m.Category ?? "", m.BatchNumber ?? "",
+        m.Quantity.ToString(), m.Reason ?? "", m.UserName ?? ""
+    }).ToList();
+
+    private async Task ExportCsv()
+    {
+        string csv, name;
+        if (_tab == "movement")
+        {
+            csv = ExportHelper.Csv(MoveHeaders, MoveRows(FilteredMoves));
+            name = "inventory-movements";
+        }
+        else
+        {
+            var src = _selected.Count > 0 ? FilteredSales.Where(s => _selected.Contains(s.RetailSaleId)) : FilteredSales;
+            csv = ExportHelper.Csv(SalesHeaders, SalesRows(src));
+            name = "sales-audit-log";
+        }
+        await JS.InvokeVoidAsync("pawfectExport.download", $"pawfect-{name}-{_from:yyyyMMdd}-{_to:yyyyMMdd}.csv", csv, "text/csv;charset=utf-8");
+        Flash("Export downloaded.");
+    }
+
+    private async Task PrintReport()
+    {
+        var summary = FinancialLines().Where(l => l.Value != "" || !l.Head)
+            .Select(l => new[] { l.Label, l.Value }).ToList();
+        var sections = new List<ExportSection>
+        {
+            new("Financial summary", new[] { "Item", "Amount" }, summary),
+            new("Sales audit log", SalesHeaders, SalesRows(FilteredSales)),
+            new("Inventory movement", MoveHeaders, MoveRows(FilteredMoves))
+        };
+        var html = ExportHelper.Html("Pawfect - Reports & Financial Auditing",
+            $"Audit period: {DateText(_from)} to {DateText(_to)}  |  Generated {PhTime.Now.ToString("MMM d, yyyy hh:mm tt", CultureInfo.InvariantCulture)} by {_actor}", sections);
+        await JS.InvokeVoidAsync("pawfectExport.print", html);
+    }
+}

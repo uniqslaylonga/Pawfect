@@ -1,0 +1,39 @@
+@page "/"
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Nav
+
+<PageTitle>Pawfect</PageTitle>
+
+<div class="page-head">
+    <div>
+        <h1>Pawfect</h1>
+        <p>Pet Shop and Grooming Business Management System</p>
+    </div>
+</div>
+
+<div class="card">
+    <AuthorizeView>
+        <Authorized>
+            <p>Welcome back, @context.User.Identity?.Name.</p>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/pets"
+                       StartIcon="@Icons.Material.Filled.Pets">Go to my pets</MudButton>
+        </Authorized>
+        <NotAuthorized>
+            <p>Register or log in to manage your pets.</p>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/Identity/Account/Login" ForceLoad="true">Log in</MudButton>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+
+        // Admins go straight to the admin dashboard
+        if (state.User.IsInRole("Admin"))
+        {
+            Nav.NavigateTo("/admin");
+        }
+    }
+}
