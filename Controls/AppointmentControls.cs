@@ -130,11 +130,11 @@ internal sealed class SelectField : Control
         if (_items.Count == 0) return;
 
         _menu?.Dispose();
-        _menu = new ContextMenuStrip { ShowImageMargin = false, Font = Theme.Face(9f), MinimumSize = new Size(Width, 0) };
+        _menu = PawMenu.Create(Width);
         for (int i = 0; i < _items.Count; i++)
         {
             int idx = i;
-            var entry = new ToolStripMenuItem(_items[i]) { Checked = i == _index };
+            var entry = new PawMenuItem(MenuKind.Action, _items[i]) { Checked = i == _index, MenuWidth = Width - 12 };
             entry.Click += (_, _) => SelectedIndex = idx;
             _menu.Items.Add(entry);
         }
@@ -245,7 +245,7 @@ internal sealed class DateRangeField : Control
 internal sealed class AppointmentRowView : Control
 {
     public const int CheckColumnWidth = 40;
-    public const int RowHeight = 46;
+    public const int RowHeight = 42;
 
     /// <summary>Share of the remaining width for: date, customer, pet, service, status, actions (must add up to 100).</summary>
     public static readonly float[] ColumnPercents = { 15f, 22f, 18f, 14f, 17f, 14f };
@@ -257,6 +257,23 @@ internal sealed class AppointmentRowView : Control
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
 
     private static readonly string[] ActionGlyphs = { "\uE7B3", "\uE70F", "\uE712" };
+
+    /// <summary>Soft avatar colours for the pet column. The colour is picked from the pet's name so it never changes.</summary>
+    private static readonly (Color Fill, Color Fore)[] PetTints =
+    {
+        (Color.FromArgb(254, 243, 224), Color.FromArgb(199, 122, 10)),   // warm yellow
+        (Color.FromArgb(238, 241, 246), Color.FromArgb(90, 106, 130)),   // grey
+        (Color.FromArgb(241, 234, 253), Color.FromArgb(124, 77, 219)),   // lavender
+        (Color.FromArgb(229, 246, 236), Color.FromArgb(46, 158, 91)),    // mint
+        (Color.FromArgb(253, 235, 240), Color.FromArgb(205, 70, 112)),   // rose
+    };
+
+    private static (Color Fill, Color Fore) PetTint(string name)
+    {
+        int sum = 0;
+        foreach (char ch in name.Trim().ToLowerInvariant()) sum += ch;
+        return PetTints[sum % PetTints.Length];
+    }
 
     private bool _hover;
     private bool _checked;
@@ -374,35 +391,41 @@ internal sealed class AppointmentRowView : Control
         var subFont = Theme.Face(8f);
         var textFont = Theme.Face(8.5f);
 
+        // Two lines of text, centred vertically in the row.
+        int line1 = (Height - 34) / 2;
+        int line2 = line1 + 17;
+        const int avatar = 26;
+        int avatarY = (Height - avatar) / 2;
+
         // Date & time
         var c0 = Col(0);
         TextRenderer.DrawText(g, Item.Start.ToString("MMM d, yyyy", CultureInfo.CurrentCulture), nameFont,
-            new Rectangle(c0.X + 4, 6, c0.Width - 8, 18), Theme.Text, LineFlags);
+            new Rectangle(c0.X + 4, line1, c0.Width - 8, 18), Theme.Text, LineFlags);
         TextRenderer.DrawText(g, Item.Start.ToString("h:mm tt", CultureInfo.CurrentCulture), subFont,
-            new Rectangle(c0.X + 4, 24, c0.Width - 8, 16), Theme.Muted, LineFlags);
+            new Rectangle(c0.X + 4, line2, c0.Width - 8, 16), Theme.Muted, LineFlags);
 
         // Customer
         var c1 = Col(1);
-        int avatarY = (Height - 28) / 2;
         using (var b = new SolidBrush(Theme.PrimarySoft))
-            g.FillEllipse(b, c1.X + 4, avatarY, 28, 28);
-        TextRenderer.DrawText(g, "\uE77B", Theme.GlyphFont(9f), new Rectangle(c1.X + 4, avatarY, 28, 28), Theme.Primary, CenterFlags);
+            g.FillEllipse(b, c1.X + 4, avatarY, avatar, avatar);
+        TextRenderer.DrawText(g, "\uE77B", Theme.GlyphFont(9f), new Rectangle(c1.X + 4, avatarY, avatar, avatar), Theme.Primary, CenterFlags);
         TextRenderer.DrawText(g, Item.CustomerName, nameFont,
-            new Rectangle(c1.X + 40, 6, c1.Width - 44, 18), Theme.Text, LineFlags);
+            new Rectangle(c1.X + 38, line1, c1.Width - 42, 18), Theme.Text, LineFlags);
         TextRenderer.DrawText(g, Item.CustomerPhone, subFont,
-            new Rectangle(c1.X + 40, 24, c1.Width - 44, 16), Theme.Muted, LineFlags);
+            new Rectangle(c1.X + 38, line2, c1.Width - 42, 16), Theme.Muted, LineFlags);
 
         // Pet
         var c2 = Col(2);
-        using (var b = new SolidBrush(Color.FromArgb(254, 243, 224)))
-            g.FillEllipse(b, c2.X + 4, avatarY, 28, 28);
+        var (petFill, petFore) = PetTint(Item.PetName);
+        using (var b = new SolidBrush(petFill))
+            g.FillEllipse(b, c2.X + 4, avatarY, avatar, avatar);
         string initial = Item.PetName.Trim().Length > 0 ? Item.PetName.Trim()[..1].ToUpperInvariant() : "";
-        TextRenderer.DrawText(g, initial, Theme.Face(9f, FontStyle.Bold), new Rectangle(c2.X + 4, avatarY, 28, 28),
-            Color.FromArgb(199, 122, 10), CenterFlags);
+        TextRenderer.DrawText(g, initial, Theme.Face(9f, FontStyle.Bold), new Rectangle(c2.X + 4, avatarY, avatar, avatar),
+            petFore, CenterFlags);
         TextRenderer.DrawText(g, Item.PetName, nameFont,
-            new Rectangle(c2.X + 40, 6, c2.Width - 44, 18), Theme.Text, LineFlags);
+            new Rectangle(c2.X + 38, line1, c2.Width - 42, 18), Theme.Text, LineFlags);
         TextRenderer.DrawText(g, Item.PetBreed, subFont,
-            new Rectangle(c2.X + 40, 24, c2.Width - 44, 16), Theme.Muted, LineFlags);
+            new Rectangle(c2.X + 38, line2, c2.Width - 42, 16), Theme.Muted, LineFlags);
 
         // Service
         var c3 = Col(3);

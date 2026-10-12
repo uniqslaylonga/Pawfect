@@ -19,7 +19,8 @@ internal sealed record AppointmentItem(
     string PetName,
     string PetBreed,
     string Service,
-    AppointmentStatus Status);
+    AppointmentStatus Status,
+    string Category = "");
 
 /// <summary>Label and colours for each appointment status.</summary>
 internal static class AppointmentStatusStyle

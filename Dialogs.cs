@@ -410,91 +410,6 @@ internal sealed class EditAppointmentForm : DialogBase
     }
 }
 
-/// <summary>Shows a receipt with its items and lets the cashier refund or void it (receipts are never deleted).</summary>
-internal sealed class TransactionDetailsForm : DialogBase
-{
-    private readonly TransactionItem _item;
-    private readonly Button _voidButton = new();
-
-    /// <summary>Set to Refunded or Voided when the sale was changed.</summary>
-    public TransactionStatus? NewStatus { get; private set; }
-
-    public TransactionDetailsForm(TransactionItem item) : base("Transaction " + item.ReceiptNumber, "Refund")
-    {
-        _item = item;
-
-        static Label Info(string text) => new() { Text = text, AutoSize = false, Height = 28, TextAlign = ContentAlignment.MiddleLeft };
-
-        AddRow("Receipt", Info(item.ReceiptNumber));
-        AddRow("Date", Info(item.When.ToString("MMM d, yyyy  h:mm tt", CultureInfo.CurrentCulture)));
-        AddRow("Customer", Info(item.CustomerName));
-        AddRow("Paid by", Info(item.PaymentMethod));
-        AddRow("Status", Info(TransactionStatusStyle.Label(item.Status)));
-        AddRow("Total", Info(Money.Format(item.Total)));
-
-        var lines = new TextBox
-        {
-            Multiline = true,
-            ReadOnly = true,
-            Height = 90,
-            ScrollBars = ScrollBars.Vertical,
-            BackColor = Color.White,
-        };
-        try
-        {
-            lines.Text = string.Join(Environment.NewLine, EmployeeData.GetTransactionLines(item.Id).Select(l =>
-                $"{l.Quantity} x {l.Name}{(l.Detail.Length == 0 ? "" : $" ({l.Detail})")}  -  {Money.Format(l.UnitPrice * l.Quantity)}"));
-        }
-        catch (SqlException)
-        {
-            lines.Text = "Couldn't load the items.";
-        }
-        AddRow("Items", lines);
-
-        CancelButtonControl.Text = "Close";
-
-        _voidButton.Text = "Void sale";
-        _voidButton.Size = new Size(100, 34);
-        _voidButton.FlatStyle = FlatStyle.Flat;
-        _voidButton.FlatAppearance.BorderColor = Theme.Danger;
-        _voidButton.BackColor = Color.White;
-        _voidButton.ForeColor = Theme.Danger;
-        _voidButton.Cursor = Cursors.Hand;
-        _voidButton.Click += (_, _) => ChangeTo(TransactionStatus.Voided);
-        ButtonBar.Controls.Add(_voidButton);
-
-        bool open = item.Status == TransactionStatus.Completed;
-        SaveButton.Enabled = open;
-        _voidButton.Enabled = open;
-        FitHeight();
-    }
-
-    protected override void OnSaveClicked() => ChangeTo(TransactionStatus.Refunded);
-
-    private void ChangeTo(TransactionStatus status)
-    {
-        string verb = status == TransactionStatus.Voided ? "Void" : "Refund";
-        if (MessageBox.Show(this, $"{verb} receipt {_item.ReceiptNumber} ({Money.Format(_item.Total)})?\n\nThis can't be undone.",
-                "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-            return;
-
-        try
-        {
-            if (!EmployeeData.ChangeSaleStatus(_item.Id, status))
-            {
-                ShowError("Only completed sales can be voided or refunded.");
-                return;
-            }
-            NewStatus = status;
-            DialogResult = DialogResult.OK;
-        }
-        catch (SqlException ex)
-        {
-            ShowDatabaseError(this, ex);
-        }
-    }
-}
-
 /// <summary>Read-only list of the services an admin has set up (employees can't change prices).</summary>
 internal sealed class ServiceListForm : DialogBase
 {
@@ -519,105 +434,6 @@ internal sealed class ServiceListForm : DialogBase
     }
 
     protected override void OnSaveClicked() => DialogResult = DialogResult.OK;
-}
-
-/// <summary>Every sale, searchable. Double-click (or Open) shows the receipt, where it can be refunded or voided.</summary>
-internal sealed class TransactionHistoryForm : Form
-{
-    private readonly ListView _list = new()
-    {
-        View = View.Details, FullRowSelect = true, HideSelection = false, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None,
-    };
-    private readonly TextBox _search = new() { Dock = DockStyle.Fill, PlaceholderText = "Search receipt or customer..." };
-    private List<TransactionItem> _all = new();
-
-    /// <summary>True when a sale was refunded or voided while this window was open.</summary>
-    public bool Changed { get; private set; }
-
-    public TransactionHistoryForm()
-    {
-        Text = "Transaction History";
-        Font = Theme.Face(9f);
-        BackColor = Color.White;
-        ForeColor = Theme.Text;
-        StartPosition = FormStartPosition.CenterParent;
-        ClientSize = new Size(880, 520);
-        MinimumSize = new Size(700, 360);
-        ShowInTaskbar = false;
-
-        _list.Columns.Add("Receipt", 110);
-        _list.Columns.Add("Date", 160);
-        _list.Columns.Add("Customer", 170);
-        _list.Columns.Add("Items", 130);
-        _list.Columns.Add("Total", 90);
-        _list.Columns.Add("Paid by", 80);
-        _list.Columns.Add("Status", 90);
-
-        var top = new Panel { Dock = DockStyle.Top, Height = 44, Padding = new Padding(12, 10, 12, 6) };
-        top.Controls.Add(_search);
-
-        var open = new Button { Text = "Open", Size = new Size(90, 32), FlatStyle = FlatStyle.Flat, BackColor = Theme.Primary, ForeColor = Color.White, Cursor = Cursors.Hand };
-        open.FlatAppearance.BorderSize = 0;
-        var close = new Button { Text = "Close", Size = new Size(90, 32), FlatStyle = FlatStyle.Flat, BackColor = Color.White, ForeColor = Theme.TextSoft, DialogResult = DialogResult.Cancel, Cursor = Cursors.Hand };
-        close.FlatAppearance.BorderColor = Theme.Border;
-        var bottom = new FlowLayoutPanel
-        {
-            Dock = DockStyle.Bottom, Height = 52, FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(12, 10, 12, 6), BackColor = Theme.Subtle,
-        };
-        bottom.Controls.Add(close);
-        bottom.Controls.Add(open);
-
-        Controls.Add(_list);
-        Controls.Add(top);
-        Controls.Add(bottom);
-        CancelButton = close;
-
-        _search.TextChanged += (_, _) => Fill();
-        _list.DoubleClick += (_, _) => OpenSelected();
-        open.Click += (_, _) => OpenSelected();
-
-        Reload();
-    }
-
-    private void Reload()
-    {
-        _all = EmployeeData.GetRecentTransactions(1000);
-        Fill();
-    }
-
-    private void Fill()
-    {
-        string q = _search.Text.Trim();
-        _list.BeginUpdate();
-        _list.Items.Clear();
-        foreach (var x in _all.Where(x => q.Length == 0
-                     || x.ReceiptNumber.Contains(q, StringComparison.CurrentCultureIgnoreCase)
-                     || x.CustomerName.Contains(q, StringComparison.CurrentCultureIgnoreCase)))
-        {
-            var row = new ListViewItem(x.ReceiptNumber) { Tag = x };
-            row.SubItems.Add(x.When.ToString("MMM d, yyyy  h:mm tt", CultureInfo.CurrentCulture));
-            row.SubItems.Add(x.CustomerName);
-            row.SubItems.Add($"{x.ServiceCount} services, {x.ItemCount} items");
-            row.SubItems.Add(Money.Format(x.Total));
-            row.SubItems.Add(x.PaymentMethod);
-            row.SubItems.Add(TransactionStatusStyle.Label(x.Status));
-            _list.Items.Add(row);
-        }
-        _list.EndUpdate();
-    }
-
-    private void OpenSelected()
-    {
-        if (_list.SelectedItems.Count == 0 || _list.SelectedItems[0].Tag is not TransactionItem item) return;
-
-        using var form = new TransactionDetailsForm(item);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
-
-        Changed = true;
-        try { Reload(); }
-        catch (SqlException ex) { MessageBox.Show(this, "Couldn't reload the list.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-    }
 }
 
 /// <summary>A big month grid. Each day lists its appointments (time + pet), coloured by status.</summary>
@@ -776,7 +592,7 @@ internal sealed class FullCalendarForm : Form
     /// <summary>The day chosen with "Show in list" (or a double-click), or null if the window was just closed.</summary>
     public DateTime? PickedDate { get; private set; }
 
-    public FullCalendarForm(IReadOnlyList<AppointmentItem> items)
+    public FullCalendarForm(IReadOnlyList<AppointmentItem> items, DateTime? startDay = null)
     {
         Text = "Appointment Calendar";
         Font = Theme.Face(9f);
@@ -788,6 +604,11 @@ internal sealed class FullCalendarForm : Form
         ShowInTaskbar = false;
 
         _grid.SetItems(items);
+        if (startDay is { } start)
+        {
+            _grid.Month = start;
+            _grid.SelectedDate = start.Date;
+        }
 
         Button Nav(string text, int width)
         {
@@ -822,7 +643,7 @@ internal sealed class FullCalendarForm : Form
         _show.BackColor = Theme.Primary;
         _show.ForeColor = Color.White;
         _show.Cursor = Cursors.Hand;
-        _show.Enabled = false;
+        _show.Enabled = startDay is not null;
 
         var close = new Button
         {

@@ -711,7 +711,18 @@ internal sealed class CustomerCardView : Control
         set { _item = value; Invalidate(); }
     }
 
-    private Rectangle ViewRect => new(Width - 12 - 22 - 6 - 70, 12, 70, 22);
+    private const string ViewText = "View Profile";
+
+    // Sized to the text so "View Profile" is never cut off (at any DPI / font scaling).
+    private Rectangle ViewRect
+    {
+        get
+        {
+            int w = TextRenderer.MeasureText(ViewText, Theme.Face(7.5f, FontStyle.Bold),
+                new Size(int.MaxValue, 22), TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Width + 20;
+            return new Rectangle(Width - 12 - 22 - 6 - w, 12, w, 22);
+        }
+    }
     private Rectangle ClearRect => new(Width - 12 - 20, 11, 20, 24);
 
     private int PartAt(Point p) => ViewRect.Contains(p) ? 1 : ClearRect.Contains(p) ? 2 : 0;
@@ -775,7 +786,7 @@ internal sealed class CustomerCardView : Control
             g.FillPath(b, path);
             g.DrawPath(pen, path);
         }
-        TextRenderer.DrawText(g, "View Profile", Theme.Face(7.5f, FontStyle.Bold), view, Theme.Primary, Tf.Center);
+        TextRenderer.DrawText(g, ViewText, Theme.Face(7.5f, FontStyle.Bold), view, Theme.Primary, Tf.Center);
 
         // Clear
         TextRenderer.DrawText(g, "\uE711", Theme.GlyphFont(8f), ClearRect,

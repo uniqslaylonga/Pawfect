@@ -46,6 +46,8 @@ internal partial class AppointmentsPage : UserControl
             if (!_suspendFilter) ApplyFilters(resetPage: true);
         };
 
+        toolbar.Resize += (_, _) => LayoutToolbar();
+
         _rangeStart = WeekStart(DateTime.Today);
         UpdateRangeText();
         ApplyFilters(resetPage: true);
@@ -137,6 +139,18 @@ internal partial class AppointmentsPage : UserControl
         legendFlow.ResumeLayout(true);
     }
 
+    /// <summary>Clears the search and service filter, then lists every Pending appointment on all dates.</summary>
+    public void ShowPending()
+    {
+        _suspendFilter = true;
+        searchField.Box.Text = "";
+        serviceFilter.SelectedIndex = 0;
+        statusFilter.SelectedIndex = Array.IndexOf(Enum.GetValues<AppointmentStatus>(), AppointmentStatus.Pending) + 1;   // index 0 is "All Statuses"
+        _suspendFilter = false;
+
+        SetRange(null);
+    }
+
     /// <summary>Clears the search, filters and week so every appointment is listed.</summary>
     public void ShowAllDates() => viewAllTile_Click(this, EventArgs.Empty);
 
@@ -196,9 +210,26 @@ internal partial class AppointmentsPage : UserControl
         var start = _rangeStart.Value;
         var end = start.AddDays(6);
         var culture = CultureInfo.CurrentCulture;
-        dateRange.Text = start.Year == end.Year
-            ? $"{start.ToString("MMM d", culture)} – {end.ToString("MMM d, yyyy", culture)}"
-            : $"{start.ToString("MMM d, yyyy", culture)} – {end.ToString("MMM d, yyyy", culture)}";
+        dateRange.Text = $"{start.ToString("MMM d, yyyy", culture)} – {end.ToString("MMM d, yyyy", culture)}";
+        LayoutToolbar();
+    }
+
+    /// <summary>
+    /// Lays the filter bar out from the right edge: the date chip is sized to its text, then the two drop-downs,
+    /// and the search box takes whatever width is left.
+    /// </summary>
+    private void LayoutToolbar()
+    {
+        const int gap = 8;
+        int right = toolbar.ClientSize.Width;
+        if (right < 200) return;
+
+        int textWidth = TextRenderer.MeasureText(dateRange.Text, dateRange.Font).Width;
+        dateRange.Width = Math.Max(170, textWidth + 32 + 54 + 8);   // icon + text + the two arrows
+        dateRange.Left = right - dateRange.Width;
+        serviceFilter.Left = dateRange.Left - gap - serviceFilter.Width;
+        statusFilter.Left = serviceFilter.Left - gap - statusFilter.Width;
+        searchField.Width = Math.Max(120, statusFilter.Left - gap - searchField.Left);
     }
 
     private void SetRange(DateTime? weekStart, DateTime? selectedDay = null)
@@ -309,8 +340,10 @@ internal partial class AppointmentsPage : UserControl
 
     private void UpdateUpcoming()
     {
+        // "Upcoming" = still to be served today, so finished (Completed) and Cancelled appointments are left out.
         var today = _all
-            .Where(a => a.Start.Date == DateTime.Today && a.Status != AppointmentStatus.Cancelled)
+            .Where(a => a.Start.Date == DateTime.Today
+                && a.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed))
             .OrderBy(a => a.Start)
             .ToList();
 

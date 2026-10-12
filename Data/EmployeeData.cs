@@ -13,7 +13,7 @@ internal sealed record PetRecord(
     int Id, int CustomerId, string Name, string Species, string Breed, string OwnerName, string OwnerPhone);
 
 /// <summary>The numbers on the staff dashboard (all for today unless noted).</summary>
-internal sealed record DashboardStats(
+internal sealed record DashboardSnapshot(
     int AppointmentsToday, int AppointmentsYesterday,
     int WalkInsToday, int WalkInsYesterday,
     int ServicesCompletedToday, int ServicesCompletedYesterday,
@@ -162,7 +162,7 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     public static List<AppointmentItem> GetAppointments()
     {
         const string sql = @"
-SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status
+SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -177,7 +177,7 @@ ORDER BY a.StartTime";
         {
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
-                r.GetString(4), r.GetString(5), r.GetString(6), status));
+                r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8)));
         }
         return list;
     }
@@ -513,9 +513,55 @@ VALUES (@t, @kind, @service, @product, @name, @detail, @price, @qty)", tx);
         return receipt;
     }
 
+    /// <summary>A saved sale as a receipt (null if it no longer exists). Used for the on-screen receipt and reprinting.</summary>
+    public static ReceiptData? GetReceipt(int transactionId)
+    {
+        const string sql = @"
+SELECT t.ReceiptNumber, t.CreatedAt, ISNULL(u.FullName, N''), ISNULL(c.FullName, N'Walk-in'),
+       t.Subtotal, t.Discount, t.Total, t.PaymentMethod, t.AmountReceived, t.ChangeGiven, t.Notes
+FROM dbo.Transactions t
+LEFT JOIN dbo.Users u ON u.UserId = t.CashierUserId
+LEFT JOIN dbo.Customers c ON c.CustomerId = t.CustomerId
+WHERE t.TransactionId = @id";
+
+        string receipt, cashier, customer, method, notes;
+        DateTime when;
+        decimal subtotal, discount, total, received, change;
+
+        using (var conn = Open())
+        using (var cmd = Cmd(conn, sql))
+        {
+            P(cmd, "@id", SqlDbType.Int, transactionId);
+            using var r = cmd.ExecuteReader();
+            if (!r.Read()) return null;
+            receipt = r.GetString(0);
+            when = r.GetDateTime(1);
+            cashier = r.GetString(2);
+            customer = r.GetString(3);
+            subtotal = r.GetDecimal(4);
+            discount = r.GetDecimal(5);
+            total = r.GetDecimal(6);
+            method = r.GetString(7);
+            received = r.GetDecimal(8);
+            change = r.GetDecimal(9);
+            notes = r.GetString(10);
+        }
+
+        var lines = GetTransactionLines(transactionId)
+            .Select(l => new ReceiptLine(l.Name, l.Detail, l.Quantity, l.UnitPrice))
+            .ToList();
+
+        bool cash = string.Equals(method, "Cash", StringComparison.OrdinalIgnoreCase);
+        return new ReceiptData(
+            ReceiptData.BrandName, ReceiptData.BrandTagline, "", "",
+            receipt, when, cashier, customer, lines,
+            subtotal, discount, total, method,
+            cash ? received : null, cash ? change : null, notes);
+    }
+
     // ------------------------------------------------------------------ dashboard
 
-    public static DashboardStats GetDashboardStats()
+    public static DashboardSnapshot GetDashboardStats()
     {
         const string sql = @"
 DECLARE @today DATE = CAST(SYSDATETIME() AS DATE);
@@ -552,7 +598,7 @@ GROUP BY s.Category;";
         if (r.NextResult())
             while (r.Read()) byCategory.Add((r.GetString(0), Convert.ToInt32(r.GetValue(1))));
 
-        return new DashboardStats(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], revenue, byCategory);
+        return new DashboardSnapshot(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], revenue, byCategory);
     }
 
     // ------------------------------------------------------------------ customer portal (a customer's own data only)

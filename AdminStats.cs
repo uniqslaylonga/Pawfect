@@ -2,7 +2,7 @@
 
 namespace MyApp;
 
-internal static class DashboardStats
+internal static class AdminStats
 {
     public static int CountActiveStaff()
     {

@@ -33,6 +33,18 @@ internal partial class MainForm
         billingPage.ViewCustomerRequested += (_, _) => ShowPage(Page.Lookup);
         billingPage.TransactionHistoryRequested += (_, _) => ShowTransactionHistory();
         appointmentsPage.ViewFullCalendarRequested += (_, _) => ShowFullCalendar();
+        scheduleLink.Click += (_, _) => ShowFullCalendar(DateTime.Today);   // dashboard "Today's Schedule" -> View Calendar
+
+        // Dashboard "View All" links
+        pendingLink.Click += (_, _) =>
+        {
+            ShowPage(Page.Appointments);
+            appointmentsPage.ShowPending();
+        };
+        alertsLink.Click += (_, _) => MessageBox.Show(this,
+            "No alerts right now.\n\nLow-stock, near-expiry and approval alerts will be listed here once they are available. " +
+            "Stock levels and batches are managed by an admin (Inventory & FIFO).",
+            "Alerts", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
         // Dashboard "pending requests" tabs. Only booked appointments exist, so Walk-in and Add-on stay empty.
         allTab.Click += (_, _) => { _pendingFilter = 0; ShowPendingList(); };
@@ -116,7 +128,7 @@ internal partial class MainForm
         return diff == 0 ? "Same as yesterday" : $"{(diff > 0 ? "+" : "\u2212")}{Math.Abs(diff)} vs. yesterday";
     }
 
-    private void ApplyDashboard(DashboardStats s, IReadOnlyList<AppointmentItem> appointments)
+    private void ApplyDashboard(DashboardSnapshot s, IReadOnlyList<AppointmentItem> appointments)
     {
         var culture = CultureInfo.CurrentCulture;
 
@@ -164,42 +176,108 @@ internal partial class MainForm
         ShowPendingList();
         notificationButton.ShowDot = pending.Count > 0;
 
-        // Pending requests only come from booked appointments, so the walk-in and add-on tabs have nothing to count.
+        // Pending requests come from booked appointments: services in the "Add-ons" category are the add-on requests,
+        // the rest are plain appointments. Walk-ins are never booked, so that tab has nothing to count.
         allTab.Text = $"All ({pending.Count})";
         walkInTab.Text = "Walk-in (0)";
-        appointmentTab.Text = $"Appointment ({pending.Count})";
-        addOnTab.Text = "Add-on (0)";
+        appointmentTab.Text = $"Appointment ({pending.Count(a => !IsAddOn(a))})";
+        addOnTab.Text = $"Add-on ({pending.Count(IsAddOn)})";
     }
 
+    private static bool IsAddOn(AppointmentItem a)
+        => string.Equals(a.Category, "Add-ons", StringComparison.OrdinalIgnoreCase);
+
     private void ShowPendingList()
-        => FillList(_pendingList, pendingEmpty, _pendingFilter is 1 or 3 ? new List<AppointmentItem>() : _pendingToday);
+    {
+        var items = _pendingFilter switch
+        {
+            1 => new List<AppointmentItem>(),                          // walk-ins aren't booked, so none are pending here
+            2 => _pendingToday.Where(a => !IsAddOn(a)).ToList(),
+            3 => _pendingToday.Where(IsAddOn).ToList(),
+            _ => _pendingToday,
+        };
+        FillPendingList(items);
+    }
+
+    /// <summary>Fills the dashboard "Pending Requests" table (time, customer &amp; pet, request, status, actions).</summary>
+    private void FillPendingList(List<AppointmentItem> items)
+    {
+        if (_pendingList is null) return;
+
+        _pendingList.SuspendLayout();
+        foreach (var old in _pendingList.Controls.OfType<PendingRequestRowView>().ToList())
+        {
+            _pendingList.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        // Rows are docked to the top, so add them last-to-first to keep the earliest on top.
+        for (int i = items.Count - 1; i >= 0; i--)
+        {
+            var item = items[i];
+            var row = new PendingRequestRowView(item) { Dock = DockStyle.Top };
+            // Let the click finish first: these actions can reload the list and dispose this row.
+            row.ViewClicked += (_, _) => BeginInvoke(() => ShowAppointmentDetails(item));
+            row.MoreClicked += (_, _) => BeginInvoke(() => ShowStatusMenu(item));
+            _pendingList.Controls.Add(row);
+        }
+        _pendingList.AutoScrollPosition = Point.Empty;
+        _pendingList.ResumeLayout(true);
+
+        _pendingList.Visible = items.Count > 0;
+        pendingEmpty.Visible = items.Count == 0;
+    }
 
     private void ShowNotifications()
     {
-        var menu = new ContextMenuStrip { ShowImageMargin = false, Font = Theme.Face(9f) };
+        const int width = 340;
+        var menu = PawMenu.Create(width);
 
         if (_pendingToday.Count == 0)
         {
-            menu.Items.Add(new ToolStripMenuItem("You're all caught up") { Enabled = false });
+            menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications") { MenuWidth = width - 12, SubText = "Nothing waiting for you" });
+            menu.AddDivider();
+            menu.Items.Add(new PawMenuItem(MenuKind.Empty, "You're all caught up") { MenuWidth = width - 12, SubText = "No appointments need confirming." });
         }
         else
         {
-            menu.Items.Add(new ToolStripMenuItem($"{_pendingToday.Count} appointment(s) today need confirming")
-                { Enabled = false, Font = Theme.Face(9f, FontStyle.Bold) });
+            menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications")
+            {
+                MenuWidth = width - 12,
+                SubText = $"{_pendingToday.Count} appointment(s) today need confirming",
+                Badge = _pendingToday.Count.ToString(CultureInfo.CurrentCulture),
+            });
+            menu.AddDivider();
+
             foreach (var a in _pendingToday.Take(6))
-                menu.Items.Add($"{a.Start.ToString("h:mm tt", CultureInfo.CurrentCulture)}  {a.CustomerName} - {a.PetName}", null,
-                    (_, _) => ShowPage(Page.Appointments));
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Open appointments", null, (_, _) => ShowPage(Page.Appointments));
+            {
+                var row = new PawMenuItem(MenuKind.Notification, $"{a.CustomerName} - {a.PetName}")
+                {
+                    MenuWidth = width - 12,
+                    Glyph = a.PetName.Trim().Length > 0 ? a.PetName.Trim()[..1].ToUpperInvariant() : "?",
+                    SubText = $"{a.Service}  \u2022  {a.Start.ToString("h:mm tt", CultureInfo.CurrentCulture)}",
+                    Status = a.Status,
+                };
+                row.Click += (_, _) => ShowPage(Page.Appointments);
+                menu.Items.Add(row);
+            }
+
+            if (_pendingToday.Count > 6)
+                menu.Items.Add(new PawMenuItem(MenuKind.Caption, $"+ {_pendingToday.Count - 6} more") { MenuWidth = width - 12 });
+
+            menu.AddDivider();
+            var open = new PawMenuItem(MenuKind.Button, "Open appointments") { MenuWidth = width - 12 };
+            open.Click += (_, _) => ShowPage(Page.Appointments);
+            menu.Items.Add(open);
         }
 
-        menu.Closed += (_, _) => BeginInvoke(menu.Dispose);
-        menu.Show(notificationButton, new Point(0, notificationButton.Height));
+        // Right-align the dropdown with the bell so it doesn't run off the edge of the window.
+        menu.Show(notificationButton, new Point(notificationButton.Width - width, notificationButton.Height + 6));
     }
 
-    private void ShowFullCalendar()
+    private void ShowFullCalendar(DateTime? startDay = null)
     {
-        using var form = new FullCalendarForm(appointmentsPage.Appointments);
+        using var form = new FullCalendarForm(appointmentsPage.Appointments, startDay);
         if (form.ShowDialog(this) != DialogResult.OK || form.PickedDate is not { } day) return;
 
         ShowPage(Page.Appointments);
@@ -251,22 +329,22 @@ internal partial class MainForm
     /// <summary>The "..." menu on a Customer &amp; Pet Lookup row.</summary>
     private void ShowLookupMenu(object source)
     {
-        var menu = new ContextMenuStrip { ShowImageMargin = false, Font = Theme.Face(9f) };
+        var menu = PawMenu.Create(190);
 
         if (source is CustomerRecord c)
         {
-            menu.Items.Add("Edit customer", null, (_, _) => EditCustomer(c));
-            menu.Items.Add("Add pet", null, (_, _) => AddPetTo(c.Id, c.Name));
-            menu.Items.Add("Book appointment", null, (_, _) => NewAppointment(c.Id));
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Delete customer", null, (_, _) => DeleteCustomer(c));
+            menu.AddAction("Edit customer", "\uE70F", MenuTone.Primary, () => EditCustomer(c));
+            menu.AddAction("Add pet", "\uE710", MenuTone.Success, () => AddPetTo(c.Id, c.Name));
+            menu.AddAction("Book appointment", "\uE787", MenuTone.Teal, () => NewAppointment(c.Id));
+            menu.AddDivider();
+            menu.AddAction("Delete customer", "\uE74D", MenuTone.Danger, () => DeleteCustomer(c));
         }
         else if (source is PetRecord p)
         {
-            menu.Items.Add("Edit pet", null, (_, _) => EditPet(p));
-            menu.Items.Add("Book appointment", null, (_, _) => NewAppointment(p.CustomerId));
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Delete pet", null, (_, _) => DeletePet(p));
+            menu.AddAction("Edit pet", "\uE70F", MenuTone.Primary, () => EditPet(p));
+            menu.AddAction("Book appointment", "\uE787", MenuTone.Teal, () => NewAppointment(p.CustomerId));
+            menu.AddDivider();
+            menu.AddAction("Delete pet", "\uE74D", MenuTone.Danger, () => DeletePet(p));
         }
         else
         {
@@ -274,7 +352,6 @@ internal partial class MainForm
             return;
         }
 
-        menu.Closed += (_, _) => BeginInvoke(menu.Dispose);
         menu.Show(Cursor.Position);
     }
 
@@ -381,30 +458,31 @@ internal partial class MainForm
 
     private void ShowStatusMenu(AppointmentItem item)
     {
-        var menu = new ContextMenuStrip { ShowImageMargin = false, Font = Theme.Face(9f) };
+        var menu = PawMenu.Create(210);
 
-        void Add(string text, AppointmentStatus status)
-            => menu.Items.Add(text, null, (_, _) => ChangeStatus(item, status));
+        menu.Items.Add(new PawMenuItem(MenuKind.Caption, $"{item.CustomerName} - {item.PetName}") { MenuWidth = 198 });
 
-        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled) Add("Confirm", AppointmentStatus.Confirmed);
-        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed) Add("Check in", AppointmentStatus.CheckedIn);
-        if (item.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed)) Add("Cancel appointment", AppointmentStatus.Cancelled);
-        if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", AppointmentStatus.Pending);
+        void Add(string text, string glyph, MenuTone tone, AppointmentStatus status)
+            => menu.AddAction(text, glyph, tone, () => ChangeStatus(item, status));
+
+        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled) Add("Confirm", "\uE73E", MenuTone.Success, AppointmentStatus.Confirmed);
+        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed) Add("Check in", "\uE8FB", MenuTone.Teal, AppointmentStatus.CheckedIn);
+        if (item.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed)) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
+        if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", "\uE777", MenuTone.Primary, AppointmentStatus.Pending);
 
         // Billed appointments keep their receipt, so they can't be deleted.
         if (item.Status != AppointmentStatus.Completed)
         {
-            if (menu.Items.Count > 0) menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Delete appointment", null, (_, _) => DeleteAppointment(item));
+            menu.AddDivider();
+            menu.AddAction("Delete appointment", "\uE74D", MenuTone.Danger, () => DeleteAppointment(item));
         }
 
-        if (menu.Items.Count == 0)
+        if (menu.Items.Count <= 1)
         {
             menu.Dispose();
             return;
         }
 
-        menu.Closed += (_, _) => BeginInvoke(menu.Dispose);
         menu.Show(Cursor.Position);
     }
 
@@ -486,11 +564,15 @@ internal partial class MainForm
             return;   // keep the cart so nothing is lost
         }
 
+        var data = ReceiptData.FromSale(sale, receipt, DateTime.Now, billingPage.CashierName,
+            sale.Appointment?.CustomerName ?? "Walk-in", billingPage.StoreAddress, billingPage.StorePhone);
+
         billingPage.ClearTransaction();
-        MessageBox.Show(this,
-            $"Sale saved.\n\nReceipt:  {receipt}\nTotal:  {Money.Format(sale.Total)}" +
-            (sale.Method == PaymentKind.Cash ? $"\nChange:  {Money.Format(sale.Change)}" : ""),
-            "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+        // The sale is already saved. The receipt opens on screen; Print (or Enter) sends it to the printer.
+        using (var form = new ReceiptForm(data))
+            form.ShowDialog(this);
+
         RefreshSoon();
     }
 

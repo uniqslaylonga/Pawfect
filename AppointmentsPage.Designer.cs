@@ -594,17 +594,18 @@ namespace MyApp
             // 
             // columnsHead
             // 
-            columnsHead.BackColor = Color.FromArgb(246, 248, 251);
+            columnsHead.BackColor = Color.FromArgb(227, 233, 242);
             columnsHead.Controls.Add(columnsGrid);
             columnsHead.Dock = DockStyle.Top;
             columnsHead.Location = new Point(16, 108);
             columnsHead.Name = "columnsHead";
+            columnsHead.Padding = new Padding(0, 1, 0, 1);
             columnsHead.Size = new Size(628, 34);
             columnsHead.TabIndex = 2;
             // 
             // columnsGrid
             // 
-            columnsGrid.BackColor = Color.FromArgb(246, 248, 251);
+            columnsGrid.BackColor = Color.White;
             columnsGrid.ColumnCount = 7;
             columnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 40F));
             columnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F));
@@ -632,7 +633,7 @@ namespace MyApp
             // headerCheck
             // 
             headerCheck.Anchor = AnchorStyles.None;
-            headerCheck.BackColor = Color.FromArgb(246, 248, 251);
+            headerCheck.BackColor = Color.White;
             headerCheck.Location = new Point(11, 8);
             headerCheck.Name = "headerCheck";
             headerCheck.Size = new Size(18, 18);
@@ -642,10 +643,10 @@ namespace MyApp
             // 
             // colDate
             // 
-            colDate.BackColor = Color.FromArgb(246, 248, 251);
+            colDate.BackColor = Color.White;
             colDate.Dock = DockStyle.Fill;
             colDate.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            colDate.ForeColor = Color.FromArgb(68, 83, 106);
+            colDate.ForeColor = Color.FromArgb(100, 116, 139);
             colDate.Location = new Point(40, 0);
             colDate.Margin = new Padding(0);
             colDate.Name = "colDate";
@@ -658,10 +659,10 @@ namespace MyApp
             // 
             // colCustomer
             // 
-            colCustomer.BackColor = Color.FromArgb(246, 248, 251);
+            colCustomer.BackColor = Color.White;
             colCustomer.Dock = DockStyle.Fill;
             colCustomer.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            colCustomer.ForeColor = Color.FromArgb(68, 83, 106);
+            colCustomer.ForeColor = Color.FromArgb(100, 116, 139);
             colCustomer.Location = new Point(128, 0);
             colCustomer.Margin = new Padding(0);
             colCustomer.Name = "colCustomer";
@@ -674,10 +675,10 @@ namespace MyApp
             // 
             // colPet
             // 
-            colPet.BackColor = Color.FromArgb(246, 248, 251);
+            colPet.BackColor = Color.White;
             colPet.Dock = DockStyle.Fill;
             colPet.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            colPet.ForeColor = Color.FromArgb(68, 83, 106);
+            colPet.ForeColor = Color.FromArgb(100, 116, 139);
             colPet.Location = new Point(257, 0);
             colPet.Margin = new Padding(0);
             colPet.Name = "colPet";
@@ -690,10 +691,10 @@ namespace MyApp
             // 
             // colService
             // 
-            colService.BackColor = Color.FromArgb(246, 248, 251);
+            colService.BackColor = Color.White;
             colService.Dock = DockStyle.Fill;
             colService.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            colService.ForeColor = Color.FromArgb(68, 83, 106);
+            colService.ForeColor = Color.FromArgb(100, 116, 139);
             colService.Location = new Point(362, 0);
             colService.Margin = new Padding(0);
             colService.Name = "colService";
@@ -706,10 +707,10 @@ namespace MyApp
             // 
             // colStatus
             // 
-            colStatus.BackColor = Color.FromArgb(246, 248, 251);
+            colStatus.BackColor = Color.White;
             colStatus.Dock = DockStyle.Fill;
             colStatus.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            colStatus.ForeColor = Color.FromArgb(68, 83, 106);
+            colStatus.ForeColor = Color.FromArgb(100, 116, 139);
             colStatus.Location = new Point(444, 0);
             colStatus.Margin = new Padding(0);
             colStatus.Name = "colStatus";
@@ -722,10 +723,10 @@ namespace MyApp
             // 
             // colActions
             // 
-            colActions.BackColor = Color.FromArgb(246, 248, 251);
+            colActions.BackColor = Color.White;
             colActions.Dock = DockStyle.Fill;
             colActions.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            colActions.ForeColor = Color.FromArgb(68, 83, 106);
+            colActions.ForeColor = Color.FromArgb(100, 116, 139);
             colActions.Location = new Point(543, 0);
             colActions.Margin = new Padding(0);
             colActions.Name = "colActions";
@@ -751,7 +752,7 @@ namespace MyApp
             // 
             // searchField
             // 
-            searchField.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            searchField.Anchor = AnchorStyles.Top | AnchorStyles.Left;   // laid out from the right edge by LayoutToolbar()
             searchField.BorderColor = Color.FromArgb(227, 233, 242);
             searchField.CornerColor = Color.White;
             searchField.FillColor = Color.White;
@@ -760,14 +761,14 @@ namespace MyApp
             searchField.Margin = new Padding(0);
             searchField.Name = "searchField";
             searchField.Padding = new Padding(10, 3, 10, 3);
-            searchField.Placeholder = "Search customer, pet, or service";
+            searchField.Placeholder = "Search by customer name, pet, or service...";
             searchField.Radius = 8;
             searchField.Size = new Size(196, 36);
             searchField.TabIndex = 0;
             // 
             // statusFilter
             // 
-            statusFilter.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            statusFilter.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             statusFilter.BackColor = Color.White;
             statusFilter.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             statusFilter.Location = new Point(204, 8);
@@ -779,7 +780,7 @@ namespace MyApp
             // 
             // serviceFilter
             // 
-            serviceFilter.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            serviceFilter.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             serviceFilter.BackColor = Color.White;
             serviceFilter.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             serviceFilter.Location = new Point(312, 8);
@@ -791,7 +792,7 @@ namespace MyApp
             // 
             // dateRange
             // 
-            dateRange.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            dateRange.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             dateRange.BackColor = Color.White;
             dateRange.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             dateRange.Location = new Point(420, 8);
@@ -1240,13 +1241,13 @@ namespace MyApp
             upcomingEmpty.BadgeFore = Color.FromArgb(58, 123, 213);
             upcomingEmpty.Dock = DockStyle.Fill;
             upcomingEmpty.Glyph = "";
-            upcomingEmpty.Hint = "Today's appointments will show up here.";
+            upcomingEmpty.Hint = "Appointments still to be served today will show up here.";
             upcomingEmpty.Location = new Point(16, 44);
             upcomingEmpty.Name = "upcomingEmpty";
             upcomingEmpty.Size = new Size(288, 160);
             upcomingEmpty.TabIndex = 1;
             upcomingEmpty.TabStop = false;
-            upcomingEmpty.Title = "Nothing scheduled today";
+            upcomingEmpty.Title = "Nothing upcoming today";
             // 
             // upcomingHeader
             // 

@@ -95,6 +95,7 @@ internal sealed class TabPill : Control
         base.OnFontChanged(e);
     }
 
+    [System.Diagnostics.CodeAnalysis.AllowNull]
     public override string Text
     {
         get => base.Text;

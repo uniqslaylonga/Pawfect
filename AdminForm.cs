@@ -162,7 +162,7 @@ internal partial class AdminForm : Form
     {
         try
         {
-            string staff = DashboardStats.CountActiveStaff().ToString();
+            string staff = AdminStats.CountActiveStaff().ToString();
             staffValue.Text = staff;          // big card
             metricStaffValue.Text = staff;    // Quick Metrics card
         }
