@@ -30,7 +30,10 @@ internal sealed class DonutChart : Control
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        int size = Math.Min(Width, Height) - 16;
+        // Everything is sized from the control and the display scale, so nothing is cut off at 125% / 150% DPI.
+        float scale = DeviceDpi / 96f;
+        int margin = (int)Math.Ceiling(10 * scale);
+        int size = Math.Min(Width, Height) - margin * 2;
         if (size < 40) return;
 
         float thick = size * 0.17f;
@@ -52,16 +55,31 @@ internal sealed class DonutChart : Control
                 if (seg.Value <= 0) continue;
                 float sweep = (float)(seg.Value / total * 360d);
                 using var pen = new Pen(seg.Tint, thick);
-                g.DrawArc(pen, rect, start, sweep);
+                if (sweep >= 359.9f)
+                    g.DrawEllipse(pen, rect);   // a single full segment: draw a closed ring instead of a 360 degree arc
+                else
+                    g.DrawArc(pen, rect, start, sweep);
                 start += sweep;
             }
         }
 
-        int cx = Width / 2, cy = Height / 2;
-        TextRenderer.DrawText(g, _centerValue, Theme.Face(16f, FontStyle.Bold),
-            new Rectangle(cx - 40, cy - 24, 80, 28), Theme.Text,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(g, _caption, Theme.Face(8f), new Rectangle(cx - 40, cy + 4, 80, 16), Theme.Muted,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        // Centre text: measure it, then stack value + caption in the middle of the hole.
+        const TextFormatFlags flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                                      TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.NoClipping;
+        var valueFont = Theme.Face(16f, FontStyle.Bold);
+        var captionFont = Theme.Face(8f);
+        var valueSize = TextRenderer.MeasureText(g, _centerValue, valueFont, new Size(int.MaxValue, int.MaxValue), flags);
+        var captionSize = TextRenderer.MeasureText(g, _caption, captionFont, new Size(int.MaxValue, int.MaxValue), flags);
+
+        int gap = (int)(2 * scale);
+        int blockHeight = valueSize.Height + gap + captionSize.Height;
+        int holeWidth = (int)(size - thick * 2) - 4;
+        int top = (Height - blockHeight) / 2;
+        int cx = Width / 2;
+
+        TextRenderer.DrawText(g, _centerValue, valueFont,
+            new Rectangle(cx - holeWidth / 2, top, holeWidth, valueSize.Height), Theme.Text, flags);
+        TextRenderer.DrawText(g, _caption, captionFont,
+            new Rectangle(cx - holeWidth / 2, top + valueSize.Height + gap, holeWidth, captionSize.Height), Theme.Muted, flags);
     }
 }

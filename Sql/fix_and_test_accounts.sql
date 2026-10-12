@@ -8,7 +8,7 @@ IF EXISTS (SELECT 1 FROM sys.check_constraints
 GO
 UPDATE dbo.Users SET Role = N'Employee' WHERE Role = N'Staff';
 GO
-ALTER TABLE dbo.Users ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'Employee', N'Admin'));
+ALTER TABLE dbo.Users ADD CONSTRAINT CK_Users_Role CHECK (Role IN (N'Employee', N'Admin', N'Customer'));
 GO
 
 -- 2. Recreate the two test accounts

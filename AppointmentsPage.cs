@@ -32,6 +32,8 @@ internal partial class AppointmentsPage : UserControl
         InitializeComponent();
         DoubleBuffered = true;
 
+        FitLegend();
+
         components ??= new System.ComponentModel.Container();
         new ToolTip(components).SetToolTip(dateRange, "Click the dates to switch between this week and all dates.");
 
@@ -66,6 +68,77 @@ internal partial class AppointmentsPage : UserControl
         monthCalendar.SetMarkers(_all);
         ApplyFilters(resetPage: false);
     }
+
+    /// <summary>Every appointment currently loaded (used by the full calendar window).</summary>
+    public IReadOnlyList<AppointmentItem> Appointments => _all;
+
+    /// <summary>Clears the search and filters, then shows the week containing this day with the day selected.</summary>
+    public void ShowDate(DateTime date)
+    {
+        _suspendFilter = true;
+        searchField.Box.Text = "";
+        statusFilter.SelectedIndex = 0;
+        serviceFilter.SelectedIndex = 0;
+        _suspendFilter = false;
+
+        SetRange(WeekStart(date), date);
+    }
+
+    /// <summary>
+    /// Sizes each legend label to its text (the designer widths cut "Confirmed", "Pending" and the rest short) and keeps every
+    /// dot together with its label. If all four don't fit on one line they sit in a neat 2 x 2 grid instead.
+    /// </summary>
+    private void FitLegend()
+    {
+        var pairs = new (Control Dot, Label Label)[]
+        {
+            (legendConfirmedDot, legendConfirmedLabel), (legendPendingDot, legendPendingLabel),
+            (legendRescheduledDot, legendRescheduledLabel), (legendCancelledDot, legendCancelledLabel),
+        };
+
+        foreach (var (_, label) in pairs)
+        {
+            label.AutoSize = false;
+            label.Height = 20;
+            label.Width = TextRenderer.MeasureText(label.Text, label.Font).Width + 10;
+        }
+
+        const int gap = 10;
+        int need = pairs.Sum(p => p.Dot.Width + p.Label.Width + gap);
+        bool grid = need > legendFlow.ClientSize.Width;
+        int cell = pairs.Max(p => p.Dot.Width + p.Label.Width) + gap;
+
+        legendFlow.SuspendLayout();
+        legendFlow.Controls.Clear();
+        legendFlow.WrapContents = true;
+        foreach (var (dot, label) in pairs)
+        {
+            var holder = new Panel
+            {
+                BackColor = Color.White,
+                Height = 20,
+                Width = grid ? cell : dot.Width + label.Width + gap,
+                Margin = new Padding(0),
+            };
+            dot.Margin = Padding.Empty;
+            label.Margin = Padding.Empty;
+            dot.Location = new Point(0, 0);
+            label.Location = new Point(dot.Width, 0);
+            holder.Controls.Add(dot);
+            holder.Controls.Add(label);
+            legendFlow.Controls.Add(holder);
+        }
+
+        if (grid)
+        {
+            legendFlow.Height = 52;
+            rightColumn.RowStyles[0].Height += 24;
+        }
+        legendFlow.ResumeLayout(true);
+    }
+
+    /// <summary>Clears the search, filters and week so every appointment is listed.</summary>
+    public void ShowAllDates() => viewAllTile_Click(this, EventArgs.Empty);
 
     /// <summary>The appointments whose row checkbox is ticked.</summary>
     public IReadOnlyList<AppointmentItem> GetCheckedAppointments()

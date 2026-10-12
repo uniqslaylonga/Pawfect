@@ -153,9 +153,8 @@ internal partial class BillingPage : UserControl
         if (IsWalkIn)
         {
             _selected = null;
-            _cart.RemoveAll(l => l.Kind == CartLineKind.Service);
+            _cart.RemoveAll(l => l.FromAppointment);   // services the cashier added by hand stay in the cart
             customerSearch.Box.Text = "";
-            if (catalogTabs.SelectedIndex != 0) catalogTabs.SelectedIndex = 0;
             RebuildCart();
         }
         ApplyCustomerMode();
@@ -163,23 +162,23 @@ internal partial class BillingPage : UserControl
 
     private void ApplyCustomerMode()
     {
-        customerSearch.Box.Enabled = !IsWalkIn;
+        customerSearch.Box.Enabled = true;   // walk-ins can still look up a customer who turns out to have a booking
         UpdateCustomerPanel();
     }
 
     private void UpdateCustomerPanel()
     {
         string query = customerSearch.Value.Trim();
-        bool searching = !IsWalkIn && query.Length > 0;
+        bool searching = query.Length > 0;
 
         customerCard.Visible = false;
         customerResults.Visible = false;
         customerEmpty.Visible = false;
 
-        if (IsWalkIn)
+        if (IsWalkIn && !searching)
         {
             customerEmpty.Title = "Walk-in customer";
-            customerEmpty.Hint = "Retail items only. No appointment is needed.";
+            customerEmpty.Hint = "No appointment is needed. Add retail items and optional services, or search above.";
             customerEmpty.Visible = true;
             return;
         }
@@ -211,7 +210,7 @@ internal partial class BillingPage : UserControl
         customerEmpty.Title = searching ? "No matching appointments"
             : _appointments.Count == 0 ? "No customer selected" : "No appointments today";
         customerEmpty.Hint = searching
-            ? "Try a different name, pet or service."
+            ? (IsWalkIn ? "No booking found. You can continue as a walk-in." : "Try a different name, pet or service.")
             : "Search above to attach an appointment to this sale.";
         customerEmpty.Visible = true;
     }
@@ -244,6 +243,7 @@ internal partial class BillingPage : UserControl
 
     private void SelectAppointment(AppointmentItem appointment)
     {
+        if (IsWalkIn) customerMode.SelectedIndex = 1;   // the sale is now tied to a booking, so it is no longer a walk-in
         _cart.RemoveAll(l => l.FromAppointment);
         _selected = appointment;
         customerSearch.Box.Text = "";
@@ -271,11 +271,6 @@ internal partial class BillingPage : UserControl
 
     private void catalogTabs_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        if (IsWalkIn && ServicesTab)
-        {
-            catalogTabs.SelectedIndex = 0;   // walk-ins are retail only; this re-enters and rebuilds
-            return;
-        }
         catalogSearch.Placeholder = ServicesTab ? "Search services..." : "Search by product name or code...";
         RebuildCatalog();
     }

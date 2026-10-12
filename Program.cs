@@ -42,6 +42,12 @@ internal static class Program
                 Application.Run(admin);
                 loggedOut = admin.LoggedOut;
             }
+            else if (user.Role == UserRole.Customer)
+            {
+                using var portal = new CustomerPortalForm(user);
+                Application.Run(portal);
+                loggedOut = portal.LoggedOut;
+            }
             else
             {
                 using var main = new MainForm();

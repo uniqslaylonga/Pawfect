@@ -1,4 +1,4 @@
-namespace MyApp;
+﻿namespace MyApp;
 
 internal enum AppointmentStatus
 {
@@ -7,6 +7,7 @@ internal enum AppointmentStatus
     CheckedIn,
     Rescheduled,
     Cancelled,
+    Completed,
 }
 
 /// <summary>One booked appointment. Fill these from your data source and pass them to <c>AppointmentsPage.SetAppointments</c>.</summary>
@@ -32,6 +33,7 @@ internal static class AppointmentStatusStyle
         AppointmentStatus.CheckedIn => "Checked In",
         AppointmentStatus.Rescheduled => "Rescheduled",
         AppointmentStatus.Cancelled => "Cancelled",
+        AppointmentStatus.Completed => "Completed",
         _ => status.ToString(),
     };
 
@@ -42,6 +44,7 @@ internal static class AppointmentStatusStyle
         AppointmentStatus.Pending => (C("#C77A0A"), C("#FEF3E0"), C("#F8D9A0")),
         AppointmentStatus.Rescheduled => (C("#7C4DDB"), C("#F1EAFD"), C("#D9C8F8")),
         AppointmentStatus.Cancelled => (C("#D93636"), C("#FDE8E8"), C("#F6C0C0")),
+        AppointmentStatus.Completed => (C("#3A7BD5"), C("#EAF2FD"), C("#C5DAF6")),
         _ => (Theme.TextSoft, Theme.Subtle, Theme.Border),
     };
 
@@ -52,6 +55,7 @@ internal static class AppointmentStatusStyle
         AppointmentStatus.Pending => Theme.Orange,
         AppointmentStatus.Rescheduled => Theme.Purple,
         AppointmentStatus.Cancelled => Theme.Danger,
+        AppointmentStatus.Completed => Theme.Primary,
         _ => Theme.Muted,
     };
 

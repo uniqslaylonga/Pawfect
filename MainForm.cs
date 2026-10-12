@@ -25,6 +25,7 @@ internal partial class MainForm : Form
         CurrentUser = user;
         userNameLabel.Text = user.Name;
         userRoleLabel.Text = user.Role.ToString();
+        RefreshAll();
         // Admin-only pages: when you add them, hide their nav items with  someNav.Visible = IsAdmin;
     }
 
@@ -50,6 +51,8 @@ internal partial class MainForm : Form
         lookupPage = new LookupPage { Dock = DockStyle.Fill, Visible = false };
         contentPanel.Controls.Add(lookupPage);
         lookupPage.BringToFront();
+
+        WireData();
 
         dashboardNav.Click += (_, _) => ShowPage(Page.Dashboard);
         appointmentsNav.Click += (_, _) => ShowPage(Page.Appointments);
@@ -96,6 +99,9 @@ internal partial class MainForm : Form
 
         // The receipt shows whoever is signed in.
         if (page == Page.Billing) billingPage.CashierName = userNameLabel.Text;
+
+        // Pick up anything changed since the last visit.
+        if (CurrentUser is not null) RefreshAll();
     }
 
     private static string GreetingText()
@@ -110,10 +116,7 @@ internal partial class MainForm : Form
         Close();
     }
 
-    private void notificationButton_Click(object sender, EventArgs e)
-    {
-
-    }
+    private void notificationButton_Click(object sender, EventArgs e) => ShowNotifications();
 
     private void serviceDonut_Click(object sender, EventArgs e)
     {

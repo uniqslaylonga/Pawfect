@@ -256,7 +256,7 @@ namespace MyApp
             customerMode.Name = "customerMode";
             customerMode.Segments = new string[]
     {
-    "Walk-in (Retail Only)",
+    "Walk-in",
     "From Appointment"
     };
             customerMode.SelectedIndex = 1;
