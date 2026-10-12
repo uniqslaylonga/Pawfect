@@ -20,7 +20,7 @@ internal partial class AdminForm : Form
     private readonly ServiceCatalogPage servicesPage;
     private readonly InventoryFifoPage inventoryPage;
     private readonly ReportsAuditingPage reportsPage;
-    private readonly AuditTrailPage auditPage;
+    private readonly AuditTrailPage auditPage; 
     private readonly string _dashboardTitle;
     private string _dashboardSubtitle;
 
@@ -47,6 +47,34 @@ internal partial class AdminForm : Form
         auditPage = new AuditTrailPage { Dock = DockStyle.Fill, Visible = false };
         contentPanel.Controls.Add(auditPage);
         auditPage.BringToFront();
+
+        employeesPage.AddUserRequested += (_, _) =>
+        {
+            using var dlg = new AddUserDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                RefreshUsers();
+                RefreshDashboard();
+            }
+        };
+
+        employeesPage.ToggleActiveRequested += (id, active) =>
+        {
+            if (!UserRepository.SetActive(id, active))
+                MessageBox.Show("You can't deactivate the last active admin.");
+            RefreshUsers();
+            RefreshDashboard();
+        };
+
+        employeesPage.EditRequested += user =>
+        {
+            using var dlg = new EditUserDialog(user);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                RefreshUsers();
+                RefreshDashboard();
+            }
+        };
 
         dashboardNav.Click += (_, _) => ShowPage(AdminPage.Dashboard);
         employeesNav.Click += (_, _) => ShowPage(AdminPage.Employees);
@@ -106,6 +134,9 @@ internal partial class AdminForm : Form
                 "Track all system actions, approvals, updates, and record changes."),
             _ => (_dashboardTitle, _dashboardSubtitle),
         };
+
+        if (page == AdminPage.Dashboard) RefreshDashboard();    
+        if (page == AdminPage.Employees) RefreshUsers();
     }
 
     private static void SelectOne(TabPill chosen, params TabPill[] group)
@@ -118,5 +149,34 @@ internal partial class AdminForm : Form
     {
         LoggedOut = true;
         Close();
+    }
+
+    private void servicesNav_Click(object sender, EventArgs e)
+    {
+
+    }
+
+    private void AdminForm_Load(object sender, EventArgs e) => RefreshDashboard();
+
+    private void RefreshDashboard()
+    {
+        try
+        {
+            string staff = DashboardStats.CountActiveStaff().ToString();
+            staffValue.Text = staff;          // big card
+            metricStaffValue.Text = staff;    // Quick Metrics card
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            MessageBox.Show("Could not load dashboard: " + ex.Message);
+        }
+    }
+    private void RefreshUsers()
+    {
+        try { employeesPage.LoadUsers(UserRepository.GetAll()); }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            MessageBox.Show("Could not load users: " + ex.Message);
+        }
     }
 }

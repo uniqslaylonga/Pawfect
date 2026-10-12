@@ -13,6 +13,10 @@ internal partial class EmployeeManagementPage : UserControl
     /// <summary>The "+ Add User" button was clicked.</summary>
     public event EventHandler? AddUserRequested;
 
+    /// <summary>The Activate / Deactivate link on a user row was clicked.</summary>
+    public event Action<int, bool>? ToggleActiveRequested;
+    public event Action<UserRepository.UserRow>? EditRequested;
+
     public EmployeeManagementPage()
     {
         InitializeComponent();
@@ -28,5 +32,105 @@ internal partial class EmployeeManagementPage : UserControl
 
         employeeAddButton.Click += (_, _) => AddEmployeeRequested?.Invoke(this, EventArgs.Empty);
         userAddButton.Click += (_, _) => AddUserRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Fills the User Management table, tiles and footer from the database rows.</summary>
+    public void LoadUsers(List<UserRepository.UserRow> users)
+    {
+        userRows.SuspendLayout();
+
+        foreach (var old in userRows.Controls.Cast<Control>().Where(c => c != userEmpty).ToList())
+        {
+            userRows.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        userEmpty.Visible = users.Count == 0;
+
+        // Dock = Top stacks the last-added control on top, so add in reverse.
+        for (int i = users.Count - 1; i >= 0; i--)
+            userRows.Controls.Add(BuildUserRow(users[i]));
+
+        userTotalValue.Text = users.Count.ToString();
+        userAdminValue.Text = users.Count(u => u.Role == "Admin").ToString();
+        userStaffValue.Text = users.Count(u => u.Role == "Employee").ToString();
+        userShowing.Text = users.Count == 0 ? "No users" : $"Showing 1 to {users.Count} of {users.Count} users";
+
+        userRows.ResumeLayout(true);
+    }
+
+    private Control BuildUserRow(UserRepository.UserRow u)
+    {
+        var grid = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.White,
+            Margin = Padding.Empty,
+            ColumnCount = userColumnsGrid.ColumnCount,
+            RowCount = 1,
+        };
+        // Same column widths as the header, so cells line up under their titles.
+        foreach (ColumnStyle s in userColumnsGrid.ColumnStyles)
+            grid.ColumnStyles.Add(new ColumnStyle(s.SizeType, s.Width));
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+        void Put(Control header, string text, Color? color = null, bool link = false)
+        {
+            var cell = new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                UseMnemonic = false,
+                BackColor = Color.White,
+                ForeColor = color ?? Color.FromArgb(31, 42, 60),
+                Font = new Font("Segoe UI", 9F, link ? FontStyle.Bold : FontStyle.Regular),
+                Cursor = link ? Cursors.Hand : Cursors.Default,
+            };
+            if (link) cell.Click += (_, _) => ToggleActiveRequested?.Invoke(u.Id, !u.Active);
+            grid.Controls.Add(cell, userColumnsGrid.GetColumn(header), 0);
+        }
+
+        Put(userColId, u.Id.ToString());
+        Put(userColUsername, u.Email.Split('@')[0]);
+        Put(userColFullName, u.Name);
+        Put(userColRole, u.Role);
+        Put(userColEmail, u.Email);
+        Put(userColStatus, u.Active ? "Active" : "Inactive",
+            u.Active ? Color.FromArgb(46, 158, 91) : Color.FromArgb(122, 136, 156));
+        Put(userColLastLogin, "—", Color.FromArgb(122, 136, 156));
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.White,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = new Padding(0, 14, 0, 0),
+        };
+        Label Link(string text, Action onClick)
+        {
+            var l = new Label
+            {
+                Text = text,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 14, 0),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(58, 123, 213),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                UseMnemonic = false,
+            };
+            l.Click += (_, _) => onClick();
+            return l;
+        }
+        actions.Controls.Add(Link("Edit", () => EditRequested?.Invoke(u)));
+        actions.Controls.Add(Link(u.Active ? "Deactivate" : "Activate",
+            () => ToggleActiveRequested?.Invoke(u.Id, !u.Active)));
+        grid.Controls.Add(actions, userColumnsGrid.GetColumn(userColActions), 0);
+
+        var row = new Panel { Dock = DockStyle.Top, Height = 44, BackColor = Color.White };
+        row.Controls.Add(grid);
+        return row;
     }
 }
