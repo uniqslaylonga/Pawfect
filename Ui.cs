@@ -46,4 +46,13 @@ internal static class Ui
             BackColor = back,
             TextAlign = ContentAlignment.MiddleCenter,
         };
+
+    /// <summary>Makes a control and everything inside it clickable (hand cursor + one shared click handler).</summary>
+    public static void MakeClickable(Control root, EventHandler onClick)
+    {
+        root.Cursor = Cursors.Hand;
+        root.Click += onClick;
+        foreach (Control child in root.Controls)
+            MakeClickable(child, onClick);
+    }
 }

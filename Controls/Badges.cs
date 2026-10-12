@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing.Drawing2D;
 
 namespace MyApp.Controls;
@@ -54,6 +54,28 @@ internal sealed class IconBadge : Control
     [DefaultValue(8)]
     public int Radius { get => _radius; set { _radius = value; Invalidate(); } }
 
+    private Image? _photo;
+
+    /// <summary>A picture drawn inside the badge shape instead of the glyph (used for profile photos). Set from code only.</summary>
+    [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Image? Photo
+    {
+        get => _photo;
+        set
+        {
+            if (ReferenceEquals(_photo, value)) return;
+            _photo?.Dispose();
+            _photo = value;
+            Invalidate();
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _photo?.Dispose();
+        base.Dispose(disposing);
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
@@ -62,6 +84,19 @@ internal sealed class IconBadge : Control
         using var path = Ui.RoundRect(r, _circle ? Math.Min(Width, Height) : _radius);
         using var b = new SolidBrush(_fill);
         g.FillPath(b, path);
+
+        if (_photo is not null)
+        {
+            // Fill the shape with the picture (centre-cropped), clipped to the circle / rounded square.
+            var state = g.Save();
+            g.SetClip(path);
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            float scale = Math.Max((float)Width / _photo.Width, (float)Height / _photo.Height);
+            float w = _photo.Width * scale, h = _photo.Height * scale;
+            g.DrawImage(_photo, (Width - w) / 2f, (Height - h) / 2f, w, h);
+            g.Restore(state);
+            return;
+        }
 
         TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(_pt), ClientRectangle, ForeColor,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |

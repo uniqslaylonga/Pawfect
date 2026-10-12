@@ -46,6 +46,102 @@ internal static class UserRepository
         return true;
     }
 
+    public enum ProfileResult { Saved, WrongPassword, NotFound }
+
+    /// <summary>Loads one account by email (used to refresh the signed-in user's profile).</summary>
+    public static UserRow? GetByEmail(string email)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+
+        using var cmd = new SqlCommand(
+            "SELECT UserId, FullName, Email, Role, IsActive, CreatedAt FROM dbo.Users WHERE Email = @email", conn);
+        cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return null;
+        return new UserRow(reader.GetInt32(0), reader.GetString(1), reader.GetString(2),
+                           reader.GetString(3), reader.GetBoolean(4), reader.GetDateTime(5));
+    }
+
+    /// <summary>
+    /// Lets a signed-in person edit their OWN name and email, and optionally change their password.
+    /// The role is never touched here. A password change needs the current password.
+    /// Throws SqlException (number 2627 or 2601) if the new email belongs to someone else.
+    /// </summary>
+    public static ProfileResult UpdateOwnProfile(string currentEmail, string name, string email,
+                                                 string? currentPassword, string? newPassword)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+
+        int userId;
+        string storedHash;
+        using (var find = new SqlCommand(
+            "SELECT UserId, PasswordHash FROM dbo.Users WHERE Email = @email AND IsActive = 1", conn))
+        {
+            find.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = currentEmail.Trim();
+            using var r = find.ExecuteReader();
+            if (!r.Read()) return ProfileResult.NotFound;
+            userId = r.GetInt32(0);
+            storedHash = r.GetString(1);
+        }
+
+        bool changePassword = !string.IsNullOrEmpty(newPassword);
+        if (changePassword && !PasswordHasher.Verify(currentPassword ?? "", storedHash))
+            return ProfileResult.WrongPassword;
+
+        using var cmd = new SqlCommand(
+            @"UPDATE dbo.Users
+              SET FullName = @name, Email = @email,
+                  PasswordHash = CASE WHEN @hash IS NULL THEN PasswordHash ELSE @hash END
+              WHERE UserId = @id", conn);
+        cmd.Parameters.Add("@name", SqlDbType.NVarChar, 100).Value = name.Trim();
+        cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
+        cmd.Parameters.Add("@hash", SqlDbType.NVarChar, 200).Value =
+            changePassword ? PasswordHasher.Hash(newPassword!) : DBNull.Value;
+        cmd.Parameters.Add("@id", SqlDbType.Int).Value = userId;
+        cmd.ExecuteNonQuery();
+        return ProfileResult.Saved;
+    }
+
+    private static bool _avatarColumnChecked;
+
+    /// <summary>Adds the AvatarImage column the first time it is needed, so no manual SQL step is required.</summary>
+    private static void EnsureAvatarColumn(SqlConnection conn)
+    {
+        if (_avatarColumnChecked) return;
+        using var cmd = new SqlCommand(
+            @"IF COL_LENGTH('dbo.Users', 'AvatarImage') IS NULL
+                  ALTER TABLE dbo.Users ADD AvatarImage VARBINARY(MAX) NULL;", conn);
+        cmd.ExecuteNonQuery();
+        _avatarColumnChecked = true;
+    }
+
+    /// <summary>The account's profile picture (PNG bytes), or null when none is set.</summary>
+    public static byte[]? GetAvatar(string email)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+        EnsureAvatarColumn(conn);
+
+        using var cmd = new SqlCommand("SELECT AvatarImage FROM dbo.Users WHERE Email = @email", conn);
+        cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
+        return cmd.ExecuteScalar() as byte[];
+    }
+
+    /// <summary>Saves a profile picture, or removes it when <paramref name="png"/> is null.</summary>
+    public static void SetAvatar(string email, byte[]? png)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+        EnsureAvatarColumn(conn);
+
+        using var cmd = new SqlCommand("UPDATE dbo.Users SET AvatarImage = @img WHERE Email = @email", conn);
+        cmd.Parameters.Add("@img", SqlDbType.VarBinary, -1).Value = (object?)png ?? DBNull.Value;
+        cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
+        cmd.ExecuteNonQuery();
+    }
+
     /// <summary>Deactivates or reactivates an account. Refuses to deactivate the last active admin.</summary>
     public static bool SetActive(int userId, bool active)
     {

@@ -76,6 +76,9 @@ internal partial class AdminForm : Form
             }
         };
 
+        // Clicking the name chip (avatar, name, role or arrow) opens "My Profile".
+        Ui.MakeClickable(userChip, (_, _) => ShowProfile());
+
         dashboardNav.Click += (_, _) => ShowPage(AdminPage.Dashboard);
         employeesNav.Click += (_, _) => ShowPage(AdminPage.Employees);
         servicesNav.Click += (_, _) => ShowPage(AdminPage.Services);
@@ -101,10 +104,28 @@ internal partial class AdminForm : Form
         CurrentUser = user;
         userNameLabel.Text = user.Name;
         userRoleLabel.Text = user.Role.ToString();
+        AvatarImages.Show(userAvatar, GetAvatarOrNull(user.Email));
 
         string first = user.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? user.Name;
         _dashboardSubtitle = $"Welcome back, {first}! Here's what's happening today.";
         if (bodyPanel.Visible) pageSubtitle.Text = _dashboardSubtitle;
+    }
+
+    private static byte[]? GetAvatarOrNull(string email)
+    {
+        try { return UserRepository.GetAvatar(email); }
+        catch (Microsoft.Data.SqlClient.SqlException) { return null; } // no picture is better than no dashboard
+    }
+
+    private void ShowProfile()
+    {
+        if (CurrentUser is null) return;
+
+        using var dlg = new ProfileDialog(CurrentUser, GetAvatarOrNull(CurrentUser.Email));
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.UpdatedUser is not { } updated) return;
+
+        ApplyUser(updated);   // refreshes the chip and the welcome line
+        if (employeesPage.Visible) RefreshUsers(); // the User Management table may list this account
     }
 
     private void ShowPage(AdminPage page)

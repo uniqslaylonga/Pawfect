@@ -25,6 +25,7 @@ internal partial class MainForm : Form
         CurrentUser = user;
         userNameLabel.Text = user.Name;
         userRoleLabel.Text = user.Role.ToString();
+        LoadAvatar(user.Email);
         RefreshAll();
         // Admin-only pages: when you add them, hide their nav items with  someNav.Visible = IsAdmin;
     }
@@ -59,6 +60,9 @@ internal partial class MainForm : Form
         billingNav.Click += (_, _) => ShowPage(Page.Billing);
         lookupNav.Click += (_, _) => ShowPage(Page.Lookup);
         viewAppointmentsTile.Click += (_, _) => ShowPage(Page.Appointments);
+
+        // Clicking the name chip (avatar, name, role or arrow) opens "My Profile".
+        Ui.MakeClickable(userChip, (_, _) => ShowProfile());
 
         greetingLabel.Text = GreetingText();
         dateLabel.Text = DateTime.Now.ToString("MMM d, yyyy", CultureInfo.CurrentCulture) + "   \u00B7   Today";
@@ -114,6 +118,28 @@ internal partial class MainForm : Form
     {
         LoggedOut = true;
         Close();
+    }
+
+    private void LoadAvatar(string email) => AvatarImages.Show(userAvatar, GetAvatarOrNull(email));
+
+    private static byte[]? GetAvatarOrNull(string email)
+    {
+        try { return UserRepository.GetAvatar(email); }
+        catch (Microsoft.Data.SqlClient.SqlException) { return null; } // no picture is better than no dashboard
+    }
+
+    private void ShowProfile()
+    {
+        if (CurrentUser is null) return;
+
+        using var dlg = new ProfileDialog(CurrentUser, GetAvatarOrNull(CurrentUser.Email));
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.UpdatedUser is not { } updated) return;
+
+        CurrentUser = updated;
+        AvatarImages.Show(userAvatar, dlg.UpdatedAvatar);
+        userNameLabel.Text = updated.Name;
+        userRoleLabel.Text = updated.Role.ToString();
+        if (billingPage.Visible) billingPage.CashierName = updated.Name; // receipts show the cashier
     }
 
     private void notificationButton_Click(object sender, EventArgs e) => ShowNotifications();
