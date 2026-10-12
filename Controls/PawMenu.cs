@@ -246,7 +246,7 @@ internal sealed class PawMenuItem : ToolStripMenuItem
     }
 
     private void PaintCaption(Graphics g, Rectangle r)
-        => TextRenderer.DrawText(g, Text.ToUpperInvariant(), Theme.Face(7.5f, FontStyle.Bold),
+        => TextRenderer.DrawText(g, (Text ?? "").ToUpperInvariant(), Theme.Face(7.5f, FontStyle.Bold),
             new Rectangle(12, 0, r.Width - 24, r.Height), Theme.Muted, LineFlags);
 
     private void PaintNotification(Graphics g, Rectangle r, bool hot)

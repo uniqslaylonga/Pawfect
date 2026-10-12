@@ -188,11 +188,7 @@ internal partial class AdminForm : Form
     {
         try
         {
-<<<<<<< Updated upstream
             string staff = AdminStats.CountActiveStaff().ToString();
-=======
-            string staff = StaffStats.CountActiveStaff().ToString();
->>>>>>> Stashed changes
             staffValue.Text = staff;          // big card
             metricStaffValue.Text = staff;    // Quick Metrics card
         }
