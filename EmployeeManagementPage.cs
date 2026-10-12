@@ -7,6 +7,9 @@
 /// </summary>
 internal partial class EmployeeManagementPage : UserControl
 {
+    private List<UserRepository.UserRow> _allUsers = new();
+
+
     /// <summary>The "+ Add Employee" button was clicked.</summary>
     public event EventHandler? AddEmployeeRequested;
 
@@ -32,11 +35,25 @@ internal partial class EmployeeManagementPage : UserControl
 
         employeeAddButton.Click += (_, _) => AddEmployeeRequested?.Invoke(this, EventArgs.Empty);
         userAddButton.Click += (_, _) => AddUserRequested?.Invoke(this, EventArgs.Empty);
+        userSearch.Box.TextChanged += (_, _) => ApplyUserFilter();
     }
 
     /// <summary>Fills the User Management table, tiles and footer from the database rows.</summary>
+    /// <summary>Stores the full list from the database, then shows it through the current filters.</summary>
     public void LoadUsers(List<UserRepository.UserRow> users)
     {
+        _allUsers = users;
+        ApplyUserFilter();
+    }
+
+    private void ApplyUserFilter()
+    {
+        string q = userSearch.Value.Trim();
+        var shown = _allUsers.Where(u =>
+            q.Length == 0 ||
+            u.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+
         userRows.SuspendLayout();
 
         foreach (var old in userRows.Controls.Cast<Control>().Where(c => c != userEmpty).ToList())
@@ -45,16 +62,18 @@ internal partial class EmployeeManagementPage : UserControl
             old.Dispose();
         }
 
-        userEmpty.Visible = users.Count == 0;
+        userEmpty.Visible = shown.Count == 0;
 
-        // Dock = Top stacks the last-added control on top, so add in reverse.
-        for (int i = users.Count - 1; i >= 0; i--)
-            userRows.Controls.Add(BuildUserRow(users[i]));
+        for (int i = shown.Count - 1; i >= 0; i--)
+            userRows.Controls.Add(BuildUserRow(shown[i]));
 
-        userTotalValue.Text = users.Count.ToString();
-        userAdminValue.Text = users.Count(u => u.Role == "Admin").ToString();
-        userStaffValue.Text = users.Count(u => u.Role == "Employee").ToString();
-        userShowing.Text = users.Count == 0 ? "No users" : $"Showing 1 to {users.Count} of {users.Count} users";
+        // Tiles always show the totals for everyone; the footer shows what is visible.
+        userTotalValue.Text = _allUsers.Count.ToString();
+        userAdminValue.Text = _allUsers.Count(u => u.Role == "Admin").ToString();
+        userStaffValue.Text = _allUsers.Count(u => u.Role == "Employee").ToString();
+        userShowing.Text = shown.Count == 0
+            ? "No users"
+            : $"Showing 1 to {shown.Count} of {_allUsers.Count} users";
 
         userRows.ResumeLayout(true);
     }

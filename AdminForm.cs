@@ -53,6 +53,7 @@ internal partial class AdminForm : Form
             using var dlg = new AddUserDialog();
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
+                AuditLog.Record(CurrentUser, "User Created", $"Created account {dlg.CreatedEmail}");
                 RefreshUsers();
                 RefreshDashboard();
             }
@@ -60,7 +61,9 @@ internal partial class AdminForm : Form
 
         employeesPage.ToggleActiveRequested += (id, active) =>
         {
-            if (!UserRepository.SetActive(id, active))
+            if (UserRepository.SetActive(id, active))
+                AuditLog.Record(CurrentUser, active ? "User Activated" : "User Deactivated", $"User #{id}");
+            else
                 MessageBox.Show("You can't deactivate the last active admin.");
             RefreshUsers();
             RefreshDashboard();
@@ -71,6 +74,7 @@ internal partial class AdminForm : Form
             using var dlg = new EditUserDialog(user);
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
+                AuditLog.Record(CurrentUser, "User Edited", $"Edited account {user.Email} (#{user.Id})");
                 RefreshUsers();
                 RefreshDashboard();
             }
@@ -158,6 +162,7 @@ internal partial class AdminForm : Form
 
         if (page == AdminPage.Dashboard) RefreshDashboard();    
         if (page == AdminPage.Employees) RefreshUsers();
+        if (page == AdminPage.Audit) RefreshAudit();
     }
 
     private static void SelectOne(TabPill chosen, params TabPill[] group)
@@ -183,7 +188,11 @@ internal partial class AdminForm : Form
     {
         try
         {
+<<<<<<< Updated upstream
             string staff = AdminStats.CountActiveStaff().ToString();
+=======
+            string staff = StaffStats.CountActiveStaff().ToString();
+>>>>>>> Stashed changes
             staffValue.Text = staff;          // big card
             metricStaffValue.Text = staff;    // Quick Metrics card
         }
@@ -198,6 +207,15 @@ internal partial class AdminForm : Form
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
             MessageBox.Show("Could not load users: " + ex.Message);
+        }
+    }
+
+    private void RefreshAudit()
+    {
+        try { auditPage.LoadEntries(AuditLog.GetRecent()); }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            MessageBox.Show("Could not load audit trail: " + ex.Message);
         }
     }
 }

@@ -9,6 +9,8 @@ internal sealed class AddUserDialog : Form
     private readonly TextBox passwordBox = new() { PlaceholderText = "Password (min 8 characters)", UseSystemPasswordChar = true };
     private readonly ComboBox roleBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
 
+    public string? CreatedEmail { get; private set; }
+
     public AddUserDialog()
     {
         Text = "Add User";
@@ -54,6 +56,7 @@ internal sealed class AddUserDialog : Form
         try
         {
             Auth.CreateUser(nameBox.Text, emailBox.Text, passwordBox.Text, (UserRole)roleBox.SelectedItem!);
+            CreatedEmail = emailBox.Text.Trim();
             DialogResult = DialogResult.OK;
         }
         catch (SqlException ex) when (ex.Number is 2627 or 2601)

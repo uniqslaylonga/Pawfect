@@ -2,7 +2,11 @@
 
 namespace MyApp;
 
+<<<<<<< Updated upstream:AdminStats.cs
 internal static class AdminStats
+=======
+internal static class StaffStats
+>>>>>>> Stashed changes:DashboardStats.cs
 {
     public static int CountActiveStaff()
     {

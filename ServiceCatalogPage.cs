@@ -1,62 +1,85 @@
-﻿using MyApp.Controls;
+﻿using System.Data;
+using Microsoft.Data.SqlClient;
 
 namespace MyApp;
 
-/// <summary>
-/// Service Catalog Management screen. Layout lives in ServiceCatalogPage.Designer.cs, so open this file's designer
-/// in Visual Studio to move or restyle anything. Nothing is pre-filled: counts show 0 and the table, popular list
-/// and category counts stay empty until services are loaded.
-/// </summary>
-internal partial class ServiceCatalogPage : UserControl
+/// <summary>Everything the Service Catalog page needs from dbo.Services.</summary>
+internal static class ServiceRepository
 {
-    /// <summary>"+ Add Service" or the "Add New Service" quick action was clicked.</summary>
-    public event EventHandler? AddServiceRequested;
+     
+    public sealed record ServiceRow(
+        int Id, string Name, string Category, string Size, string? Description,
+        decimal Price, int DurationMinutes, bool Active);
 
-    /// <summary>The "Manage Pricing" quick action was clicked.</summary>
-    public event EventHandler? ManagePricingRequested;
-
-    /// <summary>The "Set Time Slots" quick action was clicked.</summary>
-    public event EventHandler? SetTimeSlotsRequested;
-
-    public ServiceCatalogPage()
+    public static List<ServiceRow> GetAll()
     {
-        InitializeComponent();
-        DoubleBuffered = true;
+        var list = new List<ServiceRow>();
 
-        categoryFilter.SetItems(new[] { "All Categories", "Grooming", "Health & Wellness", "Add-ons", "Others" });
-        sizeFilter.SetItems(new[] { "All Sizes", "Small", "Medium", "Large", "Giant" });
-        statusFilter.SetItems(new[] { "All Status", "Active", "Inactive" });
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
 
-        addServiceButton.Click += (_, _) => AddServiceRequested?.Invoke(this, EventArgs.Empty);
-        OnClick(addServiceAction, (_, _) => AddServiceRequested?.Invoke(this, EventArgs.Empty));
-        OnClick(pricingAction, (_, _) => ManagePricingRequested?.Invoke(this, EventArgs.Empty));
-        OnClick(timeSlotsAction, (_, _) => SetTimeSlotsRequested?.Invoke(this, EventArgs.Empty));
-
-        listViewToggle.Click += (_, _) => SetView(list: true);
-        gridViewToggle.Click += (_, _) => SetView(list: false);
+        using var cmd = new SqlCommand(
+            "SELECT ServiceId, Name, Category, Size, Description, Price, DurationMinutes, IsActive " +
+            "FROM dbo.Services ORDER BY Name, Size", conn);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            list.Add(new ServiceRow(
+                reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.GetDecimal(5), reader.GetInt32(6), reader.GetBoolean(7)));
+        return list;
     }
 
-    /// <summary>True while the table is in list view, false in grid view.</summary>
-    public bool IsListView { get; private set; } = true;
-
-    private void SetView(bool list)
+    /// <summary>Throws SqlException 2627/2601 if this name and size already exist.</summary>
+    public static void Add(string name, string category, string size, string? description, decimal price, int minutes)
     {
-        IsListView = list;
-        Style(listViewToggle, active: list);
-        Style(gridViewToggle, active: !list);
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
 
-        static void Style(IconBadge toggle, bool active)
-        {
-            toggle.FillColor = active ? Theme.Primary : Theme.Subtle;
-            toggle.ForeColor = active ? Color.White : Theme.Muted;
-        }
+        using var cmd = new SqlCommand(
+            "INSERT INTO dbo.Services (Name, Category, Size, Description, Price, DurationMinutes) " +
+            "VALUES (@n, @c, @s, @d, @p, @m)", conn);
+        Fill(cmd, name, category, size, description, price, minutes);
+        cmd.ExecuteNonQuery();
     }
 
-    // Child controls swallow clicks, so hook the row and everything inside it.
-    private static void OnClick(Control root, EventHandler handler)
+    /// <summary>Throws SqlException 2627/2601 if this name and size are taken.</summary>
+    public static void Update(int id, string name, string category, string size, string? description, decimal price, int minutes)
     {
-        root.Click += handler;
-        foreach (Control child in root.Controls)
-            OnClick(child, handler);
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+
+        using var cmd = new SqlCommand(
+            "UPDATE dbo.Services SET Name = @n, Category = @c, Size = @s, Description = @d, " +
+            "Price = @p, DurationMinutes = @m WHERE ServiceId = @id", conn);
+        Fill(cmd, name, category, size, description, price, minutes);
+        cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
+        cmd.ExecuteNonQuery();
+    }
+
+    /// <summary>Soft delete: hides the service from new bookings but keeps old records valid.</summary>
+    public static void SetActive(int id, bool active)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+
+        using var cmd = new SqlCommand("UPDATE dbo.Services SET IsActive = @a WHERE ServiceId = @id", conn);
+        cmd.Parameters.Add("@a", SqlDbType.Bit).Value = active;
+        cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
+        cmd.ExecuteNonQuery();
+    }
+
+    private static void Fill(SqlCommand cmd, string name, string category, string size, string? description, decimal price, int minutes)
+    {
+        cmd.Parameters.Add("@n", SqlDbType.NVarChar, 100).Value = name.Trim();
+        cmd.Parameters.Add("@c", SqlDbType.NVarChar, 50).Value = category;
+        cmd.Parameters.Add("@s", SqlDbType.NVarChar, 10).Value = size;
+        cmd.Parameters.Add("@d", SqlDbType.NVarChar, 300).Value =
+            string.IsNullOrWhiteSpace(description) ? DBNull.Value : description.Trim();
+        var p = cmd.Parameters.Add("@p", SqlDbType.Decimal);
+        p.Precision = 10;
+        p.Scale = 2;
+        p.Value = price;
+        cmd.Parameters.Add("@m", SqlDbType.Int).Value = minutes;
     }
 }
