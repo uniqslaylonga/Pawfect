@@ -41,8 +41,8 @@ internal partial class LookupPage : UserControl
         DoubleBuffered = true;
 
         // Membership tiers (Bronze / Silver / Gold) aren't stored anywhere, so they are not shown.
-        // The row columns are a bit wider on the right now to make room for the "..." button; keep the header in step.
-        float[] widths = { 20f, 16f, 15f, 20f, 11f, 18f };
+        // The header columns use the very same widths as the rows (one list, in LookupRowView), so they always line up.
+        float[] widths = LookupRowView.ColumnPercents;
         for (int i = 0; i < widths.Length; i++)
             columnsGrid.ColumnStyles[i + 1].Width = widths[i];
 

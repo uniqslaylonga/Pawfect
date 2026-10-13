@@ -3,7 +3,7 @@
   <PropertyGroup>
 	<NoWarn>$(NoWarn);WFO1000</NoWarn>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -13,6 +13,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.*" />
+  </ItemGroup>
+
+  <!-- Google Vision key: paste it into vision.key (one line). It is copied next to Pawfect.exe on every build.
+       The file is in .gitignore, so the key never goes to GitHub. -->
+  <ItemGroup>
+    <None Update="vision.key" CopyToOutputDirectory="PreserveNewest" Condition="Exists('vision.key')" />
   </ItemGroup>
 
 </Project>

@@ -10,7 +10,7 @@ internal sealed class LookupRowView : Control
     public const int RowHeight = 46;
 
     /// <summary>Share of the remaining width for: 5 text cells + actions. Matches the header in LookupPage.Designer.cs.</summary>
-    private static readonly float[] ColumnPercents = { 18f, 14f, 13f, 18f, 10f, 27f };
+    public static readonly float[] ColumnPercents = { 18f, 14f, 13f, 18f, 10f, 27f };
 
     private const TextFormatFlags LineFlags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
         TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;

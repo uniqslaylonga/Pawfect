@@ -17,6 +17,7 @@ internal sealed class CustomerPortalForm : Form
     private readonly Button _bookButton = ActionButton("Request Appointment", primary: true);
     private readonly Button _cancelButton = ActionButton("Cancel Appointment", primary: false);
     private readonly Button _addPetButton = ActionButton("Add Pet", primary: false);
+    private readonly Button _scanCardButton = ActionButton("Scan Vaccination Card", primary: false);
     private List<AppointmentItem> _appointmentData = new();
 
     public bool LoggedOut { get; private set; }
@@ -52,7 +53,7 @@ internal sealed class CustomerPortalForm : Form
         tabs.TabPages.Add(Tab("Purchase History", _history));
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 56, Padding = new Padding(20, 10, 20, 8), BackColor = Color.White };
-        buttons.Controls.AddRange(new Control[] { _bookButton, _cancelButton, _addPetButton });
+        buttons.Controls.AddRange(new Control[] { _bookButton, _cancelButton, _addPetButton, _scanCardButton });
 
         var body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 12) };
         body.Controls.Add(tabs);
@@ -64,6 +65,8 @@ internal sealed class CustomerPortalForm : Form
         _bookButton.Click += (_, _) => Book();
         _cancelButton.Click += (_, _) => CancelSelected();
         _addPetButton.Click += (_, _) => AddPet();
+        _scanCardButton.Width = 190;
+        _scanCardButton.Click += (_, _) => ScanCard();
         _appointments.SelectedIndexChanged += (_, _) => UpdateButtons();
 
         Shown += (_, _) => Reload();
@@ -105,7 +108,7 @@ internal sealed class CustomerPortalForm : Form
             _customer = EmployeeData.GetCustomerForLogin(_user.Email);
             if (_customer is not { } c)
             {
-                _bookButton.Enabled = _addPetButton.Enabled = _cancelButton.Enabled = false;
+                _bookButton.Enabled = _addPetButton.Enabled = _scanCardButton.Enabled = _cancelButton.Enabled = false;
                 _welcome.Text = $"Welcome, {_user.Name}  \u2014  this login isn't linked to a customer record yet.";
                 return;
             }
@@ -146,6 +149,7 @@ internal sealed class CustomerPortalForm : Form
         bool linked = _customer is not null;
         _bookButton.Enabled = linked;
         _addPetButton.Enabled = linked;
+        _scanCardButton.Enabled = linked;
         _cancelButton.Enabled = linked && _appointments.SelectedItems.Count == 1 &&
             _appointments.SelectedItems[0].Tag is AppointmentItem { Status: AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled };
     }
@@ -175,6 +179,25 @@ internal sealed class CustomerPortalForm : Form
         if (_customer is not { } c) return;
         using var form = new PetForm(c.Id, c.Name);
         if (form.ShowDialog(this) == DialogResult.OK) Reload();
+    }
+
+    private void ScanCard()
+    {
+        if (_customer is not { } c) return;
+        try
+        {
+            using var form = new VaccinationScanForm(c.Id, c.Name);
+            if (form.ShowDialog(this) == DialogResult.OK)
+            {
+                Reload();
+                Msg.Show(this, "Vaccination card saved.\n\nYour pet's details and vaccinations were added to your account.",
+                    "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (SqlException ex)
+        {
+            Msg.Show(this, "Couldn't open the scanner.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void CancelSelected()

@@ -9,9 +9,12 @@ namespace MyApp;
 internal partial class MainForm
 {
     private Panel? _pendingList;
+    private Panel? _alertsList;
     private Panel? _scheduleList;
     private bool _dbErrorShown;
     private List<AppointmentItem> _pendingToday = new();
+    private List<AppointmentItem> _waiting = new();   // every appointment waiting to be confirmed, on any day (bell + Alerts card)
+    private System.Windows.Forms.Timer? _alertTimer;
     private int _pendingFilter;   // 0 = All, 1 = Walk-in, 2 = Appointment, 3 = Add-on
 
     // ------------------------------------------------------------------ one-time wiring
@@ -19,6 +22,13 @@ internal partial class MainForm
     private void WireData()
     {
         _pendingList = AddListHost(pendingCard);
+        _alertsList = AddListHost(alertsCard);
+
+        // A customer can send a request while staff are logged in, so look for new ones every 30 seconds.
+        _alertTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
+        _alertTimer.Tick += (_, _) => RefreshAlerts();
+        _alertTimer.Start();
+        Disposed += (_, _) => _alertTimer.Dispose();
         _scheduleList = AddListHost(scheduleCard);
 
         appointmentsPage.ViewRequested += (_, item) => ShowAppointmentDetails(item);
@@ -40,10 +50,20 @@ internal partial class MainForm
             ShowPage(Page.Appointments);
             appointmentsPage.ShowPending();
         };
-        alertsLink.Click += (_, _) => Msg.Show(this,
-            "No alerts right now.\n\nLow-stock, near-expiry and approval alerts will be listed here once they are available. " +
-            "Stock levels and batches are managed by an admin (Inventory & FIFO).",
-            "Alerts", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        alertsLink.Click += (_, _) =>
+        {
+            // Same items as the bell: appointments waiting to be confirmed.
+            if (_waiting.Count > 0)
+            {
+                ShowPage(Page.Appointments);
+                appointmentsPage.ShowPending();
+                return;
+            }
+            Msg.Show(this,
+                "No alerts right now.\n\nLow-stock, near-expiry and approval alerts will be listed here once they are available. " +
+                "Stock levels and batches are managed by an admin (Inventory & FIFO).",
+                "Alerts", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        };
 
         // Dashboard "pending requests" tabs. Only booked appointments exist, so Walk-in and Add-on stay empty.
         allTab.Click += (_, _) => { _pendingFilter = 0; ShowPendingList(); };
@@ -173,7 +193,7 @@ internal partial class MainForm
         FillList(_scheduleList, scheduleEmpty, today);
         _pendingToday = pending;
         ShowPendingList();
-        notificationButton.ShowDot = pending.Count > 0;
+        SetWaiting(appointments);
 
         // Pending requests come from booked appointments: services in the "Add-ons" category are the add-on requests,
         // the rest are plain appointments. Walk-ins are never booked, so that tab has nothing to count.
@@ -227,12 +247,67 @@ internal partial class MainForm
         pendingEmpty.Visible = items.Count == 0;
     }
 
+    /// <summary>Updates the bell dot and the Alerts card with every appointment still waiting to be confirmed (any day).</summary>
+    private void SetWaiting(IEnumerable<AppointmentItem> appointments)
+    {
+        _waiting = appointments
+            .Where(a => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
+            .OrderBy(a => a.Start).ToList();
+        notificationButton.ShowDot = _waiting.Count > 0;
+        FillAlertsList(_waiting);
+    }
+
+    /// <summary>Quiet background check for new requests; never shows an error (the next full refresh will).</summary>
+    private void RefreshAlerts()
+    {
+        if (CurrentUser is null) return;
+        try { SetWaiting(EmployeeData.GetAppointments()); }
+        catch (SqlException) { }
+    }
+
+    /// <summary>"9:00 AM" for today, "Oct 14, 9:00 AM" for another day.</summary>
+    private static string WhenText(DateTime start)
+        => start.Date == DateTime.Today
+            ? start.ToString("h:mm tt", CultureInfo.CurrentCulture)
+            : start.ToString("MMM d, h:mm tt", CultureInfo.CurrentCulture);
+
+    /// <summary>Fills the dashboard "Alerts" card with the same items the bell shows (appointments waiting to be confirmed).</summary>
+    private void FillAlertsList(List<AppointmentItem> items)
+    {
+        if (_alertsList is null) return;
+
+        _alertsList.SuspendLayout();
+        foreach (var old in _alertsList.Controls.OfType<AlertRowView>().ToList())
+        {
+            _alertsList.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        // Rows are docked to the top, so add them last-to-first to keep the earliest on top.
+        for (int i = items.Count - 1; i >= 0; i--)
+        {
+            var row = new AlertRowView(items[i]) { Dock = DockStyle.Top };
+            // Let the click finish first: switching pages reloads the dashboard and disposes this row.
+            row.Click += (_, _) => BeginInvoke(() =>
+            {
+                ShowPage(Page.Appointments);
+                appointmentsPage.ShowPending();
+            });
+            _alertsList.Controls.Add(row);
+        }
+        _alertsList.AutoScrollPosition = Point.Empty;
+        _alertsList.ResumeLayout(true);
+
+        _alertsList.Visible = items.Count > 0;
+        alertsEmpty.Visible = items.Count == 0;
+    }
+
     private void ShowNotifications()
     {
         const int width = 340;
         var menu = PawMenu.Create(width);
 
-        if (_pendingToday.Count == 0)
+        if (_waiting.Count == 0)
         {
             menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications") { MenuWidth = width - 12, SubText = "Nothing waiting for you" });
             menu.AddDivider();
@@ -243,26 +318,26 @@ internal partial class MainForm
             menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications")
             {
                 MenuWidth = width - 12,
-                SubText = $"{_pendingToday.Count} appointment(s) today need confirming",
-                Badge = _pendingToday.Count.ToString(CultureInfo.CurrentCulture),
+                SubText = $"{_waiting.Count} appointment(s) need confirming",
+                Badge = _waiting.Count.ToString(CultureInfo.CurrentCulture),
             });
             menu.AddDivider();
 
-            foreach (var a in _pendingToday.Take(6))
+            foreach (var a in _waiting.Take(6))
             {
                 var row = new PawMenuItem(MenuKind.Notification, $"{a.CustomerName} - {a.PetName}")
                 {
                     MenuWidth = width - 12,
                     Glyph = a.PetName.Trim().Length > 0 ? a.PetName.Trim()[..1].ToUpperInvariant() : "?",
-                    SubText = $"{a.Service}  \u2022  {a.Start.ToString("h:mm tt", CultureInfo.CurrentCulture)}",
+                    SubText = $"{a.Service}  \u2022  {WhenText(a.Start)}",
                     Status = a.Status,
                 };
                 row.Click += (_, _) => ShowPage(Page.Appointments);
                 menu.Items.Add(row);
             }
 
-            if (_pendingToday.Count > 6)
-                menu.Items.Add(new PawMenuItem(MenuKind.Caption, $"+ {_pendingToday.Count - 6} more") { MenuWidth = width - 12 });
+            if (_waiting.Count > 6)
+                menu.Items.Add(new PawMenuItem(MenuKind.Caption, $"+ {_waiting.Count - 6} more") { MenuWidth = width - 12 });
 
             menu.AddDivider();
             var open = new PawMenuItem(MenuKind.Button, "Open appointments") { MenuWidth = width - 12 };

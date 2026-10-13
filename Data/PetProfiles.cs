@@ -23,7 +23,7 @@ internal static class PetProfiles
     }
 
     /// <summary>Adds the new Pets columns the first time they are needed, so no manual SQL step is required.</summary>
-    private static void EnsureColumns(SqlConnection conn)
+    internal static void EnsureColumns(SqlConnection conn)
     {
         if (_columnsChecked) return;
         using var cmd = new SqlCommand(@"
