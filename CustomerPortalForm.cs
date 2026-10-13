@@ -177,7 +177,7 @@ internal sealed class CustomerPortalForm : Form
     private void AddPet()
     {
         if (_customer is not { } c) return;
-        using var form = new PetForm(c.Id, c.Name);
+        using var form = new AddPetForm(c.Id, c.Name, _user.Email);
         if (form.ShowDialog(this) == DialogResult.OK) Reload();
     }
 

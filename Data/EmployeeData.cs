@@ -702,6 +702,16 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
         return r.Read() ? (r.GetInt32(0), r.GetString(1)) : null;
     }
 
+    /// <summary>The email and phone saved on a customer's record (empty strings when blank).</summary>
+    public static (string Email, string Phone) GetCustomerContact(int customerId)
+    {
+        using var conn = Open();
+        using var cmd = Cmd(conn, "SELECT ISNULL(Email, N''), ISNULL(Phone, N'') FROM dbo.Customers WHERE CustomerId = @id AND IsActive = 1");
+        P(cmd, "@id", SqlDbType.Int, customerId);
+        using var r = cmd.ExecuteReader();
+        return r.Read() ? (r.GetString(0), r.GetString(1)) : ("", "");
+    }
+
     public static List<AppointmentItem> GetAppointmentsForCustomer(int customerId)
     {
         const string sql = @"

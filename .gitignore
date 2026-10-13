@@ -9,3 +9,5 @@ obj/
 .env
 .env.*
 vision.key
+smtp.config
+smtp.config.txt
