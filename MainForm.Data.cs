@@ -55,6 +55,7 @@ internal partial class MainForm
         lookupPage.BookRequested += (_, customerId) => NewAppointment(customerId);
         lookupPage.AddCustomerRequested += (_, _) => AddCustomer();
         lookupPage.MoreRequested += (_, source) => ShowLookupMenu(source);
+        lookupPage.ViewPetsRequested += (_, source) => ViewPets(source);
         lookupPage.ExportCustomersRequested += (_, _) => ExportCustomers();
         lookupPage.ExportPetsRequested += (_, _) => ExportPets();
 
@@ -333,6 +334,7 @@ internal partial class MainForm
 
         if (source is CustomerRecord c)
         {
+            menu.AddAction("View pets", "\uE80F", MenuTone.Success, () => ViewPets(c));
             menu.AddAction("Edit customer", "\uE70F", MenuTone.Primary, () => EditCustomer(c));
             menu.AddAction("Add pet", "\uE710", MenuTone.Success, () => AddPetTo(c.Id, c.Name));
             menu.AddAction("Book appointment", "\uE787", MenuTone.Teal, () => NewAppointment(c.Id));
@@ -341,6 +343,7 @@ internal partial class MainForm
         }
         else if (source is PetRecord p)
         {
+            menu.AddAction("View pet", "\uE80F", MenuTone.Success, () => ViewPets(p));
             menu.AddAction("Edit pet", "\uE70F", MenuTone.Primary, () => EditPet(p));
             menu.AddAction("Book appointment", "\uE787", MenuTone.Teal, () => NewAppointment(p.CustomerId));
             menu.AddDivider();
@@ -353,6 +356,31 @@ internal partial class MainForm
         }
 
         menu.Show(Cursor.Position);
+    }
+
+    /// <summary>Opens the pet viewer (photo, details, vaccination card) for a customer, or straight to one pet.</summary>
+    private void ViewPets(object source)
+    {
+        int customerId;
+        string owner;
+        int? petId = null;
+        switch (source)
+        {
+            case CustomerRecord c: customerId = c.Id; owner = c.Name; break;
+            case PetRecord p: customerId = p.CustomerId; owner = p.OwnerName; petId = p.Id; break;
+            default: return;
+        }
+
+        try
+        {
+            using var form = new PetViewerForm(customerId, owner, petId);
+            form.ShowDialog(this);
+            if (form.PetsChanged) RefreshSoon();
+        }
+        catch (SqlException ex)
+        {
+            ShowDbError("open the pet profiles", ex);
+        }
     }
 
     private void EditCustomer(CustomerRecord c)

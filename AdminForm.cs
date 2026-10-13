@@ -20,7 +20,7 @@ internal partial class AdminForm : Form
     private readonly ServiceCatalogPage servicesPage;
     private readonly InventoryFifoPage inventoryPage;
     private readonly ReportsAuditingPage reportsPage;
-    private readonly AuditTrailPage auditPage; 
+    private readonly AuditTrailPage auditPage;
     private readonly string _dashboardTitle;
     private string _dashboardSubtitle;
 
@@ -28,6 +28,7 @@ internal partial class AdminForm : Form
     {
         InitializeComponent();
         DoubleBuffered = true;
+        _ = new SidebarCollapser(sidebar, navPanel, logoutNav, brandName, brandTagline);
 
         // Pages share the area under the top bar; the sidebar switches between them.
         _dashboardTitle = pageTitle.Text;
@@ -160,7 +161,7 @@ internal partial class AdminForm : Form
             _ => (_dashboardTitle, _dashboardSubtitle),
         };
 
-        if (page == AdminPage.Dashboard) RefreshDashboard();    
+        if (page == AdminPage.Dashboard) RefreshDashboard();
         if (page == AdminPage.Employees) RefreshUsers();
         if (page == AdminPage.Audit) RefreshAudit();
     }
@@ -188,11 +189,7 @@ internal partial class AdminForm : Form
     {
         try
         {
-<<<<<<< Updated upstream
             string staff = AdminStats.CountActiveStaff().ToString();
-=======
-            string staff = StaffStats.CountActiveStaff().ToString();
->>>>>>> Stashed changes
             staffValue.Text = staff;          // big card
             metricStaffValue.Text = staff;    // Quick Metrics card
         }
