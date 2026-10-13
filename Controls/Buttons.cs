@@ -273,6 +273,11 @@ internal sealed class PrimaryButton : Control
 {
     private bool _hover;
     private bool _down;
+    private int _radius = 8;
+
+    [Category("Pawfect"), Description("Corner roundness.")]
+    [DefaultValue(8)]
+    public int Radius { get => _radius; set { _radius = Math.Max(0, value); Invalidate(); } }
 
     public PrimaryButton()
     {
@@ -305,7 +310,7 @@ internal sealed class PrimaryButton : Control
             : _hover ? Color.FromArgb(47, 107, 192)
             : Theme.Primary;
 
-        using (var path = Ui.RoundRect(new RectangleF(0, 0, Width - 1, Height - 1), 8))
+        using (var path = Ui.RoundRect(new RectangleF(0, 0, Width - 1, Height - 1), _radius))
         using (var b = new SolidBrush(fillColor))
             g.FillPath(b, path);
 

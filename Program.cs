@@ -29,9 +29,16 @@ internal static class Program
 
         while (true)
         {
+            // Landing screen first; closing it (Esc / X) quits the app.
+            using (var welcome = new WelcomeForm())
+            {
+                if (welcome.ShowDialog() != DialogResult.OK)
+                    break;
+            }
+
             using var login = new LoginForm();
             if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is not { } user)
-                break;
+                continue; // closed the login: back to the landing screen
 
             // Admins land on the admin dashboard; everyone else gets the staff dashboard.
             bool loggedOut;

@@ -10,6 +10,7 @@ internal class CardPanel : Panel
     private Color _border = Theme.Border;
     private Color _corner = Theme.Bg;
     private int _radius = 10;
+    private bool _transparentCorners;
 
     public CardPanel()
     {
@@ -28,8 +29,18 @@ internal class CardPanel : Panel
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
     public int Radius { get => _radius; set { _radius = value; Invalidate(); } }
 
+    /// <summary>Let whatever is behind the card (e.g. a gradient) show through the rounded corners. Set BackColor to Transparent too.</summary>
+    [Category("Pawfect"), Description("Show the parent's background in the rounded corners instead of CornerColor (also set BackColor = Transparent).")]
+    [DefaultValue(false)]
+    public bool TransparentCorners { get => _transparentCorners; set { _transparentCorners = value; Invalidate(); } }
+
     protected override void OnPaintBackground(PaintEventArgs e)
     {
+        if (_transparentCorners && Parent != null)
+        {
+            base.OnPaintBackground(e);
+            return;
+        }
         using var b = new SolidBrush(_corner);
         e.Graphics.FillRectangle(b, ClientRectangle);
     }

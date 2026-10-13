@@ -113,7 +113,8 @@ internal sealed class PawBadge : Control
 
     public PawBadge()
     {
-        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw
+                 | ControlStyles.SupportsTransparentBackColor, true);
         BackColor = Color.White;
         Size = new Size(44, 44);
         TabStop = false;

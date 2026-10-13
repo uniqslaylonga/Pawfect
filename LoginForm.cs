@@ -2,9 +2,12 @@ using Microsoft.Data.SqlClient;
 
 namespace MyApp;
 
-
 internal partial class LoginForm : Form
 {
+    // "Remember me" only ever stores the email address (never the password).
+    private static readonly string RememberFile = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Pawfect", "last_email.txt");
+
     /// <summary>Set when the sign-in succeeds.</summary>
     public UserAccount? SignedInUser { get; private set; }
 
@@ -20,20 +23,54 @@ internal partial class LoginForm : Form
                 e.SuppressKeyPress = true;
                 SignIn();
             }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                DialogResult = DialogResult.Cancel;
+                Close();
+            }
         };
         signInButton.Click += (_, _) => SignIn();
+        signUpLink.Click += (_, _) => MessageBox.Show(this,
+            "New accounts are set up by the clinic. Please ask the front desk to create one for you.",
+            "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
         emailField.Box.TextChanged += (_, _) => errorLabel.Text = "";
         passwordField.Box.TextChanged += (_, _) => errorLabel.Text = "";
 
-        rightPanel.Resize += (_, _) => CenterCard();
-        CenterCard();
+        bool restored = LoadRememberedEmail();
+        Shown += (_, _) => (restored ? passwordField.Box : emailField.Box).Focus();
     }
 
-    private void CenterCard()
+    private bool LoadRememberedEmail()
     {
-        card.Location = new Point(
-            Math.Max(0, (rightPanel.Width - card.Width) / 2),
-            Math.Max(0, (rightPanel.Height - card.Height) / 2));
+        try
+        {
+            if (!File.Exists(RememberFile)) return false;
+            string email = File.ReadAllText(RememberFile).Trim();
+            if (email.Length == 0) return false;
+            emailField.Box.Text = email;
+            rememberCheck.Checked = true;
+            return true;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    private void SaveRememberedEmail(string email)
+    {
+        try
+        {
+            if (rememberCheck.Checked)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(RememberFile)!);
+                File.WriteAllText(RememberFile, email);
+            }
+            else if (File.Exists(RememberFile))
+            {
+                File.Delete(RememberFile);
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private void SignIn()
@@ -68,38 +105,9 @@ internal partial class LoginForm : Form
             return;
         }
 
+        SaveRememberedEmail(email);
         SignedInUser = user;
         DialogResult = DialogResult.OK;
         Close();
-    }
-
-    private void LoginForm_Load(object sender, EventArgs e)
-    {
-
-    }
-
-    private void button1_Click(object sender, EventArgs e)
-    {
-
-    }
-
-    private void hintLabel_Click(object sender, EventArgs e)
-    {
-
-    }
-
-    private void nameLabel_Click(object sender, EventArgs e)
-    {
-
-    }
-
-    private void pawBadge_Click(object sender, EventArgs e)
-    {
-
-    }
-
-    private void card_Paint(object sender, PaintEventArgs e)
-    {
-
     }
 }
