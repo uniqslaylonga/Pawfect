@@ -107,8 +107,14 @@ internal sealed class PendingRequestRowView : Control
 
         // TIME
         var c0 = Col(0);
+        var today = DateTime.Today;
+        string day = Item.Start.Date == today ? "Today"
+            : Item.Start.Date == today.AddDays(1) ? "Tomorrow"
+            : Item.Start.ToString(Item.Start.Year == today.Year ? "MMM d" : "MMM d, yyyy", CultureInfo.CurrentCulture);
         TextRenderer.DrawText(g, Item.Start.ToString("h:mm tt", CultureInfo.CurrentCulture), nameFont,
-            new Rectangle(c0.X + CellPad, 0, c0.Width - CellPad, Height), Theme.Text, LineFlags);
+            new Rectangle(c0.X + CellPad, 10, c0.Width - CellPad, 18), Theme.Text, LineFlags);
+        TextRenderer.DrawText(g, day, subFont,
+            new Rectangle(c0.X + CellPad, 29, c0.Width - CellPad, 16), Item.Start.Date < today ? Theme.Danger : Theme.Muted, LineFlags);
 
         // CUSTOMER & PET: pet avatar, customer name, "Pet (Breed)"
         var c1 = Col(1);

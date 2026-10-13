@@ -70,6 +70,17 @@ ORDER BY p.Name, p.PetId";
         return list;
     }
 
+    /// <summary>Just the profile picture and vaccination card of one pet (either can be null).</summary>
+    public static (byte[]? Photo, byte[]? Card) GetPictures(int petId)
+    {
+        using var conn = Open();
+        using var cmd = new SqlCommand("SELECT PhotoImage, VaccinationCard FROM dbo.Pets WHERE PetId = @id", conn);
+        cmd.Parameters.Add("@id", SqlDbType.Int).Value = petId;
+        using var r = cmd.ExecuteReader();
+        if (!r.Read()) return (null, null);
+        return (r.IsDBNull(0) ? null : (byte[])r.GetValue(0), r.IsDBNull(1) ? null : (byte[])r.GetValue(1));
+    }
+
     public static void SavePhoto(int petId, byte[]? image) => SaveImage(petId, "PhotoImage", image);
 
     public static void SaveVaccinationCard(int petId, byte[]? image) => SaveImage(petId, "VaccinationCard", image);

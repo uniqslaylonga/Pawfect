@@ -147,6 +147,17 @@ internal partial class MainForm
         return diff == 0 ? "Same as yesterday" : $"{(diff > 0 ? "+" : "\u2212")}{Math.Abs(diff)} vs. yesterday";
     }
 
+    /// <summary>"45 mins", "1 hr 15 mins", or an em dash when there are no completed services to average.</summary>
+    private static string FormatMinutes(double? minutes)
+    {
+        if (minutes is not double m || m <= 0) return "\u2014";
+        int total = (int)Math.Round(m);
+        if (total < 60) return total == 1 ? "1 min" : $"{total} mins";
+        int h = total / 60, rest = total % 60;
+        string hours = h == 1 ? "1 hr" : $"{h} hrs";
+        return rest == 0 ? hours : $"{hours} {rest} mins";
+    }
+
     private void ApplyDashboard(DashboardSnapshot s, IReadOnlyList<AppointmentItem> appointments)
     {
         var culture = CultureInfo.CurrentCulture;
@@ -157,13 +168,13 @@ internal partial class MainForm
         walkInsDelta.Text = Delta(s.WalkInsToday, s.WalkInsYesterday);
         completedValue.Text = s.ServicesCompletedToday.ToString(culture);
         completedDelta.Text = Delta(s.ServicesCompletedToday, s.ServicesCompletedYesterday);
-        queueValue.Text = s.PendingQueue.ToString(culture);
+        queueValue.Text = appointments.Count(a => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled).ToString(culture);
         queueDelta.Text = "Awaiting confirmation";
 
         servicesValue.Text = s.ServicesCompletedToday.ToString(culture);
         customersValue.Text = s.TotalCustomers.ToString(culture);
         revenueValue.Text = Money.Symbol + s.RevenueToday.ToString("N2", culture);
-        avgTimeValue.Text = "\u2014";   // service duration isn't recorded
+        avgTimeValue.Text = FormatMinutes(s.AvgServiceMinutes);
 
         // Service type breakdown (today's completed services)
         int Count(string category) => s.ServicesByCategory
@@ -188,7 +199,11 @@ internal partial class MainForm
         // Today's lists
         var today = appointments.Where(a => a.Start.Date == DateTime.Today && a.Status != AppointmentStatus.Cancelled)
             .OrderBy(a => a.Start).ToList();
-        var pending = today.Where(a => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled).ToList();
+        // "Pending Requests" lists every request still waiting to be confirmed, on any day (same set as the bell and
+        // the Alerts card), earliest first - not just the ones booked for today.
+        var pending = appointments
+            .Where(a => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
+            .OrderBy(a => a.Start).ToList();
 
         FillList(_scheduleList, scheduleEmpty, today);
         _pendingToday = pending;
@@ -547,14 +562,7 @@ internal partial class MainForm
         void Add(string text, string glyph, MenuTone tone, AppointmentStatus status)
             => menu.AddAction(text, glyph, tone, () => ChangeStatus(item, status));
 
-        // A request can't be confirmed until someone sets its groomer and room, so Confirm opens the schedule form first.
-        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
-            menu.AddAction(item.Groomer.Length == 0 || item.Room.Length == 0 ? "Set schedule & confirm" : "Confirm", "\uE73E", MenuTone.Success, () =>
-            {
-                if (item.Groomer.Length == 0 || item.Room.Length == 0) EditAppointment(item);
-                else ChangeStatus(item, AppointmentStatus.Confirmed);
-            });
-        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed) Add("Check in", "\uE8FB", MenuTone.Teal, AppointmentStatus.CheckedIn);
+        // Confirm and Check in live on the View card (see ShowAppointmentDetails).
         if (item.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed)) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
         if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", "\uE777", MenuTone.Primary, AppointmentStatus.Pending);
 
@@ -627,9 +635,18 @@ internal partial class MainForm
 
     private void ShowAppointmentDetails(AppointmentItem a)
     {
-        using var dialog = new AppointmentDetailsDialog(a);
-        dialog.ShowDialog(this);
+        using var dialog = new AppointmentDetailsDialog(a, offerActions: true);
+        if (dialog.ShowDialog(this) != DialogResult.Yes || dialog.RequestedStatus is not { } status) return;
+        ApplyReviewedStatus(a, status);
     }
+
+    /// <summary>Confirm / Check in chosen from the review card: confirming still needs a groomer and room first.</summary>
+    private void ApplyReviewedStatus(AppointmentItem item, AppointmentStatus status)
+    {
+        if (status == AppointmentStatus.Confirmed && (item.Groomer.Length == 0 || item.Room.Length == 0)) EditAppointment(item);
+        else ChangeStatus(item, status);
+    }
+
 
     // ------------------------------------------------------------------ billing
 

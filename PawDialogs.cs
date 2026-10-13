@@ -1,4 +1,4 @@
-using MyApp.Controls;
+﻿using MyApp.Controls;
 
 namespace MyApp;
 
@@ -184,11 +184,23 @@ internal sealed class PawMessageForm : Form
 /// <summary>Read-only appointment card: pet, service and status on top, then who/when/where.</summary>
 internal sealed class AppointmentDetailsDialog : Form
 {
-    private const int FormWidth = 460;
+    private const int FormWidth = 580;
     private const int Pad = 24;
 
-    public AppointmentDetailsDialog(AppointmentItem a)
+    /// <summary>Set when the person pressed Confirm or Check in instead of Close (the caller applies it).</summary>
+    public AppointmentStatus? RequestedStatus { get; private set; }
+
+    public AppointmentDetailsDialog(AppointmentItem a, bool offerActions = false)
     {
+        // Pet photo and vaccination card live on the pet, so look them up through the appointment.
+        byte[]? photoBytes = null, cardBytes = null;
+        try
+        {
+            if (EmployeeData.GetAppointmentRefs(a.Id) is { } refs)
+                (photoBytes, cardBytes) = PetProfiles.GetPictures(refs.PetId);
+        }
+        catch (Exception ex) when (ex is Microsoft.Data.SqlClient.SqlException or InvalidOperationException) { }
+
         Text = "Appointment";
         Font = Theme.Face(9f);
         BackColor = Color.White;
@@ -212,15 +224,35 @@ internal sealed class AppointmentDetailsDialog : Form
 
         string statusText = AppointmentStatusStyle.Label(a.Status);
         int pillW = TextRenderer.MeasureText(statusText, Theme.Face(8f, FontStyle.Bold)).Width + 18;
+        using var avatar = AvatarImages.FromBytes(photoBytes);
+        var avatarCopy = avatar is null ? null : new Bitmap(avatar);
+        Disposed += (_, _) => avatarCopy?.Dispose();
         header.Paint += (_, e) =>
         {
             var g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using (var b = new SolidBrush(tintFill))
-                g.FillEllipse(b, Pad, 18, 48, 48);
-            TextRenderer.DrawText(g, initial, Theme.Face(14f, FontStyle.Bold), new Rectangle(Pad, 18, 48, 48), tintFore,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
-                TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            if (avatarCopy is not null)
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                using var clip = new System.Drawing.Drawing2D.GraphicsPath();
+                clip.AddEllipse(Pad, 18, 48, 48);
+                var state = g.Save();
+                g.SetClip(clip);
+                float scale = Math.Max(48f / avatarCopy.Width, 48f / avatarCopy.Height);
+                float w = avatarCopy.Width * scale, h = avatarCopy.Height * scale;
+                g.DrawImage(avatarCopy, Pad + (48 - w) / 2f, 18 + (48 - h) / 2f, w, h);
+                g.Restore(state);
+                using var ring = new Pen(Theme.Border);
+                g.DrawEllipse(ring, Pad, 18, 48, 48);
+            }
+            else
+            {
+                using (var b = new SolidBrush(tintFill))
+                    g.FillEllipse(b, Pad, 18, 48, 48);
+                TextRenderer.DrawText(g, initial, Theme.Face(14f, FontStyle.Bold), new Rectangle(Pad, 18, 48, 48), tintFore,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
+                    TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            }
             AppointmentStatusStyle.DrawPill(g, a.Status, header.Width - Pad - pillW, 42, pillW + 2);
             using var pen = new Pen(Theme.Border);
             e.Graphics.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
@@ -264,28 +296,88 @@ internal sealed class AppointmentDetailsDialog : Form
             y += 36 + Math.Min(noteH, 120);
         }
 
-        // ---- footer
-        var bar = new FlowLayoutPanel
+        // ---- vaccination card (click to enlarge)
         {
-            Dock = DockStyle.Bottom,
-            Height = 64,
-            FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(Pad - 8, 14, Pad - 8, 10),
-            BackColor = Theme.Subtle,
-        };
+            var cap = Ui.Text("VACCINATION CARD", 8f, Theme.Muted, Color.White);
+            cap.SetBounds(Pad, y - 1, FormWidth - Pad * 2, 15);
+            var card = new PetPictureBox("Vaccination card - " + a.PetName, "No vaccination card on file",
+                new Size(FormWidth - Pad * 2, 170)) { Location = new Point(Pad, y + 17) };
+            card.SetBytes(cardBytes);
+            body.Controls.AddRange(new Control[] { cap, card });
+            y += 17 + card.Height + 12;
+        }
+
+        // ---- footer
+        // Buttons are sized from their own text (the font scales with Windows display scaling, fixed pixel widths don't)
+        // and laid out by hand: Cancel sits on the left, the other actions are right-aligned, and the card widens
+        // if they would not fit - so nothing is ever clipped at an edge.
+        const int ButtonH = 36, ButtonGap = 10;
+        var bar = new Panel { Dock = DockStyle.Bottom, Height = 64, BackColor = Theme.Subtle };
         bar.Paint += (_, e) =>
         {
             using var pen = new Pen(Theme.Border);
             e.Graphics.DrawLine(pen, 0, 0, bar.Width, 0);
         };
-        var close = new PawButton { Text = "Close", Kind = PawButtonKind.Primary, DialogResult = DialogResult.OK, Width = 100 };
-        bar.Controls.Add(close);
+
+        PawButton MakeButton(string text, PawButtonKind kind, int minWidth)
+        {
+            int textW = TextRenderer.MeasureText(text, Theme.Face(9f, FontStyle.Bold), Size.Empty,
+                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Width;
+            return new PawButton { Text = text, Kind = kind, Size = new Size(Math.Max(minWidth, textW + 36), ButtonH) };
+        }
+
+        bool open = a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed;
+        bool actions = offerActions && open;
+        var close = MakeButton("Close", actions ? PawButtonKind.Outline : PawButtonKind.Primary, 84);
+        close.DialogResult = DialogResult.OK;
+
+        var rightButtons = new List<PawButton>();   // left to right
+        if (actions)
+        {
+            if (a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
+            {
+                var confirm = MakeButton(a.Groomer.Length == 0 || a.Room.Length == 0 ? "Schedule and confirm" : "Confirm", PawButtonKind.Primary, 96);
+                confirm.Click += (_, _) => { RequestedStatus = AppointmentStatus.Confirmed; DialogResult = DialogResult.Yes; };
+                rightButtons.Add(confirm);
+            }
+            var checkIn = MakeButton("Check in", PawButtonKind.Primary, 96);
+            checkIn.Click += (_, _) => { RequestedStatus = AppointmentStatus.CheckedIn; DialogResult = DialogResult.Yes; };
+            rightButtons.Add(checkIn);
+        }
+        rightButtons.Add(close);
+
+        PawButton? cancel = null;
+        if (a.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed))
+        {
+            cancel = MakeButton("Cancel appointment", PawButtonKind.Danger, 96);
+            cancel.Click += (_, _) => { RequestedStatus = AppointmentStatus.Cancelled; DialogResult = DialogResult.Yes; };
+            bar.Controls.Add(cancel);
+        }
+        foreach (var b in rightButtons) bar.Controls.Add(b);
+
+        void LayoutBar()
+        {
+            int by = (bar.Height - ButtonH) / 2;
+            int x = bar.Width - Pad;
+            for (int i = rightButtons.Count - 1; i >= 0; i--)
+            {
+                x -= rightButtons[i].Width;
+                rightButtons[i].Location = new Point(x, by);
+                x -= ButtonGap;
+            }
+            if (cancel is not null) cancel.Location = new Point(Pad, by);
+        }
+        bar.Resize += (_, _) => LayoutBar();
+
+        int neededWidth = Pad * 2 + rightButtons.Sum(b => b.Width) + ButtonGap * (rightButtons.Count - 1)
+            + (cancel is null ? 0 : cancel.Width + ButtonGap * 2);
         AcceptButton = close;
         CancelButton = close;
 
         Controls.Add(body);
         Controls.Add(header);
         Controls.Add(bar);
-        ClientSize = new Size(FormWidth, header.Height + y + 4 + bar.Height);
+        ClientSize = new Size(Math.Max(FormWidth, neededWidth), header.Height + y + 4 + bar.Height);
+        LayoutBar();
     }
 }

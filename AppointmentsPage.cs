@@ -17,6 +17,7 @@ internal partial class AppointmentsPage : UserControl
     private DateTime? _rangeStart;          // Sunday of the week being shown, or null for "all dates"
     private int _pageIndex;
     private bool _suspendFilter;
+    private bool _waitingOnly;   // set by ShowPending: list Pending and Rescheduled together; any status change clears it
     private bool _building;
 
     public event EventHandler<AppointmentItem>? ViewRequested;
@@ -145,6 +146,7 @@ internal partial class AppointmentsPage : UserControl
         searchField.Box.Text = "";
         serviceFilter.SelectedIndex = 0;
         statusFilter.SelectedIndex = Array.IndexOf(Enum.GetValues<AppointmentStatus>(), AppointmentStatus.Pending) + 1;   // index 0 is "All Statuses"
+        _waitingOnly = true;   // after the index change, whose handler clears the flag
         _suspendFilter = false;
 
         SetRange(null);
@@ -184,7 +186,8 @@ internal partial class AppointmentsPage : UserControl
 
         _filtered = _all
             .Where(a => InRange(a.Start))
-            .Where(a => status is null || a.Status == status)
+            .Where(a => _waitingOnly ? a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled
+                                     : status is null || a.Status == status)
             .Where(a => service is null || string.Equals(a.Service, service, StringComparison.OrdinalIgnoreCase))
             .Where(a => query.Length == 0 || Matches(a, query))
             .OrderBy(a => a.Start)
@@ -365,6 +368,7 @@ internal partial class AppointmentsPage : UserControl
 
     private void statusFilter_SelectedIndexChanged(object? sender, EventArgs e)
     {
+        _waitingOnly = false;
         if (!_suspendFilter) ApplyFilters(resetPage: true);
     }
 

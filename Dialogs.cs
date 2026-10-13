@@ -1,4 +1,4 @@
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using System.Globalization;
 using Microsoft.Data.SqlClient;
 using MyApp.Controls;
@@ -322,6 +322,8 @@ internal sealed class EditAppointmentForm : DialogBase
     private readonly PawDatePicker _date = new();
     private readonly PawTimePicker _time = new();
     private readonly PawCheckBox _confirm = new() { Text = "Confirm this appointment", Checked = true };
+    private readonly PetPictureBox _petPhoto = new("Pet photo", "No photo", new Size(96, 96));
+    private readonly PetPictureBox _petCard = new("Vaccination card", "No vaccination card on file", new Size(180, 120));
 
     public EditAppointmentForm(AppointmentItem item)
         : base(item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled ? "Schedule Appointment" : "Edit Appointment", "Save", "\uE787",
@@ -364,6 +366,14 @@ internal sealed class EditAppointmentForm : DialogBase
             AddRow("Notes", new Label { Text = item.Notes, TextAlign = ContentAlignment.TopLeft, AutoSize = false, Height = 46, ForeColor = Theme.TextSoft });
 
         AddRow("Pet *", _pet);
+        var pics = new FlowLayoutPanel { Height = 128, AutoSize = false, BackColor = Color.White, WrapContents = false };
+        _petPhoto.Margin = new Padding(0, 4, 12, 4);
+        _petCard.Margin = new Padding(0, 4, 0, 4);
+        pics.Controls.Add(_petPhoto);
+        pics.Controls.Add(_petCard);
+        AddRow("Photo & card", pics);
+        _pet.SelectedIndexChanged += (_, _) => LoadPetPictures();
+        LoadPetPictures();
         AddRow("Service *", _service);
         AddRow("Date *", _date);
         AddRow("Time *", _time);
@@ -390,6 +400,18 @@ internal sealed class EditAppointmentForm : DialogBase
     }
 
     private static DateTime Trim(DateTime d) => new(d.Year, d.Month, d.Day, d.Hour, d.Minute, 0);
+
+    private void LoadPetPictures()
+    {
+        byte[]? photo = null, card = null;
+        if (_pet.SelectedIndex >= 0 && _pet.SelectedIndex < _pets.Count)
+        {
+            try { (photo, card) = PetProfiles.GetPictures(_pets[_pet.SelectedIndex].Id); }
+            catch (Exception ex) when (ex is SqlException or InvalidOperationException) { }
+        }
+        _petPhoto.SetBytes(photo);
+        _petCard.SetBytes(card);
+    }
 
     protected override void OnSaveClicked()
     {

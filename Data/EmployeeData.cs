@@ -20,7 +20,8 @@ internal sealed record DashboardSnapshot(
     int PendingQueue,
     int TotalCustomers,
     decimal RevenueToday,
-    IReadOnlyList<(string Category, int Count)> ServicesByCategory);
+    IReadOnlyList<(string Category, int Count)> ServicesByCategory,
+    double? AvgServiceMinutes);   // average booked duration of today's completed services; null when none
 
 /// <summary>A groomer an appointment can be assigned to.</summary>
 internal sealed record GroomerOption(int Id, string Name);
@@ -655,9 +656,14 @@ SELECT
      WHERE l.LineKind = N'Service' AND t.Status = N'Completed' AND CAST(t.CreatedAt AS DATE) = @today),
   (SELECT ISNULL(SUM(l.Quantity), 0) FROM dbo.TransactionLines l JOIN dbo.Transactions t ON t.TransactionId = l.TransactionId
      WHERE l.LineKind = N'Service' AND t.Status = N'Completed' AND CAST(t.CreatedAt AS DATE) = @yesterday),
-  (SELECT COUNT(*) FROM dbo.Appointments WHERE Status IN (N'Pending', N'Rescheduled') AND CAST(StartTime AS DATE) = @today),
+  (SELECT COUNT(*) FROM dbo.Appointments WHERE Status IN (N'Pending', N'Rescheduled')),
   (SELECT COUNT(*) FROM dbo.Customers WHERE IsActive = 1),
-  (SELECT ISNULL(SUM(Total), 0) FROM dbo.Transactions WHERE Status = N'Completed' AND CAST(CreatedAt AS DATE) = @today);
+  (SELECT ISNULL(SUM(Total), 0) FROM dbo.Transactions WHERE Status = N'Completed' AND CAST(CreatedAt AS DATE) = @today),
+  (SELECT CAST(SUM(CAST(sv.DurationMinutes AS FLOAT) * l.Quantity) / NULLIF(SUM(l.Quantity), 0) AS FLOAT)
+     FROM dbo.TransactionLines l
+     JOIN dbo.Transactions t ON t.TransactionId = l.TransactionId
+     JOIN dbo.Services sv ON sv.ServiceId = l.ServiceId
+     WHERE l.LineKind = N'Service' AND t.Status = N'Completed' AND CAST(t.CreatedAt AS DATE) = @today);
 
 SELECT s.Category, SUM(l.Quantity)
 FROM dbo.TransactionLines l
@@ -672,12 +678,13 @@ GROUP BY s.Category;";
         r.Read();
         int[] n = Enumerable.Range(0, 8).Select(i => Convert.ToInt32(r.GetValue(i))).ToArray();
         decimal revenue = r.GetDecimal(8);
+        double? avgMinutes = r.IsDBNull(9) ? null : Convert.ToDouble(r.GetValue(9));
 
         var byCategory = new List<(string, int)>();
         if (r.NextResult())
             while (r.Read()) byCategory.Add((r.GetString(0), Convert.ToInt32(r.GetValue(1))));
 
-        return new DashboardSnapshot(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], revenue, byCategory);
+        return new DashboardSnapshot(n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], revenue, byCategory, avgMinutes);
     }
 
     // ------------------------------------------------------------------ customer portal (a customer's own data only)
