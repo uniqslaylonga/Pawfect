@@ -9,6 +9,7 @@ internal sealed class NavItem : Control
     private string _glyph = "";
     private bool _hover;
     private bool _active;
+    private bool _compact;
 
     public NavItem()
     {
@@ -35,6 +36,20 @@ internal sealed class NavItem : Control
     [DefaultValue(false)]
     public bool Active { get => _active; set { _active = value; Invalidate(); } }
 
+    /// <summary>Icon-only look used while the sidebar is collapsed: the icon is centred and the text is not drawn.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public bool Compact
+    {
+        get => _compact;
+        set
+        {
+            if (_compact == value) return;
+            _compact = value;
+            Invalidate();
+        }
+    }
+
     protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
@@ -53,6 +68,14 @@ internal sealed class NavItem : Control
         }
 
         var fore = _active ? Color.White : Theme.TextSoft;
+
+        if (_compact)
+        {
+            TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(11f), ClientRectangle, fore,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+            return;
+        }
 
         TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(11f), new Rectangle(10, 0, 28, Height), fore,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |

@@ -20,7 +20,7 @@ internal partial class AdminForm : Form
     private readonly ServiceCatalogPage servicesPage;
     private readonly InventoryFifoPage inventoryPage;
     private readonly ReportsAuditingPage reportsPage;
-    private readonly AuditTrailPage auditPage; 
+    private readonly AuditTrailPage auditPage;
     private readonly string _dashboardTitle;
     private string _dashboardSubtitle;
 
@@ -28,6 +28,7 @@ internal partial class AdminForm : Form
     {
         InitializeComponent();
         DoubleBuffered = true;
+        _ = new SidebarCollapser(sidebar, navPanel, logoutNav, brandName, brandTagline);
 
         // Pages share the area under the top bar; the sidebar switches between them.
         _dashboardTitle = pageTitle.Text;
@@ -64,7 +65,7 @@ internal partial class AdminForm : Form
             if (UserRepository.SetActive(id, active))
                 AuditLog.Record(CurrentUser, active ? "User Activated" : "User Deactivated", $"User #{id}");
             else
-                MessageBox.Show("You can't deactivate the last active admin.");
+                Msg.Show("You can't deactivate the last active admin.");
             RefreshUsers();
             RefreshDashboard();
         };
@@ -160,7 +161,7 @@ internal partial class AdminForm : Form
             _ => (_dashboardTitle, _dashboardSubtitle),
         };
 
-        if (page == AdminPage.Dashboard) RefreshDashboard();    
+        if (page == AdminPage.Dashboard) RefreshDashboard();
         if (page == AdminPage.Employees) RefreshUsers();
         if (page == AdminPage.Audit) RefreshAudit();
     }
@@ -194,7 +195,7 @@ internal partial class AdminForm : Form
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            MessageBox.Show("Could not load dashboard: " + ex.Message);
+            Msg.Show("Could not load dashboard: " + ex.Message);
         }
     }
     private void RefreshUsers()
@@ -202,7 +203,7 @@ internal partial class AdminForm : Form
         try { employeesPage.LoadUsers(UserRepository.GetAll()); }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            MessageBox.Show("Could not load users: " + ex.Message);
+            Msg.Show("Could not load users: " + ex.Message);
         }
     }
 
@@ -211,7 +212,7 @@ internal partial class AdminForm : Form
         try { auditPage.LoadEntries(AuditLog.GetRecent()); }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            MessageBox.Show("Could not load audit trail: " + ex.Message);
+            Msg.Show("Could not load audit trail: " + ex.Message);
         }
     }
 }

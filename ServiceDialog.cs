@@ -1,14 +1,18 @@
 ﻿using Microsoft.Data.SqlClient;
+using MyApp.Controls;
 
 namespace MyApp;
 
-internal sealed class ServiceDialog : Form
+internal sealed class ServiceDialog : DialogBase
 {
+    private static readonly string[] Categories = { "Grooming", "Health & Wellness", "Add-ons", "Others" };
+    private static readonly string[] Sizes = { "Small", "Medium", "Large", "Giant", "All" };
+
     private readonly ServiceRepository.ServiceRow? _existing;
     private readonly TextBox nameBox = new();
-    private readonly ComboBox categoryBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox sizeBox = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly TextBox descBox = new();
+    private readonly PawSelect categoryBox = new();
+    private readonly PawSelect sizeBox = new();
+    private readonly TextBox descBox = new() { PlaceholderText = "Optional" };
     private readonly NumericUpDown priceBox = new() { DecimalPlaces = 2, Maximum = 100000, Increment = 50 };
     private readonly NumericUpDown minutesBox = new() { Minimum = 5, Maximum = 600, Increment = 5, Value = 60 };
 
@@ -16,64 +20,45 @@ internal sealed class ServiceDialog : Form
     public string? SavedName { get; private set; }
 
     public ServiceDialog(ServiceRepository.ServiceRow? existing = null)
+        : base(existing == null ? "Add Service" : "Edit Service", "Save", "\uE70F",
+               existing == null ? "Name it, price it, set how long it takes" : existing.Name)
     {
         _existing = existing;
-        Text = existing == null ? "Add Service" : "Edit Service";
-        FormBorderStyle = FormBorderStyle.FixedDialog;
-        StartPosition = FormStartPosition.CenterParent;
-        MaximizeBox = MinimizeBox = false;
-        ClientSize = new Size(340, 470);
 
-        categoryBox.DataSource = new[] { "Grooming", "Health & Wellness", "Add-ons", "Others" };
-        sizeBox.DataSource = new[] { "Small", "Medium", "Large", "Giant", "All" };
+        categoryBox.Items.AddRange(Categories.Select(c => (object)c).ToArray());
+        sizeBox.Items.AddRange(Sizes.Select(s => (object)s).ToArray());
+        categoryBox.SelectedIndex = 0;
+        sizeBox.SelectedIndex = 0;
 
         if (existing != null)
         {
             nameBox.Text = existing.Name;
-            categoryBox.SelectedItem = existing.Category;
-            sizeBox.SelectedItem = existing.Size;
+            categoryBox.SelectedIndex = Math.Max(0, Array.IndexOf(Categories, existing.Category));
+            sizeBox.SelectedIndex = Math.Max(0, Array.IndexOf(Sizes, existing.Size));
             descBox.Text = existing.Description ?? "";
             priceBox.Value = existing.Price;
             minutesBox.Value = existing.DurationMinutes;
         }
 
-        var save = new Button { Text = "Save" };
-        var cancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
-        save.Click += Save_Click;
-        AcceptButton = save;
-        CancelButton = cancel;
-
-        int y = 12;
-        void Field(string label, Control c)
-        {
-            Controls.Add(new Label { Text = label, Left = 16, Top = y, Width = 300 });
-            c.SetBounds(16, y + 20, 308, 26);
-            Controls.Add(c);
-            y += 56;
-        }
-        Field("Service name", nameBox);
-        Field("Category", categoryBox);
-        Field("Size", sizeBox);
-        Field("Description (optional)", descBox);
-        Field("Price (₱)", priceBox);
-        Field("Duration (minutes)", minutesBox);
-
-        save.SetBounds(134, y + 4, 85, 32);
-        cancel.SetBounds(229, y + 4, 85, 32);
-        Controls.Add(save);
-        Controls.Add(cancel);
+        AddRow("Service name *", nameBox);
+        AddRow("Category", categoryBox);
+        AddRow("Size", sizeBox);
+        AddRow("Description", descBox);
+        AddRow("Price (\u20B1)", priceBox);
+        AddRow("Minutes", minutesBox);
+        FitHeight();
     }
 
-    private void Save_Click(object? sender, EventArgs e)
+    protected override void OnSaveClicked()
     {
         if (string.IsNullOrWhiteSpace(nameBox.Text))
         {
-            MessageBox.Show("Service name is required.");
+            ShowError("Service name is required.");
             return;
         }
 
-        string category = (string)categoryBox.SelectedItem!;
-        string size = (string)sizeBox.SelectedItem!;
+        string category = Categories[categoryBox.SelectedIndex];
+        string size = Sizes[sizeBox.SelectedIndex];
 
         try
         {
@@ -87,11 +72,11 @@ internal sealed class ServiceDialog : Form
         }
         catch (SqlException ex) when (ex.Number is 2627 or 2601)
         {
-            MessageBox.Show("That service already exists for this size.");
+            ShowError("That service already exists for this size.");
         }
         catch (SqlException ex)
         {
-            MessageBox.Show("Could not save: " + ex.Message);
+            ShowError("Could not save: " + ex.Message);
         }
     }
 }

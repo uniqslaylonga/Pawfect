@@ -21,7 +21,6 @@ internal partial class MainForm
         _pendingList = AddListHost(pendingCard);
         _scheduleList = AddListHost(scheduleCard);
 
-        appointmentsPage.NewAppointmentRequested += (_, _) => NewAppointment();
         appointmentsPage.ViewRequested += (_, item) => ShowAppointmentDetails(item);
         appointmentsPage.EditRequested += (_, item) => EditAppointment(item);
         appointmentsPage.MoreRequested += (_, item) => ShowStatusMenu(item);
@@ -41,7 +40,7 @@ internal partial class MainForm
             ShowPage(Page.Appointments);
             appointmentsPage.ShowPending();
         };
-        alertsLink.Click += (_, _) => MessageBox.Show(this,
+        alertsLink.Click += (_, _) => Msg.Show(this,
             "No alerts right now.\n\nLow-stock, near-expiry and approval alerts will be listed here once they are available. " +
             "Stock levels and batches are managed by an admin (Inventory & FIFO).",
             "Alerts", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -52,14 +51,14 @@ internal partial class MainForm
         appointmentTab.Click += (_, _) => { _pendingFilter = 2; ShowPendingList(); };
         addOnTab.Click += (_, _) => { _pendingFilter = 3; ShowPendingList(); };
 
-        lookupPage.BookRequested += (_, customerId) => NewAppointment(customerId);
         lookupPage.AddCustomerRequested += (_, _) => AddCustomer();
         lookupPage.MoreRequested += (_, source) => ShowLookupMenu(source);
+        lookupPage.ViewPetsRequested += (_, source) => ViewPets(source);
         lookupPage.ExportCustomersRequested += (_, _) => ExportCustomers();
         lookupPage.ExportPetsRequested += (_, _) => ExportPets();
 
         addCustomerTile.Click += (_, _) => AddCustomer();
-        updateInventoryTile.Click += (_, _) => MessageBox.Show(this,
+        updateInventoryTile.Click += (_, _) => Msg.Show(this,
             "Stock levels and batches are managed by an admin (Inventory & FIFO).\n\nYou can sell products from Counter POS & Billing.",
             "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
         generateReportTile.Click += (_, _) => ExportTodaySales();
@@ -115,8 +114,8 @@ internal partial class MainForm
     {
         if (_dbErrorShown && action.StartsWith("load")) return;   // don't nag on every page switch
         _dbErrorShown = true;
-        MessageBox.Show(this,
-            $"Couldn't {action}.\n\nCheck that SQL Server is running and that Sql/setup.sql and Sql/employee_setup.sql were run.\n\n{ex.Message}",
+        Msg.Show(this,
+            $"Couldn't {action}.\n\nCheck that SQL Server is running and that Sql/setup.sql, Sql/employee_setup.sql and Sql/appointment_scheduling.sql were run.\n\n{ex.Message}",
             "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
@@ -333,16 +332,16 @@ internal partial class MainForm
 
         if (source is CustomerRecord c)
         {
+            menu.AddAction("View pets", "\uE80F", MenuTone.Success, () => ViewPets(c));
             menu.AddAction("Edit customer", "\uE70F", MenuTone.Primary, () => EditCustomer(c));
             menu.AddAction("Add pet", "\uE710", MenuTone.Success, () => AddPetTo(c.Id, c.Name));
-            menu.AddAction("Book appointment", "\uE787", MenuTone.Teal, () => NewAppointment(c.Id));
             menu.AddDivider();
             menu.AddAction("Delete customer", "\uE74D", MenuTone.Danger, () => DeleteCustomer(c));
         }
         else if (source is PetRecord p)
         {
+            menu.AddAction("View pet", "\uE80F", MenuTone.Success, () => ViewPets(p));
             menu.AddAction("Edit pet", "\uE70F", MenuTone.Primary, () => EditPet(p));
-            menu.AddAction("Book appointment", "\uE787", MenuTone.Teal, () => NewAppointment(p.CustomerId));
             menu.AddDivider();
             menu.AddAction("Delete pet", "\uE74D", MenuTone.Danger, () => DeletePet(p));
         }
@@ -353,6 +352,31 @@ internal partial class MainForm
         }
 
         menu.Show(Cursor.Position);
+    }
+
+    /// <summary>Opens the pet viewer (photo, details, vaccination card) for a customer, or straight to one pet.</summary>
+    private void ViewPets(object source)
+    {
+        int customerId;
+        string owner;
+        int? petId = null;
+        switch (source)
+        {
+            case CustomerRecord c: customerId = c.Id; owner = c.Name; break;
+            case PetRecord p: customerId = p.CustomerId; owner = p.OwnerName; petId = p.Id; break;
+            default: return;
+        }
+
+        try
+        {
+            using var form = new PetViewerForm(customerId, owner, petId);
+            form.ShowDialog(this);
+            if (form.PetsChanged) RefreshSoon();
+        }
+        catch (SqlException ex)
+        {
+            ShowDbError("open the pet profiles", ex);
+        }
     }
 
     private void EditCustomer(CustomerRecord c)
@@ -378,7 +402,7 @@ internal partial class MainForm
 
     private void DeleteCustomer(CustomerRecord c)
     {
-        if (MessageBox.Show(this,
+        if (Msg.Show(this,
                 $"Delete {c.Name}?\n\nTheir pets are removed from the lists too. Past appointments and receipts are kept.",
                 "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
@@ -389,7 +413,7 @@ internal partial class MainForm
 
         if (problem is not null)
         {
-            MessageBox.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Msg.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
         RefreshSoon();
@@ -397,7 +421,7 @@ internal partial class MainForm
 
     private void DeletePet(PetRecord p)
     {
-        if (MessageBox.Show(this, $"Delete {p.Name} ({p.OwnerName}'s pet)?\n\nPast appointments and receipts are kept.",
+        if (Msg.Show(this, $"Delete {p.Name} ({p.OwnerName}'s pet)?\n\nPast appointments and receipts are kept.",
                 "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
 
@@ -407,7 +431,7 @@ internal partial class MainForm
 
         if (problem is not null)
         {
-            MessageBox.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Msg.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
         RefreshSoon();
@@ -415,28 +439,11 @@ internal partial class MainForm
 
     // ------------------------------------------------------------------ appointments
 
-    private void NewAppointment(int? customerId = null)
-    {
-        if (CurrentUser is null) return;
-
-        try
-        {
-            using var form = new NewAppointmentForm(CurrentUser.Email, customerId);
-            if (form.ShowDialog(this) != DialogResult.OK) return;
-        }
-        catch (SqlException ex)
-        {
-            ShowDbError("open the appointment form", ex);
-            return;
-        }
-        RefreshSoon();
-    }
-
     private void EditAppointment(AppointmentItem item)
     {
         if (item.Status is AppointmentStatus.Cancelled or AppointmentStatus.Completed)
         {
-            MessageBox.Show(this,
+            Msg.Show(this,
                 $"A {AppointmentStatusStyle.Label(item.Status).ToLowerInvariant()} appointment can't be edited." +
                 (item.Status == AppointmentStatus.Cancelled ? "\n\nUse the ... menu to restore it first." : ""),
                 "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -465,7 +472,13 @@ internal partial class MainForm
         void Add(string text, string glyph, MenuTone tone, AppointmentStatus status)
             => menu.AddAction(text, glyph, tone, () => ChangeStatus(item, status));
 
-        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled) Add("Confirm", "\uE73E", MenuTone.Success, AppointmentStatus.Confirmed);
+        // A request can't be confirmed until someone sets its groomer and room, so Confirm opens the schedule form first.
+        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
+            menu.AddAction(item.Groomer.Length == 0 || item.Room.Length == 0 ? "Set schedule & confirm" : "Confirm", "\uE73E", MenuTone.Success, () =>
+            {
+                if (item.Groomer.Length == 0 || item.Room.Length == 0) EditAppointment(item);
+                else ChangeStatus(item, AppointmentStatus.Confirmed);
+            });
         if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed) Add("Check in", "\uE8FB", MenuTone.Teal, AppointmentStatus.CheckedIn);
         if (item.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed)) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
         if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", "\uE777", MenuTone.Primary, AppointmentStatus.Pending);
@@ -489,7 +502,7 @@ internal partial class MainForm
     private void ChangeStatus(AppointmentItem item, AppointmentStatus status)
     {
         if (status == AppointmentStatus.Cancelled &&
-            MessageBox.Show(this, $"Cancel {item.CustomerName}'s appointment for {item.PetName}?", "Pawfect",
+            Msg.Show(this, $"Cancel {item.CustomerName}'s appointment for {item.PetName}?", "Pawfect",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
             return;
 
@@ -507,7 +520,7 @@ internal partial class MainForm
 
     private void DeleteAppointment(AppointmentItem item)
     {
-        if (MessageBox.Show(this,
+        if (Msg.Show(this,
                 $"Permanently delete {item.CustomerName}'s appointment for {item.PetName}?\n\nThis can't be undone. (Use Cancel instead to keep a record.)",
                 "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
@@ -518,7 +531,7 @@ internal partial class MainForm
 
         if (problem is not null)
         {
-            MessageBox.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Msg.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
         RefreshSoon();
@@ -539,12 +552,8 @@ internal partial class MainForm
 
     private void ShowAppointmentDetails(AppointmentItem a)
     {
-        MessageBox.Show(this,
-            $"Customer:  {a.CustomerName}\nPhone:  {(a.CustomerPhone.Length == 0 ? "\u2014" : a.CustomerPhone)}\n\n" +
-            $"Pet:  {a.PetName}{(a.PetBreed.Length == 0 ? "" : $" ({a.PetBreed})")}\nService:  {a.Service}\n\n" +
-            $"When:  {a.Start.ToString("dddd, MMM d, yyyy  h:mm tt", CultureInfo.CurrentCulture)}\n" +
-            $"Status:  {AppointmentStatusStyle.Label(a.Status)}",
-            "Appointment", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        using var dialog = new AppointmentDetailsDialog(a);
+        dialog.ShowDialog(this);
     }
 
     // ------------------------------------------------------------------ billing
@@ -637,7 +646,7 @@ internal partial class MainForm
     }
 
     private void NothingToExport(string what)
-        => MessageBox.Show(this, $"There are no {what} to export yet.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        => Msg.Show(this, $"There are no {what} to export yet.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
     private void WriteCsv(string suggestedName, string[] header, IEnumerable<string[]> rows)
     {
@@ -661,7 +670,7 @@ internal partial class MainForm
         }
         catch (IOException ex)
         {
-            MessageBox.Show(this, "Couldn't save the file.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Msg.Show(this, "Couldn't save the file.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

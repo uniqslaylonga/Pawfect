@@ -268,7 +268,7 @@ internal sealed class AppointmentRowView : Control
         (Color.FromArgb(253, 235, 240), Color.FromArgb(205, 70, 112)),   // rose
     };
 
-    private static (Color Fill, Color Fore) PetTint(string name)
+    internal static (Color Fill, Color Fore) PetTint(string name)
     {
         int sum = 0;
         foreach (char ch in name.Trim().ToLowerInvariant()) sum += ch;

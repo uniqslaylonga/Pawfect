@@ -25,7 +25,9 @@ internal partial class LookupPage : UserControl
     public event EventHandler? ExportPetsRequested;
 
     /// <summary>"Book" was pressed on a row. The id is the customer to book for.</summary>
-    public event EventHandler<int>? BookRequested;
+
+    /// <summary>"View Pets" was pressed on a row. The argument is the CustomerRecord or PetRecord of that row.</summary>
+    public event EventHandler<object>? ViewPetsRequested;
 
     /// <summary>The "..." menu (or a right-click) was used on a row. The argument is the CustomerRecord or PetRecord.</summary>
     public event EventHandler<object>? MoreRequested;
@@ -154,8 +156,8 @@ internal partial class LookupPage : UserControl
             {
                 var pet = p;
                 var row = new LookupRowView(pet,
-                    new[] { pet.Name, pet.OwnerName, pet.Breed, pet.OwnerPhone, pet.Species }, "Book");
-                row.ActionClicked += (_, _) => BookRequested?.Invoke(this, pet.CustomerId);
+                    new[] { pet.Name, pet.OwnerName, pet.Breed, pet.OwnerPhone, pet.Species }, "View Pet");
+                row.ActionClicked += (_, _) => ViewPetsRequested?.Invoke(this, pet);
                 row.MoreClicked += (_, _) => MoreRequested?.Invoke(this, pet);
                 rows.Add(row);
             }
@@ -184,8 +186,8 @@ internal partial class LookupPage : UserControl
                 string lastVisit = customer.LastVisit?.ToString("MMM d, yyyy", CultureInfo.CurrentCulture) ?? "No visits yet";
                 var row = new LookupRowView(customer,
                     new[] { customer.Name, customer.PetNames.Length == 0 ? "No pets" : customer.PetNames, customer.Phone, customer.Email, lastVisit },
-                    "Book");
-                row.ActionClicked += (_, _) => BookRequested?.Invoke(this, customer.Id);
+                    "View Pets");
+                row.ActionClicked += (_, _) => ViewPetsRequested?.Invoke(this, customer);
                 row.MoreClicked += (_, _) => MoreRequested?.Invoke(this, customer);
                 rows.Add(row);
             }

@@ -65,7 +65,6 @@ namespace MyApp
             serviceFilter = new MyApp.Controls.SelectField();
             dateRange = new MyApp.Controls.DateRangeField();
             appointmentsHeader = new Panel();
-            newAppointmentButton = new MyApp.Controls.PrimaryButton();
             appointmentsTitle = new Label();
             appointmentsIcon = new Label();
             rightColumn = new TableLayoutPanel();
@@ -86,7 +85,6 @@ namespace MyApp
             calendarIcon = new Label();
             quickCard = new MyApp.Controls.CardPanel();
             quickGrid = new TableLayoutPanel();
-            newAppointmentTile = new MyApp.Controls.ActionTile();
             viewAllTile = new MyApp.Controls.ActionTile();
             manageCustomersTile = new MyApp.Controls.ActionTile();
             servicesCatalogTile = new MyApp.Controls.ActionTile();
@@ -807,7 +805,6 @@ namespace MyApp
             // appointmentsHeader
             // 
             appointmentsHeader.BackColor = Color.FromArgb(255, 255, 255);
-            appointmentsHeader.Controls.Add(newAppointmentButton);
             appointmentsHeader.Controls.Add(appointmentsTitle);
             appointmentsHeader.Controls.Add(appointmentsIcon);
             appointmentsHeader.Dock = DockStyle.Top;
@@ -815,18 +812,6 @@ namespace MyApp
             appointmentsHeader.Name = "appointmentsHeader";
             appointmentsHeader.Size = new Size(628, 44);
             appointmentsHeader.TabIndex = 4;
-            // 
-            // newAppointmentButton
-            // 
-            newAppointmentButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            newAppointmentButton.BackColor = Color.White;
-            newAppointmentButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            newAppointmentButton.Location = new Point(478, 5);
-            newAppointmentButton.Name = "newAppointmentButton";
-            newAppointmentButton.Size = new Size(150, 34);
-            newAppointmentButton.TabIndex = 0;
-            newAppointmentButton.Text = "+   New Appointment";
-            newAppointmentButton.Click += newAppointmentButton_Click;
             // 
             // appointmentsTitle
             // 
@@ -1101,10 +1086,10 @@ namespace MyApp
             quickGrid.ColumnCount = 2;
             quickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             quickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            quickGrid.Controls.Add(newAppointmentTile, 0, 0);
-            quickGrid.Controls.Add(viewAllTile, 1, 0);
-            quickGrid.Controls.Add(manageCustomersTile, 0, 1);
-            quickGrid.Controls.Add(servicesCatalogTile, 1, 1);
+            quickGrid.Controls.Add(viewAllTile, 0, 0);
+            quickGrid.Controls.Add(manageCustomersTile, 1, 0);
+            quickGrid.Controls.Add(servicesCatalogTile, 0, 1);
+            quickGrid.SetColumnSpan(servicesCatalogTile, 2);
             quickGrid.Dock = DockStyle.Fill;
             quickGrid.Location = new Point(16, 44);
             quickGrid.Margin = new Padding(0);
@@ -1114,19 +1099,6 @@ namespace MyApp
             quickGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
             quickGrid.Size = new Size(288, 104);
             quickGrid.TabIndex = 0;
-            // 
-            // newAppointmentTile
-            // 
-            newAppointmentTile.BackColor = Color.White;
-            newAppointmentTile.Dock = DockStyle.Fill;
-            newAppointmentTile.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            newAppointmentTile.Glyph = "";
-            newAppointmentTile.Location = new Point(3, 3);
-            newAppointmentTile.Name = "newAppointmentTile";
-            newAppointmentTile.Size = new Size(138, 46);
-            newAppointmentTile.TabIndex = 0;
-            newAppointmentTile.Text = "New Appointment";
-            newAppointmentTile.Click += newAppointmentTile_Click;
             // 
             // viewAllTile
             // 
@@ -1391,7 +1363,6 @@ namespace MyApp
         private MyApp.Controls.SelectField serviceFilter;
         private MyApp.Controls.DateRangeField dateRange;
         private System.Windows.Forms.Panel appointmentsHeader;
-        private MyApp.Controls.PrimaryButton newAppointmentButton;
         private System.Windows.Forms.Label appointmentsTitle;
         private System.Windows.Forms.Label appointmentsIcon;
         private System.Windows.Forms.TableLayoutPanel rightColumn;
@@ -1412,7 +1383,6 @@ namespace MyApp
         private System.Windows.Forms.Label calendarIcon;
         private MyApp.Controls.CardPanel quickCard;
         private System.Windows.Forms.TableLayoutPanel quickGrid;
-        private MyApp.Controls.ActionTile newAppointmentTile;
         private MyApp.Controls.ActionTile viewAllTile;
         private MyApp.Controls.ActionTile manageCustomersTile;
         private MyApp.Controls.ActionTile servicesCatalogTile;

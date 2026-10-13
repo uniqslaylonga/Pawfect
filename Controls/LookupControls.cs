@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Drawing.Drawing2D;
 
 namespace MyApp.Controls;
@@ -10,7 +10,7 @@ internal sealed class LookupRowView : Control
     public const int RowHeight = 46;
 
     /// <summary>Share of the remaining width for: 5 text cells + actions. Matches the header in LookupPage.Designer.cs.</summary>
-    private static readonly float[] ColumnPercents = { 20f, 16f, 15f, 20f, 11f, 18f };
+    private static readonly float[] ColumnPercents = { 18f, 14f, 13f, 18f, 10f, 27f };
 
     private const TextFormatFlags LineFlags = TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
         TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
@@ -19,13 +19,16 @@ internal sealed class LookupRowView : Control
     private bool _hover;
     private bool _hoverAction;
     private bool _hoverMore;
+    private bool _hoverSecond;
     private const int MoreWidth = 28;
 
-    public LookupRowView(object source, string[] cells, string actionText)
+    /// <param name="secondActionText">Optional second button next to the action (e.g. "View Pets"). Empty means none.</param>
+    public LookupRowView(object source, string[] cells, string actionText, string secondActionText = "")
     {
         Source = source;
         _cells = cells;
         ActionText = actionText;
+        SecondActionText = secondActionText;
         SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         BackColor = Color.White;
         Height = RowHeight;
@@ -37,7 +40,12 @@ internal sealed class LookupRowView : Control
 
     public string ActionText { get; }
 
+    public string SecondActionText { get; }
+
     public event EventHandler? ActionClicked;
+
+    /// <summary>The second button (e.g. "View Pets") was pressed.</summary>
+    public event EventHandler? SecondActionClicked;
 
     /// <summary>The "..." button was pressed, or the row was right-clicked.</summary>
     public event EventHandler? MoreClicked;
@@ -50,23 +58,31 @@ internal sealed class LookupRowView : Control
         return new Rectangle((int)x, 0, (int)(avail * ColumnPercents[i] / 100f), Height);
     }
 
+    // The last column holds [action] [second action] [...]; this is the width of the buttons before the "..." button.
+    private int ButtonsWidth => Math.Max(10, Col(5).Width - 8 - MoreWidth - 4);
+
     private Rectangle ActionRect
     {
         get
         {
             var c = Col(5);
-            return new Rectangle(c.X, 10, Math.Max(10, c.Width - 8 - MoreWidth - 4), Height - 20);
+            int w = ButtonsWidth;
+            if (SecondActionText.Length > 0) w = Math.Max(10, (int)((w - 6) * 0.36f));
+            return new Rectangle(c.X, 10, w, Height - 20);
         }
     }
 
-    private Rectangle MoreRect
+    private Rectangle SecondActionRect
     {
         get
         {
             var a = ActionRect;
-            return new Rectangle(a.Right + 4, 10, MoreWidth, Height - 20);
+            int left = a.Right + 6;
+            return new Rectangle(left, 10, Math.Max(10, Col(5).X + ButtonsWidth - left), Height - 20);
         }
     }
+
+    private Rectangle MoreRect => new(Col(5).X + ButtonsWidth + 4, 10, MoreWidth, Height - 20);
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
 
@@ -74,6 +90,7 @@ internal sealed class LookupRowView : Control
     {
         _hover = false;
         _hoverAction = false;
+        _hoverSecond = false;
         _hoverMore = false;
         Cursor = Cursors.Default;
         Invalidate();
@@ -83,12 +100,14 @@ internal sealed class LookupRowView : Control
     protected override void OnMouseMove(MouseEventArgs e)
     {
         bool over = ActionText.Length > 0 && ActionRect.Contains(e.Location);
+        bool overSecond = SecondActionText.Length > 0 && SecondActionRect.Contains(e.Location);
         bool overMore = MoreRect.Contains(e.Location);
-        if (over != _hoverAction || overMore != _hoverMore)
+        if (over != _hoverAction || overSecond != _hoverSecond || overMore != _hoverMore)
         {
             _hoverAction = over;
+            _hoverSecond = overSecond;
             _hoverMore = overMore;
-            Cursor = over || overMore ? Cursors.Hand : Cursors.Default;
+            Cursor = over || overSecond || overMore ? Cursors.Hand : Cursors.Default;
             Invalidate();
         }
         base.OnMouseMove(e);
@@ -98,6 +117,8 @@ internal sealed class LookupRowView : Control
     {
         if (e.Button == MouseButtons.Left && ActionText.Length > 0 && ActionRect.Contains(e.Location))
             ActionClicked?.Invoke(this, EventArgs.Empty);
+        else if (e.Button == MouseButtons.Left && SecondActionText.Length > 0 && SecondActionRect.Contains(e.Location))
+            SecondActionClicked?.Invoke(this, EventArgs.Empty);
         else if (e.Button == MouseButtons.Right || (e.Button == MouseButtons.Left && MoreRect.Contains(e.Location)))
             MoreClicked?.Invoke(this, EventArgs.Empty);
         base.OnMouseClick(e);
@@ -129,6 +150,18 @@ internal sealed class LookupRowView : Control
             g.FillPath(fill, path);
             TextRenderer.DrawText(g, ActionText, Theme.Face(8f, FontStyle.Bold), r,
                 _hoverAction ? Color.White : Theme.Primary,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
+                TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        }
+
+        if (SecondActionText.Length > 0)
+        {
+            var r = SecondActionRect;
+            using var path = Ui.RoundRect(new RectangleF(r.X + 0.5f, r.Y + 0.5f, r.Width - 1, r.Height - 1), 6);
+            using var fill = new SolidBrush(_hoverSecond ? Theme.Green : Theme.GreenSoft);
+            g.FillPath(fill, path);
+            TextRenderer.DrawText(g, SecondActionText, Theme.Face(8f, FontStyle.Bold), r,
+                _hoverSecond ? Color.White : Theme.Green,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
                 TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
         }

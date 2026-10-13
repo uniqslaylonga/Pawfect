@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Data.SqlClient;
+using MyApp.Controls;
 
 namespace MyApp;
 
@@ -9,11 +10,11 @@ internal sealed class CustomerPortalForm : Form
     private readonly UserAccount _user;
     private (int Id, string Name)? _customer;
 
-    private readonly ListView _appointments = NewList("When", 170, "Pet", 120, "Service", 200, "Status", 110);
+    private readonly ListView _appointments = NewList("When", 170, "Pet", 110, "Service", 170, "Status", 100, "Groomer", 110, "Room", 110);
     private readonly ListView _pets = NewList("Pet", 160, "Species", 120, "Breed", 200);
     private readonly ListView _history = NewList("Receipt", 120, "Date", 170, "Services", 80, "Items", 80, "Total", 110, "Paid by", 100);
     private readonly Label _welcome = new();
-    private readonly Button _bookButton = ActionButton("Book Appointment", primary: true);
+    private readonly Button _bookButton = ActionButton("Request Appointment", primary: true);
     private readonly Button _cancelButton = ActionButton("Cancel Appointment", primary: false);
     private readonly Button _addPetButton = ActionButton("Add Pet", primary: false);
     private List<AppointmentItem> _appointmentData = new();
@@ -117,6 +118,7 @@ internal sealed class CustomerPortalForm : Form
                 _appointments.Items.Add(new ListViewItem(new[]
                 {
                     a.Start.ToString("ddd, MMM d, yyyy  h:mm tt", culture), a.PetName, a.Service, AppointmentStatusStyle.Label(a.Status),
+                    a.Groomer.Length == 0 ? "\u2014" : a.Groomer, a.Room.Length == 0 ? "\u2014" : a.Room,
                 }) { Tag = a });
 
             _pets.Items.Clear();
@@ -135,7 +137,7 @@ internal sealed class CustomerPortalForm : Form
         }
         catch (SqlException ex)
         {
-            MessageBox.Show(this, "Couldn't load your data.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Msg.Show(this, "Couldn't load your data.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -154,11 +156,17 @@ internal sealed class CustomerPortalForm : Form
         try
         {
             using var form = new CustomerBookingForm(c.Id, c.Name, _user.Email);
-            if (form.ShowDialog(this) == DialogResult.OK) Reload();
+            if (form.ShowDialog(this) == DialogResult.OK)
+            {
+                Reload();
+                Msg.Show(this,
+                    "Your request was sent.\n\nThe shop will set the day, time, groomer and room, and it will show here once it is confirmed.",
+                    "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
         catch (SqlException ex)
         {
-            MessageBox.Show(this, "Couldn't open the booking form.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Msg.Show(this, "Couldn't open the request form.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -174,24 +182,24 @@ internal sealed class CustomerPortalForm : Form
         if (_customer is not { } c || _appointments.SelectedItems.Count != 1) return;
         if (_appointments.SelectedItems[0].Tag is not AppointmentItem a) return;
 
-        if (MessageBox.Show(this, $"Cancel the appointment for {a.PetName} on {a.Start:MMM d, h:mm tt}?", "Pawfect",
+        if (Msg.Show(this, $"Cancel the appointment for {a.PetName} on {a.Start:MMM d, h:mm tt}?", "Pawfect",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
         try
         {
             if (!EmployeeData.CancelOwnAppointment(c.Id, a.Id))
-                MessageBox.Show(this, "That appointment can't be cancelled any more.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Msg.Show(this, "That appointment can't be cancelled any more.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (SqlException ex)
         {
-            MessageBox.Show(this, "Couldn't cancel.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Msg.Show(this, "Couldn't cancel.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return;
         }
         Reload();
     }
 }
 
-/// <summary>A customer books for themselves: only their own pets are offered.</summary>
+/// <summary>A customer asks for an appointment (pet, service, preferred day/time, notes). The shop schedules it.</summary>
 internal sealed class CustomerBookingForm : DialogBase
 {
     private readonly int _customerId;
@@ -200,12 +208,13 @@ internal sealed class CustomerBookingForm : DialogBase
     private readonly List<PetRecord> _pets;
     private readonly List<ServiceOffering> _services;
 
-    private readonly ComboBox _pet = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _service = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly DateTimePicker _date = new() { Format = DateTimePickerFormat.Long };
-    private readonly DateTimePicker _time = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "h:mm tt", ShowUpDown = true };
+    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet" };
+    private readonly PawSelect _service = new() { Placeholder = "Choose a service" };
+    private readonly PawDatePicker _date = new();
+    private readonly PawTimePicker _time = new();
+    private readonly TextBox _notes = new() { Multiline = true, Height = 60, MaxLength = 300, ScrollBars = ScrollBars.Vertical };
 
-    public CustomerBookingForm(int customerId, string customerName, string loginEmail) : base("Book Appointment", "Book")
+    public CustomerBookingForm(int customerId, string customerName, string loginEmail) : base("Request Appointment", "Send Request", "\uE787", "Tell us when you'd like to come in")
     {
         _customerId = customerId;
         _customerName = customerName;
@@ -218,12 +227,13 @@ internal sealed class CustomerBookingForm : DialogBase
 
         AddRow("Pet *", _pet);
         AddRow("Service *", _service);
-        AddRow("Date *", _date);
-        AddRow("Time *", _time);
+        AddRow("Preferred date *", _date);
+        AddRow("Preferred time *", _time);
+        AddRow("Notes", _notes);
 
         _date.MinDate = DateTime.Today;
         _date.Value = DateTime.Today;
-        _time.Value = DateTime.Today.AddHours(9);
+        _time.Value = TimeSpan.FromHours(9);
         if (_pets.Count > 0) _pet.SelectedIndex = 0;
         FitHeight();
 
@@ -239,12 +249,12 @@ internal sealed class CustomerBookingForm : DialogBase
         if (_pet.SelectedIndex < 0) { ShowError("Choose a pet."); return; }
         if (_service.SelectedIndex < 0) { ShowError("Choose a service."); return; }
 
-        var start = _date.Value.Date + _time.Value.TimeOfDay;
+        var start = _date.Value.Date + _time.Value;
         if (start < DateTime.Now.AddMinutes(-1)) { ShowError("Pick a time that hasn't passed yet."); return; }
 
         try
         {
-            EmployeeData.AddOwnAppointment(_customerId, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start, _email);
+            EmployeeData.AddOwnAppointment(_customerId, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start, _email, _notes.Text);
             DialogResult = DialogResult.OK;
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)

@@ -22,6 +22,12 @@ internal sealed record DashboardSnapshot(
     decimal RevenueToday,
     IReadOnlyList<(string Category, int Count)> ServicesByCategory);
 
+/// <summary>A groomer an appointment can be assigned to.</summary>
+internal sealed record GroomerOption(int Id, string Name);
+
+/// <summary>A grooming room / station an appointment can be assigned to.</summary>
+internal sealed record RoomOption(int Id, string Name);
+
 /// <summary>Every database call the employee screens make. All of them throw SqlException if the database can't be reached.</summary>
 internal static class EmployeeData
 {
@@ -162,11 +168,14 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     public static List<AppointmentItem> GetAppointments()
     {
         const string sql = @"
-SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category
+SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N'')
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
 JOIN dbo.Services s  ON s.ServiceId  = a.ServiceId
+LEFT JOIN dbo.Groomers g ON g.GroomerId = a.GroomerId
+LEFT JOIN dbo.Rooms rm   ON rm.RoomId   = a.RoomId
 ORDER BY a.StartTime";
 
         using var conn = Open();
@@ -177,7 +186,8 @@ ORDER BY a.StartTime";
         {
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
-                r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8)));
+                r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
+                r.GetString(9), r.GetString(10), r.GetString(11)));
         }
         return list;
     }
@@ -306,24 +316,90 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
 
     // ------------------------------------------------------------------ appointments: edit / delete
 
-    /// <summary>The customer, pet and service ids behind an appointment (the list items only carry names).</summary>
-    public static (int CustomerId, int PetId, int ServiceId)? GetAppointmentRefs(int appointmentId)
+    /// <summary>The customer, pet, service, groomer and room ids behind an appointment (the list items only carry names).</summary>
+    public static (int CustomerId, int PetId, int ServiceId, int? GroomerId, int? RoomId)? GetAppointmentRefs(int appointmentId)
     {
         using var conn = Open();
-        using var cmd = Cmd(conn, "SELECT CustomerId, PetId, ServiceId FROM dbo.Appointments WHERE AppointmentId = @id");
+        using var cmd = Cmd(conn, "SELECT CustomerId, PetId, ServiceId, GroomerId, RoomId FROM dbo.Appointments WHERE AppointmentId = @id");
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         using var r = cmd.ExecuteReader();
-        return r.Read() ? (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2)) : null;
+        return r.Read()
+            ? (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2),
+               r.IsDBNull(3) ? (int?)null : r.GetInt32(3), r.IsDBNull(4) ? (int?)null : r.GetInt32(4))
+            : null;
     }
 
-    /// <summary>Changes the pet, service and time of an open appointment. Moving it to another time marks it Rescheduled.</summary>
-    public static void UpdateAppointment(int appointmentId, int petId, int serviceId, DateTime start)
+    public static List<GroomerOption> GetGroomers()
+    {
+        using var conn = Open();
+        using var cmd = Cmd(conn, "SELECT GroomerId, Name FROM dbo.Groomers WHERE IsActive = 1 ORDER BY Name");
+        using var r = cmd.ExecuteReader();
+        var list = new List<GroomerOption>();
+        while (r.Read()) list.Add(new GroomerOption(r.GetInt32(0), r.GetString(1)));
+        return list;
+    }
+
+    public static List<RoomOption> GetRooms()
+    {
+        using var conn = Open();
+        using var cmd = Cmd(conn, "SELECT RoomId, Name FROM dbo.Rooms WHERE IsActive = 1 ORDER BY Name");
+        using var r = cmd.ExecuteReader();
+        var list = new List<RoomOption>();
+        while (r.Read()) list.Add(new RoomOption(r.GetInt32(0), r.GetString(1)));
+        return list;
+    }
+
+    /// <summary>
+    /// Looks for another open appointment that uses the same groomer or room within an hour of <paramref name="start"/>
+    /// (services have no length yet, so one hour is the slot size). Returns null when it is free, otherwise a message.
+    /// </summary>
+    public static string? FindScheduleConflict(int appointmentId, DateTime start, int? groomerId, int? roomId)
+    {
+        if (groomerId is null && roomId is null) return null;
+
+        const string sql = @"
+SELECT TOP 1 a.GroomerId, a.RoomId, a.StartTime
+FROM dbo.Appointments a
+WHERE a.AppointmentId <> @id
+  AND a.Status NOT IN (N'Cancelled', N'Completed')
+  AND DATEDIFF(MINUTE, a.StartTime, @t) > -60 AND DATEDIFF(MINUTE, a.StartTime, @t) < 60
+  AND ((@g IS NOT NULL AND a.GroomerId = @g) OR (@rm IS NOT NULL AND a.RoomId = @rm))
+ORDER BY a.StartTime";
+
+        using var conn = Open();
+        using var cmd = Cmd(conn, sql);
+        P(cmd, "@id", SqlDbType.Int, appointmentId);
+        P(cmd, "@t", SqlDbType.DateTime2, start);
+        P(cmd, "@g", SqlDbType.Int, groomerId);
+        P(cmd, "@rm", SqlDbType.Int, roomId);
+        using var r = cmd.ExecuteReader();
+        if (!r.Read()) return null;
+
+        string at = r.GetDateTime(2).ToString("MMM d, h:mm tt", System.Globalization.CultureInfo.CurrentCulture);
+        bool groomerBusy = groomerId is not null && !r.IsDBNull(0) && r.GetInt32(0) == groomerId;
+        return groomerBusy
+            ? $"That groomer already has an appointment at {at}. Pick another groomer or time."
+            : $"That room is already booked at {at}. Pick another room or time.";
+    }
+
+    /// <summary>
+    /// Sets the pet, service, day/time, groomer and room of an open appointment.
+    /// With <paramref name="confirm"/> a Pending (or Rescheduled) request becomes Confirmed; otherwise moving a
+    /// Confirmed / Checked-in appointment to another time marks it Rescheduled.
+    /// </summary>
+    public static void UpdateAppointment(int appointmentId, int petId, int serviceId, DateTime start,
+        int? groomerId, int? roomId, bool confirm)
     {
         const string sql = @"
 UPDATE a SET
     PetId = @p,
     ServiceId = @s,
-    Status = CASE WHEN a.StartTime <> @t AND a.Status IN (N'Pending', N'Confirmed', N'CheckedIn') THEN N'Rescheduled' ELSE a.Status END,
+    GroomerId = @g,
+    RoomId = @rm,
+    Status = CASE
+        WHEN a.Status IN (N'Pending', N'Rescheduled') AND @confirm = 1 THEN N'Confirmed'
+        WHEN a.StartTime <> @t AND a.Status IN (N'Confirmed', N'CheckedIn') THEN N'Rescheduled'
+        ELSE a.Status END,
     StartTime = @t
 FROM dbo.Appointments a
 WHERE a.AppointmentId = @id
@@ -335,6 +411,9 @@ WHERE a.AppointmentId = @id
         P(cmd, "@p", SqlDbType.Int, petId);
         P(cmd, "@s", SqlDbType.Int, serviceId);
         P(cmd, "@t", SqlDbType.DateTime2, start);
+        P(cmd, "@g", SqlDbType.Int, groomerId);
+        P(cmd, "@rm", SqlDbType.Int, roomId);
+        P(cmd, "@confirm", SqlDbType.Bit, confirm);
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         if (cmd.ExecuteNonQuery() == 0)
             throw new InvalidOperationException("This appointment can't be changed any more (it may be cancelled, completed or deleted).");
@@ -619,11 +698,14 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
     public static List<AppointmentItem> GetAppointmentsForCustomer(int customerId)
     {
         const string sql = @"
-SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status
+SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status,
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N'')
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
 JOIN dbo.Services s  ON s.ServiceId  = a.ServiceId
+LEFT JOIN dbo.Groomers g ON g.GroomerId = a.GroomerId
+LEFT JOIN dbo.Rooms rm   ON rm.RoomId   = a.RoomId
 WHERE a.CustomerId = @c
 ORDER BY a.StartTime DESC";
 
@@ -636,7 +718,8 @@ ORDER BY a.StartTime DESC";
         {
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
-                r.GetString(4), r.GetString(5), r.GetString(6), status));
+                r.GetString(4), r.GetString(5), r.GetString(6), status,
+                Groomer: r.GetString(8), Room: r.GetString(9)));
         }
         return list;
     }
@@ -678,19 +761,23 @@ WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confi
         return cmd.ExecuteNonQuery() > 0;
     }
 
-    /// <summary>Books for this customer only; the pet must belong to them.</summary>
-    public static void AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail)
+    /// <summary>
+    /// A customer's appointment request: it is saved as Pending with their preferred day/time and notes, and an
+    /// employee sets the real schedule (day, time, groomer, room) from Edit. The pet must belong to the customer.
+    /// </summary>
+    public static void AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "")
     {
         using var conn = Open();
         using var cmd = Cmd(conn, @"
-INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId)
-SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email)
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes)
+SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N'')
 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1");
         P(cmd, "@c", SqlDbType.Int, customerId);
         P(cmd, "@p", SqlDbType.Int, petId);
         P(cmd, "@s", SqlDbType.Int, serviceId);
         P(cmd, "@t", SqlDbType.DateTime2, start);
         P(cmd, "@email", SqlDbType.NVarChar, loginEmail, 256);
+        P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
         if (cmd.ExecuteNonQuery() == 0)
             throw new InvalidOperationException("That pet doesn't belong to this account.");
     }

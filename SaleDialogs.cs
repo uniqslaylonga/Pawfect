@@ -100,7 +100,7 @@ internal sealed class ReceiptForm : Form
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show(this, "The receipt could not be saved as a PDF.\n\n" + ex.Message, "Pawfect",
+            Msg.Show(this, "The receipt could not be saved as a PDF.\n\n" + ex.Message, "Pawfect",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
@@ -113,7 +113,7 @@ internal sealed class ReceiptForm : Form
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
-            MessageBox.Show(this, "The receipt could not be printed.\n\n" + ex.Message, "Pawfect",
+            Msg.Show(this, "The receipt could not be printed.\n\n" + ex.Message, "Pawfect",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
@@ -238,7 +238,7 @@ internal sealed class TransactionDetailsForm : Form
     private void ChangeTo(TransactionStatus status)
     {
         string verb = status == TransactionStatus.Voided ? "Void" : "Refund";
-        if (MessageBox.Show(this, $"{verb} receipt {_item.ReceiptNumber} ({Money.Format(_item.Total)})?\n\nThis can't be undone.",
+        if (Msg.Show(this, $"{verb} receipt {_item.ReceiptNumber} ({Money.Format(_item.Total)})?\n\nThis can't be undone.",
                 "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
 
@@ -254,7 +254,7 @@ internal sealed class TransactionDetailsForm : Form
         }
         catch (SqlException ex)
         {
-            MessageBox.Show(this, "The database could not be updated.\n\n" + ex.Message, "Pawfect",
+            Msg.Show(this, "The database could not be updated.\n\n" + ex.Message, "Pawfect",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -391,7 +391,7 @@ internal sealed class TransactionHistoryForm : Form
         try { Reload(); }
         catch (SqlException ex)
         {
-            MessageBox.Show(this, "Couldn't reload the list.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Msg.Show(this, "Couldn't reload the list.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
