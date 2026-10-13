@@ -1,28 +1,39 @@
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using Microsoft.Data.SqlClient;
+using MyApp.Controls;
 
 namespace MyApp;
 
-/// <summary>Shared look for the small pop-up forms used on the employee side.</summary>
+/// <summary>
+/// Shared look for the pop-up forms: icon + title header, rounded fields, soft button bar.
+/// Subclasses add rows with <see cref="AddRow"/> and finish with <see cref="FitHeight"/>.
+/// </summary>
 internal abstract class DialogBase : Form
 {
+    private const int HeaderHeight = 72;
+    private const int BarHeight = 64;
+    private const int ErrorHeight = 34;
+
     protected readonly TableLayoutPanel Grid = new()
     {
         Dock = DockStyle.Top,
         AutoSize = true,
         ColumnCount = 2,
-        Padding = new Padding(20, 18, 20, 4),
+        Padding = new Padding(24, 18, 24, 4),
+        BackColor = Color.White,
     };
 
-    protected readonly Button SaveButton = new();
-    protected readonly Button CancelButtonControl = new();
+    protected readonly PawButton SaveButton = new();
+    protected readonly PawButton CancelButtonControl = new();
     private readonly Label _error = new();
 
     /// <summary>The bottom bar that holds Save and Cancel (buttons added later appear to their left).</summary>
     protected FlowLayoutPanel ButtonBar { get; private set; } = null!;
 
-    protected DialogBase(string title, string saveText)
+    /// <param name="glyph">Icon (Segoe MDL2 Assets) shown in the header badge.</param>
+    /// <param name="subtitle">Small grey line under the title.</param>
+    protected DialogBase(string title, string saveText, string glyph = "\uE77B", string subtitle = "")
     {
         Text = title;
         Font = Theme.Face(9f);
@@ -33,85 +44,138 @@ internal abstract class DialogBase : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(440, 300);
+        ShowIcon = false;
+        ClientSize = new Size(460, 300);
 
-        Grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 110));
+        Grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
         Grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        _error.ForeColor = Theme.Danger;
+        // ---- header
+        var header = new Panel { Dock = DockStyle.Top, Height = HeaderHeight, BackColor = Color.White };
+        var badge = new IconBadge(glyph, Theme.PrimarySoft, Theme.Primary, Color.White, 40, radius: 10, glyphPt: 13f)
+        {
+            Location = new Point(24, 16),
+        };
+        bool hasSub = subtitle.Length > 0;
+        var heading = Ui.Text(title, 12f, Theme.Text, Color.White, FontStyle.Bold);
+        heading.SetBounds(78, hasSub ? 14 : 22, 340, 24);
+        header.Controls.Add(badge);
+        header.Controls.Add(heading);
+        if (hasSub)
+        {
+            var sub = Ui.Text(subtitle, 8.5f, Theme.Muted, Color.White);
+            sub.SetBounds(78, 38, 340, 18);
+            header.Controls.Add(sub);
+        }
+        header.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Theme.Border);
+            e.Graphics.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
+        };
+
+        // ---- error strip (hidden until there is something to say)
         _error.AutoSize = false;
         _error.Dock = DockStyle.Top;
-        _error.Height = 22;
-        _error.Padding = new Padding(20, 0, 20, 0);
+        _error.Height = ErrorHeight;
+        _error.Font = Theme.Face(8.75f);
+        _error.ForeColor = Color.FromArgb(185, 40, 40);
+        _error.BackColor = Color.FromArgb(253, 238, 238);
+        _error.TextAlign = ContentAlignment.MiddleLeft;
+        _error.Padding = new Padding(24, 0, 24, 0);
+        _error.Visible = false;
 
+        // ---- buttons
         SaveButton.Text = saveText;
-        SaveButton.Size = new Size(110, 34);
-        SaveButton.FlatStyle = FlatStyle.Flat;
-        SaveButton.FlatAppearance.BorderSize = 0;
-        SaveButton.BackColor = Theme.Primary;
-        SaveButton.ForeColor = Color.White;
-        SaveButton.Font = Theme.Face(9f, FontStyle.Bold);
-        SaveButton.Cursor = Cursors.Hand;
+        SaveButton.Size = new Size(Math.Max(100, TextRenderer.MeasureText(saveText, SaveButton.Font).Width + 36), 36);
+        SaveButton.Kind = PawButtonKind.Primary;
+        SaveButton.Margin = new Padding(8, 0, 0, 0);
         SaveButton.Click += (_, _) => OnSaveClicked();
 
         CancelButtonControl.Text = "Cancel";
-        CancelButtonControl.Size = new Size(90, 34);
-        CancelButtonControl.FlatStyle = FlatStyle.Flat;
-        CancelButtonControl.FlatAppearance.BorderColor = Theme.Border;
-        CancelButtonControl.BackColor = Color.White;
-        CancelButtonControl.ForeColor = Theme.TextSoft;
+        CancelButtonControl.Size = new Size(92, 36);
+        CancelButtonControl.Kind = PawButtonKind.Outline;
+        CancelButtonControl.Margin = new Padding(8, 0, 0, 0);
         CancelButtonControl.DialogResult = DialogResult.Cancel;
-        CancelButtonControl.Cursor = Cursors.Hand;
 
         var buttons = new FlowLayoutPanel
         {
             Dock = DockStyle.Bottom,
             FlowDirection = FlowDirection.RightToLeft,
-            Height = 58,
-            Padding = new Padding(16, 12, 16, 8),
+            Height = BarHeight,
+            Padding = new Padding(16, 14, 16, 10),
             BackColor = Theme.Subtle,
+        };
+        buttons.Paint += (_, e) =>
+        {
+            using var pen = new Pen(Theme.Border);
+            e.Graphics.DrawLine(pen, 0, 0, buttons.Width, 0);
         };
         buttons.Controls.Add(SaveButton);
         buttons.Controls.Add(CancelButtonControl);
         ButtonBar = buttons;
 
+        // Docking order: the control added last is placed first (outermost).
         Controls.Add(_error);
         Controls.Add(Grid);
         Controls.Add(buttons);
+        Controls.Add(header);
         AcceptButton = SaveButton;
         CancelButton = CancelButtonControl;
     }
 
+    /// <summary>
+    /// Adds a "label | input" row. Text boxes and number boxes are put in a rounded frame automatically;
+    /// <see cref="PawSelect"/>, <see cref="PawDatePicker"/> and <see cref="PawTimePicker"/> draw their own.
+    /// </summary>
     protected void AddRow(string label, Control input)
     {
         var l = new Label
         {
             Text = label,
             AutoSize = false,
-            Height = 28,
+            Height = 36,
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleLeft,
             ForeColor = Theme.TextSoft,
             Margin = new Padding(0, 4, 0, 4),
+            UseMnemonic = false,
         };
-        input.Dock = DockStyle.Fill;
-        input.Margin = new Padding(0, 4, 0, 4);
+
+        Control cell = input;
+        if (input is TextBox or NumericUpDown)
+            cell = FieldFrame.ForEditor(input);
+        else if (input is Label value)
+        {
+            value.Height = Math.Max(value.Height, 36);
+            if (value.ForeColor == SystemColors.ControlText) value.ForeColor = Theme.Text;
+        }
+
+        // Tall rows (notes) line their caption up with the first line instead of the middle.
+        if (cell.Height > 60) l.TextAlign = ContentAlignment.TopLeft;
+        if (cell.Height > 60) l.Padding = new Padding(0, 9, 0, 0);
+
+        cell.Dock = DockStyle.Fill;
+        cell.Margin = new Padding(0, 4, 0, 4);
         Grid.Controls.Add(l);
-        Grid.Controls.Add(input);
+        Grid.Controls.Add(cell);
     }
 
     protected void FitHeight()
     {
         Grid.PerformLayout();
-        ClientSize = new Size(ClientSize.Width, Grid.PreferredSize.Height + 22 + 58 + 8);
+        ClientSize = new Size(ClientSize.Width, HeaderHeight + Grid.PreferredSize.Height + 8 + ErrorHeight + BarHeight);
     }
 
-    protected void ShowError(string message) => _error.Text = message;
+    protected void ShowError(string message)
+    {
+        _error.Text = message;
+        _error.Visible = message.Length > 0;
+    }
 
     protected abstract void OnSaveClicked();
 
     protected static void ShowDatabaseError(IWin32Window owner, Exception ex)
-        => MessageBox.Show(owner, "The database could not be updated.\n\n" + ex.Message, "Pawfect",
+        => Msg.Show(owner, "The database could not be updated.\n\n" + ex.Message, "Pawfect",
             MessageBoxButtons.OK, MessageBoxIcon.Error);
 }
 
@@ -130,7 +194,8 @@ internal sealed class CustomerForm : DialogBase
     public int? CreatedCustomerId { get; private set; }
 
     public CustomerForm(CustomerRecord? existing = null)
-        : base(existing is null ? "Add Customer" : "Edit Customer", "Save")
+        : base(existing is null ? "Add Customer" : "Edit Customer", "Save", "\uE77B",
+              existing is null ? "Enter the owner's details (and a first pet, if you like)" : "Update the owner's details")
     {
         _existing = existing;
 
@@ -195,7 +260,7 @@ internal sealed class PetForm : DialogBase
     public int? CreatedPetId { get; private set; }
 
     public PetForm(int customerId, string ownerName, PetRecord? existing = null)
-        : base(existing is null ? "Add Pet" : "Edit Pet", "Save")
+        : base(existing is null ? "Add Pet" : "Edit Pet", "Save", "\uE77B", "Owner: " + ownerName)
     {
         _customerId = customerId;
         _existing = existing;
@@ -237,124 +302,32 @@ internal sealed class PetForm : DialogBase
     }
 }
 
-/// <summary>Books a new appointment for an existing customer and pet.</summary>
-internal sealed class NewAppointmentForm : DialogBase
-{
-    private readonly string _userEmail;
-    private readonly List<CustomerRecord> _customers;
-    private readonly List<PetRecord> _pets;
-    private readonly List<ServiceOffering> _services;
-
-    private readonly ComboBox _customer = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _pet = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _service = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly DateTimePicker _date = new() { Format = DateTimePickerFormat.Long };
-    private readonly DateTimePicker _time = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "h:mm tt", ShowUpDown = true };
-    private readonly Button _addPet = new() { Text = "+ Pet", Width = 62, Height = 26, FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand };
-
-    public NewAppointmentForm(string userEmail, int? preselectCustomerId = null) : base("New Appointment", "Book")
-    {
-        _userEmail = userEmail;
-        _customers = EmployeeData.GetCustomers();
-        _pets = EmployeeData.GetPets();
-        _services = EmployeeData.GetServices();
-
-        _customer.Items.AddRange(_customers.Select(c => (object)(string.IsNullOrWhiteSpace(c.Phone) ? c.Name : $"{c.Name}  ·  {c.Phone}")).ToArray());
-        _service.Items.AddRange(_services.Select(s => (object)$"{s.Name}  ·  {Money.Format(s.Price)}").ToArray());
-
-        var petRow = new TableLayoutPanel { ColumnCount = 2, Height = 30, Margin = Padding.Empty };
-        petRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        petRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
-        _pet.Dock = DockStyle.Fill;
-        _addPet.FlatAppearance.BorderColor = Theme.Border;
-        petRow.Controls.Add(_pet, 0, 0);
-        petRow.Controls.Add(_addPet, 1, 0);
-
-        AddRow("Customer *", _customer);
-        AddRow("Pet *", petRow);
-        AddRow("Service *", _service);
-        AddRow("Date *", _date);
-        AddRow("Time *", _time);
-
-        _date.MinDate = DateTime.Today;
-        _date.Value = DateTime.Today;
-        _time.Value = DateTime.Today.AddHours(9);
-
-        _customer.SelectedIndexChanged += (_, _) => FillPets();
-        _addPet.Click += (_, _) => AddPetClicked();
-
-        if (_customers.Count > 0)
-            _customer.SelectedIndex = Math.Max(0, _customers.FindIndex(c => c.Id == preselectCustomerId));
-
-        FitHeight();
-        Shown += (_, _) =>
-        {
-            if (_customers.Count == 0)
-                ShowError("Add a customer first (Customer & Pet Look Up).");
-            else if (_services.Count == 0)
-                ShowError("No services exist yet. An admin needs to add services.");
-        };
-    }
-
-    private CustomerRecord? SelectedCustomer => _customer.SelectedIndex >= 0 ? _customers[_customer.SelectedIndex] : null;
-
-    private List<PetRecord> PetsOfSelected
-        => SelectedCustomer is { } c ? _pets.Where(p => p.CustomerId == c.Id).ToList() : new();
-
-    private void FillPets(int? selectPetId = null)
-    {
-        var pets = PetsOfSelected;
-        _pet.Items.Clear();
-        _pet.Items.AddRange(pets.Select(p => (object)(string.IsNullOrWhiteSpace(p.Breed) ? p.Name : $"{p.Name}  ·  {p.Breed}")).ToArray());
-        if (pets.Count > 0)
-            _pet.SelectedIndex = Math.Max(0, pets.FindIndex(p => p.Id == selectPetId));
-    }
-
-    private void AddPetClicked()
-    {
-        if (SelectedCustomer is not { } customer) return;
-        using var form = new PetForm(customer.Id, customer.Name);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
-
-        _pets.Clear();
-        _pets.AddRange(EmployeeData.GetPets());
-        FillPets(form.CreatedPetId);
-    }
-
-    protected override void OnSaveClicked()
-    {
-        var pets = PetsOfSelected;
-        if (SelectedCustomer is not { } customer) { ShowError("Choose a customer."); return; }
-        if (_pet.SelectedIndex < 0) { ShowError("This customer has no pet yet. Use + Pet to add one."); return; }
-        if (_service.SelectedIndex < 0) { ShowError("Choose a service."); return; }
-
-        var start = _date.Value.Date + _time.Value.TimeOfDay;
-        if (start < DateTime.Now.AddMinutes(-1)) { ShowError("Pick a time that hasn't passed yet."); return; }
-
-        try
-        {
-            EmployeeData.AddAppointment(customer.Id, pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start, _userEmail);
-            DialogResult = DialogResult.OK;
-        }
-        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
-        {
-            ShowDatabaseError(this, ex);
-        }
-    }
-}
-
-/// <summary>Edits an open appointment: which pet, which service, and when.</summary>
+/// <summary>
+/// Edits an open appointment. For a customer's request (Pending) this is where the employee sets the schedule:
+/// day, time, groomer and room, then confirms it.
+/// </summary>
 internal sealed class EditAppointmentForm : DialogBase
 {
+    private const string NotAssigned = "\u2014 Not assigned \u2014";
+
     private readonly AppointmentItem _item;
     private readonly List<PetRecord> _pets;
     private readonly List<ServiceOffering> _services;
-    private readonly ComboBox _pet = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly ComboBox _service = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly DateTimePicker _date = new() { Format = DateTimePickerFormat.Long };
-    private readonly DateTimePicker _time = new() { Format = DateTimePickerFormat.Custom, CustomFormat = "h:mm tt", ShowUpDown = true };
+    private readonly List<GroomerOption> _groomers;
+    private readonly List<RoomOption> _rooms;
+    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet" };
+    private readonly PawSelect _service = new() { Placeholder = "Choose a service" };
+    private readonly PawSelect _groomer = new();
+    private readonly PawSelect _room = new();
+    private readonly PawDatePicker _date = new();
+    private readonly PawTimePicker _time = new();
+    private readonly PawCheckBox _confirm = new() { Text = "Confirm this appointment", Checked = true };
 
-    public EditAppointmentForm(AppointmentItem item) : base("Edit Appointment", "Save")
+    public EditAppointmentForm(AppointmentItem item)
+        : base(item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled ? "Schedule Appointment" : "Edit Appointment", "Save", "\uE787",
+              item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled
+                  ? "Set the day, time, groomer and room"
+                  : "Change the booking details")
     {
         _item = item;
         var refs = EmployeeData.GetAppointmentRefs(item.Id)
@@ -362,29 +335,57 @@ internal sealed class EditAppointmentForm : DialogBase
 
         _pets = EmployeeData.GetPets().Where(p => p.CustomerId == refs.CustomerId).ToList();
         _services = EmployeeData.GetServices();
+        _groomers = EmployeeData.GetGroomers();
+        _rooms = EmployeeData.GetRooms();
 
         _pet.Items.AddRange(_pets.Select(p => (object)(string.IsNullOrWhiteSpace(p.Breed) ? p.Name : $"{p.Name}  ·  {p.Breed}")).ToArray());
         _service.Items.AddRange(_services.Select(s => (object)$"{s.Name}  ·  {Money.Format(s.Price)}").ToArray());
         _pet.SelectedIndex = _pets.FindIndex(p => p.Id == refs.PetId);
         _service.SelectedIndex = _services.FindIndex(s => s.Id == refs.ServiceId);
 
+        _groomer.Items.Add(NotAssigned);
+        _groomer.Items.AddRange(_groomers.Select(g => (object)g.Name).ToArray());
+        _groomer.SelectedIndex = refs.GroomerId is { } gid ? Math.Max(0, _groomers.FindIndex(g => g.Id == gid) + 1) : 0;
+
+        _room.Items.Add(NotAssigned);
+        _room.Items.AddRange(_rooms.Select(r => (object)r.Name).ToArray());
+        _room.SelectedIndex = refs.RoomId is { } rid ? Math.Max(0, _rooms.FindIndex(r => r.Id == rid) + 1) : 0;
+
         AddRow("Customer", new Label { Text = item.CustomerName, TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28 });
+
+        // What the customer asked for, so the employee can decide the real schedule.
+        bool isRequest = item.Status == AppointmentStatus.Pending;
+        if (isRequest)
+        {
+            string asked = $"Preferred: {item.Start.ToString("ddd, MMM d  h:mm tt", CultureInfo.CurrentCulture)}";
+            AddRow("Request", new Label { Text = asked, TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28, ForeColor = Theme.TextSoft });
+        }
+        if (!string.IsNullOrWhiteSpace(item.Notes))
+            AddRow("Notes", new Label { Text = item.Notes, TextAlign = ContentAlignment.TopLeft, AutoSize = false, Height = 46, ForeColor = Theme.TextSoft });
+
         AddRow("Pet *", _pet);
         AddRow("Service *", _service);
         AddRow("Date *", _date);
         AddRow("Time *", _time);
+        AddRow("Groomer", _groomer);
+        AddRow("Room", _room);
+
+        bool canConfirm = item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled;
+        if (canConfirm) AddRow("", _confirm);
 
         // An overdue appointment keeps its own (past) date until the person picks a new one.
         var original = Trim(item.Start);
         _date.MinDate = original.Date < DateTime.Today ? original.Date : DateTime.Today;
         _date.Value = original.Date;
-        _time.Value = DateTime.Today.Add(new TimeSpan(original.Hour, original.Minute, 0));
+        _time.Value = new TimeSpan(original.Hour, original.Minute, 0);
         FitHeight();
 
         Shown += (_, _) =>
         {
             if (_pet.SelectedIndex < 0 || _service.SelectedIndex < 0)
                 ShowError("The old pet or service is no longer available. Please choose again.");
+            else if (_groomers.Count == 0 || _rooms.Count == 0)
+                ShowError("No groomers or rooms exist yet. Run Sql/appointment_scheduling.sql.");
         };
     }
 
@@ -395,12 +396,29 @@ internal sealed class EditAppointmentForm : DialogBase
         if (_pet.SelectedIndex < 0) { ShowError("Choose a pet."); return; }
         if (_service.SelectedIndex < 0) { ShowError("Choose a service."); return; }
 
-        var start = _date.Value.Date + new TimeSpan(_time.Value.Hour, _time.Value.Minute, 0);
+        var start = _date.Value.Date + _time.Value;
         if (start != Trim(_item.Start) && start < DateTime.Now.AddMinutes(-1)) { ShowError("Pick a time that hasn't passed yet."); return; }
+
+        int? groomerId = _groomer.SelectedIndex > 0 ? _groomers[_groomer.SelectedIndex - 1].Id : null;
+        int? roomId = _room.SelectedIndex > 0 ? _rooms[_room.SelectedIndex - 1].Id : null;
+        bool confirm = _confirm.Parent is not null && _confirm.Checked;
+
+        if (confirm && (groomerId is null || roomId is null))
+        {
+            ShowError("Choose a groomer and a room to confirm, or untick Confirm.");
+            return;
+        }
 
         try
         {
-            EmployeeData.UpdateAppointment(_item.Id, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start);
+            if (EmployeeData.FindScheduleConflict(_item.Id, start, groomerId, roomId) is { } conflict)
+            {
+                ShowError(conflict);
+                return;
+            }
+
+            EmployeeData.UpdateAppointment(_item.Id, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id,
+                start, groomerId, roomId, confirm);
             DialogResult = DialogResult.OK;
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)

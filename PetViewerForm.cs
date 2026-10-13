@@ -1,6 +1,7 @@
 ﻿using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using Microsoft.Data.SqlClient;
+using MyApp.Controls;
 
 namespace MyApp;
 
@@ -407,7 +408,7 @@ internal sealed class PetViewerForm : Form
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)
         {
-            MessageBox.Show(this, "The database could not be updated.\n\n" + ex.Message, "Pawfect",
+            Msg.Show(this, "The database could not be updated.\n\n" + ex.Message, "Pawfect",
                 MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -428,16 +429,17 @@ internal sealed class PetViewerForm : Form
 internal sealed class PetDetailsForm : DialogBase
 {
     private readonly PetProfile _pet;
-    private readonly ComboBox _gender = new() { DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly DateTimePicker _birth = new() { Format = DateTimePickerFormat.Short, ShowCheckBox = true };
+    private readonly PawSelect _gender = new();
+    private readonly PawDatePicker _birth = new() { AllowEmpty = true, Placeholder = "Not set" };
     private readonly NumericUpDown _weight = new() { DecimalPlaces = 1, Minimum = 0, Maximum = 200, Increment = 0.5m };
     private readonly TextBox _color = new() { MaxLength = 40 };
     private readonly TextBox _notes = new() { MaxLength = 500, Multiline = true, AcceptsReturn = true, Height = 80, ScrollBars = ScrollBars.Vertical };
 
-    public PetDetailsForm(PetProfile pet) : base("Pet details - " + pet.Name, "Save")
+    public PetDetailsForm(PetProfile pet) : base("Pet details", "Save", "\uE77B", pet.Name)
     {
         _pet = pet;
 
+        _birth.MaxDate = DateTime.Today;
         _gender.Items.AddRange(new object[] { "Not set", "Male", "Female" });
         _gender.SelectedIndex = pet.Gender switch { "Male" => 1, "Female" => 2, _ => 0 };
 

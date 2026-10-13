@@ -65,7 +65,7 @@ internal partial class AdminForm : Form
             if (UserRepository.SetActive(id, active))
                 AuditLog.Record(CurrentUser, active ? "User Activated" : "User Deactivated", $"User #{id}");
             else
-                MessageBox.Show("You can't deactivate the last active admin.");
+                Msg.Show("You can't deactivate the last active admin.");
             RefreshUsers();
             RefreshDashboard();
         };
@@ -195,7 +195,7 @@ internal partial class AdminForm : Form
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            MessageBox.Show("Could not load dashboard: " + ex.Message);
+            Msg.Show("Could not load dashboard: " + ex.Message);
         }
     }
     private void RefreshUsers()
@@ -203,7 +203,7 @@ internal partial class AdminForm : Form
         try { employeesPage.LoadUsers(UserRepository.GetAll()); }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            MessageBox.Show("Could not load users: " + ex.Message);
+            Msg.Show("Could not load users: " + ex.Message);
         }
     }
 
@@ -212,7 +212,7 @@ internal partial class AdminForm : Form
         try { auditPage.LoadEntries(AuditLog.GetRecent()); }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            MessageBox.Show("Could not load audit trail: " + ex.Message);
+            Msg.Show("Could not load audit trail: " + ex.Message);
         }
     }
 }

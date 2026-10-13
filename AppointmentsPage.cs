@@ -19,7 +19,6 @@ internal partial class AppointmentsPage : UserControl
     private bool _suspendFilter;
     private bool _building;
 
-    public event EventHandler? NewAppointmentRequested;
     public event EventHandler<AppointmentItem>? ViewRequested;
     public event EventHandler<AppointmentItem>? EditRequested;
     public event EventHandler<AppointmentItem>? MoreRequested;
@@ -413,12 +412,6 @@ internal partial class AppointmentsPage : UserControl
         BuildRows();
         UpdateFooter();
     }
-
-    private void newAppointmentButton_Click(object? sender, EventArgs e)
-        => NewAppointmentRequested?.Invoke(this, EventArgs.Empty);
-
-    private void newAppointmentTile_Click(object? sender, EventArgs e)
-        => NewAppointmentRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>"View All Appointments": clears the search, filters and week so every appointment is listed.</summary>
     private void viewAllTile_Click(object? sender, EventArgs e)

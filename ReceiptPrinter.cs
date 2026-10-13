@@ -64,7 +64,7 @@ internal static class ReceiptPrinter
 
         if (!hasPdfPrinter)
         {
-            MessageBox.Show(owner, "This PC doesn't have the \"Microsoft Print to PDF\" printer, so the receipt can't be saved as a PDF.\n\n" +
+            Msg.Show(owner, "This PC doesn't have the \"Microsoft Print to PDF\" printer, so the receipt can't be saved as a PDF.\n\n" +
                 "Turn it on under Windows Features, or use Print instead.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return null;
         }

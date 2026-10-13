@@ -25,7 +25,6 @@ internal partial class LookupPage : UserControl
     public event EventHandler? ExportPetsRequested;
 
     /// <summary>"Book" was pressed on a row. The id is the customer to book for.</summary>
-    public event EventHandler<int>? BookRequested;
 
     /// <summary>"View Pets" was pressed on a row. The argument is the CustomerRecord or PetRecord of that row.</summary>
     public event EventHandler<object>? ViewPetsRequested;
