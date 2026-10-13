@@ -5,8 +5,8 @@ using MyApp.Controls;
 namespace MyApp;
 
 /// <summary>
-/// A customer adds a pet in two steps: (1) confirm it's them with a 6-digit code emailed to the address on their
-/// account, (2) enter the pet. The layout lives in AddPetForm.Designer.cs, so it can be edited in Visual Studio's
+/// Customer flow: (1) confirm it's them with a 6-digit code emailed to them, (2) pick one of their pets (Continue opens
+/// the appointment request) or register a new one on the Add New Pet tab. The layout lives in AddPetForm.Designer.cs, so it can be edited in Visual Studio's
 /// designer; this file only holds the behaviour.
 /// </summary>
 internal sealed partial class AddPetForm : Form
@@ -18,13 +18,19 @@ internal sealed partial class AddPetForm : Form
     private readonly string _profileEmail = "";
     private readonly string _profilePhone = "";
 
+    private readonly List<PetCard> _petCards = new();
+    private PetCard? _chosenCard;
+
     private OtpChallenge? _challenge;
     private int _secondsLeft;
     private bool _busy;
     private bool _fillingOtp;
 
-    /// <summary>Set when the pet was saved.</summary>
+    /// <summary>Set when a new pet was saved.</summary>
     public int? CreatedPetId { get; private set; }
+
+    /// <summary>Set when the customer picked an existing pet and pressed Continue: the caller opens the appointment request.</summary>
+    public int? ChosenPetId { get; private set; }
 
     /// <summary>Used by Visual Studio's designer.</summary>
     public AddPetForm()
@@ -41,7 +47,7 @@ internal sealed partial class AddPetForm : Form
         _ownerName = ownerName;
         _loginEmail = loginEmail.Trim();
         emailField.Box.Text = _loginEmail;
-        ownerLabel.Text = "Adding a pet for " + ownerName;
+        ownerLabel.Text = "Registering a new pet for " + ownerName;
 
         try { (_profileEmail, _profilePhone) = EmployeeData.GetCustomerContact(customerId); }
         catch (SqlException) { /* the check below falls back to the login email only */ }
@@ -55,6 +61,14 @@ internal sealed partial class AddPetForm : Form
         verifyButton.Click += (_, _) => VerifyCode();
         resendLabel.Click += (_, _) => { if (_secondsLeft == 0) SendOtp(); };
         savePetButton.Click += (_, _) => SavePet();
+        continueButton.Click += (_, _) => ContinueWithPet();
+        tabMyPets.Click += (_, _) => ShowTab(addNew: false);
+        tabAddPet.Click += (_, _) => OpenNewPetFlow();   // Add New Pet: Pet Details pop-up, then the vaccine step
+        foreach (Control c in new Control[] { newPetCard, newPetPaw, newPetTitle, newPetHint, newPetArrow, newPetArrowLabel })
+        {
+            c.Cursor = Cursors.Hand;
+            c.Click += (_, _) => OpenNewPetFlow();
+        }
         backButton.Click += (_, _) => GoBack();
         resendTimer.Tick += (_, _) => TickResend();
 
@@ -83,7 +97,8 @@ internal sealed partial class AddPetForm : Form
             else if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                if (petPanel.Visible) SavePet();
+                if (VaccineStepVisible) ContinueWithPet();
+                else if (selectPanel.Visible) { if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
                 else if (_otpBoxes.Any(b => b.Focused) || verifyButton.Enabled) VerifyCode();
                 else SendOtp();
             }
@@ -100,11 +115,6 @@ internal sealed partial class AddPetForm : Form
         if (!IsValidEmail(email))
         {
             ShowContactError("Enter a valid email address, like example@email.com.");
-            return;
-        }
-        if (!IsOwnEmail(email))
-        {
-            ShowContactError("That email isn't on your Pawfect account. Use the email you signed in with.");
             return;
         }
         string mobile = mobileField.Value.Trim();
@@ -153,7 +163,7 @@ internal sealed partial class AddPetForm : Form
             _otpBoxes[0].Focus();
             return;
         }
-        ShowPetStep();
+        ShowSelectStep();
     }
 
     private void StartCountdown()
@@ -247,7 +257,76 @@ internal sealed partial class AddPetForm : Form
         verifyButton.Enabled = false;
     }
 
-    // ------------------------------------------------------------------ step 2: the pet
+    // ------------------------------------------------------------------ step 2: select a pet
+
+    private void LoadPets()
+    {
+        foreach (var card in _petCards) { petsFlow.Controls.Remove(card); card.Dispose(); }
+        _petCards.Clear();
+        _chosenCard = null;
+        continueButton.Enabled = false;
+
+        List<PetRecord> pets;
+        try { pets = EmployeeData.GetPets().Where(p => p.CustomerId == _customerId).ToList(); }
+        catch (SqlException ex)
+        {
+            petErrorLabel.Text = "Couldn't load your pets. " + ex.Message;
+            pets = new();
+        }
+
+        int index = 0;
+        foreach (var pet in pets)
+        {
+            var card = new PetCard
+            {
+                Text = pet.Name,
+                Species = pet.Species,
+                Detail = string.Join(" \u2022 ", new[] { pet.Species, pet.Breed }.Where(x => !string.IsNullOrWhiteSpace(x))),
+                Tag = pet.Id,
+            };
+            card.Click += (_, _) => { ChooseCard(card); OpenExistingPetFlow(card); };
+            petsFlow.Controls.Add(card);
+            petsFlow.Controls.SetChildIndex(card, index++);   // keep the "New Pet?" tile last
+            _petCards.Add(card);
+        }
+        if (_petCards.Count == 1) ChooseCard(_petCards[0]);
+    }
+
+    private void ChooseCard(PetCard card)
+    {
+        foreach (var c in _petCards) c.Selected = c == card;
+        _chosenCard = card;
+        continueButton.Enabled = true;
+    }
+
+    private void ShowTab(bool addNew)
+    {
+        tabMyPets.Active = !addNew;
+        tabAddPet.Active = addNew;
+        myPetsView.Visible = !addNew;
+        addPetView.Visible = addNew;
+        continueButton.Visible = !addNew;
+        if (addNew) petNameField.Box.Focus();
+    }
+
+    private void ContinueWithPet()
+    {
+        // on the vaccine step Continue scans the card first, then moves on
+        if (VaccineStepVisible)
+        {
+            if (_vaccineDone) FinishVaccineStep(); else ScanVaccineCard();
+            return;
+        }
+
+        if (_chosenCard?.Tag is not int petId)
+        {
+            return;
+        }
+
+        OpenExistingPetFlow(_chosenCard);   // Pet Details first, then the vaccine step if needed
+    }
+
+    // ---- step 2: add a new pet
 
     private void SavePet()
     {
@@ -272,29 +351,38 @@ internal sealed partial class AddPetForm : Form
 
     private void ShowContactStep()
     {
-        petPanel.Visible = false;
+        HideVaccineStep();
+        selectPanel.Visible = false;
+        continueButton.Visible = false;
         contactPanel.Visible = true;
         titleLabel.Text = "Enter Your Contact Information";
         subtitleLabel.Text = "We'll email you a 6-digit code to confirm it's you.";
         stepContact.State = StepState.Active;
-        stepPet.State = StepState.Pending;
+        stepSelect.State = StepState.Pending;
     }
 
-    private void ShowPetStep()
+    private void ShowSelectStep()
     {
         resendTimer.Stop();
+        HideVaccineStep();
         contactPanel.Visible = false;
-        petPanel.Visible = true;
-        titleLabel.Text = "Tell Us About Your Pet";
-        subtitleLabel.Text = "Add your pet's details to your account.";
+        selectPanel.Visible = true;
+        titleLabel.Text = "Select a Pet";
+        subtitleLabel.Text = "Choose an existing pet or register a new one.";
         stepContact.State = StepState.Done;
-        stepPet.State = StepState.Active;
-        petNameField.Box.Focus();
+        stepSelect.State = StepState.Active;
+        LoadPets();
+        ShowTab(addNew: false);   // no pets yet: the list just shows the "New Pet?" tile
     }
 
     private void GoBack()
     {
-        if (petPanel.Visible)
+        if (VaccineStepVisible)
+        {
+            ShowSelectStep();   // back to the pet list (a pet saved a moment ago is in it now)
+            return;
+        }
+        if (selectPanel.Visible)
         {
             // Back to step 1 means proving it again: the old code is thrown away.
             _challenge = null;
@@ -302,7 +390,7 @@ internal sealed partial class AddPetForm : Form
             foreach (var b in _otpBoxes) b.Enabled = false;
             resendLabel.Visible = false;
             otpHint.Text = "We'll send a 6-digit code to your email.";
-            sendOtpButton.Text = "Send OTP  →";
+            sendOtpButton.Text = "Send OTP  \u2192";
             ShowContactStep();
             return;
         }
@@ -314,11 +402,6 @@ internal sealed partial class AddPetForm : Form
 
     private static bool IsValidEmail(string email)
         => email.Length <= 256 && email.Contains('.') && MailAddress.TryCreate(email, out var a) && a.Address == email;
-
-    /// <summary>The code only goes to an address that belongs to this customer, never to whatever is typed.</summary>
-    private bool IsOwnEmail(string email)
-        => string.Equals(email, _loginEmail, StringComparison.OrdinalIgnoreCase)
-           || (_profileEmail.Length > 0 && string.Equals(email, _profileEmail, StringComparison.OrdinalIgnoreCase));
 
     private bool MobileMatches(string typed)
     {

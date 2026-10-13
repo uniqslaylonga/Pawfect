@@ -43,13 +43,17 @@ internal sealed class VaccinationScanForm : DialogBase
     private byte[]? _cardJpeg;
     private byte[]? _petPhotoJpeg;
 
+    private readonly int? _forPetId;
+
     public int? SavedPetId { get; private set; }
 
-    public VaccinationScanForm(int customerId, string customerName)
+    /// <param name="forPetId">When set, the scan is saved onto this pet instead of matching one by the name on the card.</param>
+    public VaccinationScanForm(int customerId, string customerName, int? forPetId = null)
         : base("Scan Vaccination Card", "Save", "\uE722", "Use the camera or a photo and we'll read it for you")
     {
         _customerId = customerId;
         _customerName = customerName;
+        _forPetId = forPetId;
         _pets = EmployeeData.GetPets().Where(p => p.CustomerId == customerId).ToList();
 
         ClientSize = new Size(700, ClientSize.Height);
@@ -360,8 +364,8 @@ internal sealed class VaccinationScanForm : DialogBase
             weight = w;
         }
 
-        int? existingId = _pets.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))?.Id;
-        if (existingId is not null)
+        int? existingId = _forPetId ?? _pets.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))?.Id;
+        if (existingId is not null && _forPetId is null)
         {
             var answer = Msg.Show(this,
                 $"You already have a pet named {name}\n\nUpdate that pet with this card? Choose No to add a separate pet instead.",

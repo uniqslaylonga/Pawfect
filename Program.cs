@@ -7,6 +7,24 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        // Any crash at start-up or later is shown (and saved to crash.log) instead of the app silently closing.
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException += (_, e) => ReportCrash(e.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => ReportCrash(e.ExceptionObject as Exception);
+
+        try { Run(); }
+        catch (Exception ex) { ReportCrash(ex); }
+    }
+
+    private static void ReportCrash(Exception? ex)
+    {
+        string text = ex?.ToString() ?? "Unknown error";
+        try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "crash.log"), DateTime.Now + "\n\n" + text); } catch { /* best effort */ }
+        MessageBox.Show(text, "Pawfect crashed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
+
+    private static void Run()
+    {
         ApplicationConfiguration.Initialize();
 
         // First run: the Users table has no admin yet, so create one before showing the login.

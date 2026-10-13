@@ -18,16 +18,8 @@ namespace MyApp
 
         private void InitializeComponent()
         {
-            var resources = new System.ComponentModel.ComponentResourceManager(typeof(LoginForm));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LoginForm));
             backdrop = new MyApp.Controls.BackdropPanel();
-            logoBadge = new MyApp.Controls.PawBadge();
-            brandLabel = new Label();
-            taglineLabel = new Label();
-            welcomeLabel = new Label();
-            introLabel = new Label();
-            petsPicture = new PictureBox();
-            heartLabel = new Label();
-            scriptLabel = new Label();
             card = new MyApp.Controls.CardPanel();
             cardBadge = new MyApp.Controls.PawBadge();
             titleLabel = new Label();
@@ -41,9 +33,17 @@ namespace MyApp
             signInButton = new MyApp.Controls.PrimaryButton();
             signUpPrompt = new Label();
             signUpLink = new Label();
+            scriptLabel = new Label();
+            heartLabel = new Label();
+            petsPicture = new PictureBox();
+            introLabel = new Label();
+            welcomeLabel = new Label();
+            taglineLabel = new Label();
+            brandLabel = new Label();
+            logoBadge = new MyApp.Controls.PawBadge();
             backdrop.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)petsPicture).BeginInit();
             card.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)petsPicture).BeginInit();
             SuspendLayout();
             // 
             // backdrop
@@ -61,111 +61,12 @@ namespace MyApp
             backdrop.GradientEnd = Color.FromArgb(225, 237, 254);
             backdrop.GradientStart = Color.FromArgb(242, 248, 255);
             backdrop.Location = new Point(0, 0);
+            backdrop.Margin = new Padding(0);
             backdrop.Name = "backdrop";
             backdrop.PawColor = Color.FromArgb(205, 224, 250);
             backdrop.ShadowTarget = card;
             backdrop.Size = new Size(1000, 620);
             backdrop.TabIndex = 0;
-            // 
-            // logoBadge
-            // 
-            logoBadge.BackColor = Color.Transparent;
-            logoBadge.FillColor = Color.FromArgb(58, 123, 213);
-            logoBadge.Location = new Point(58, 58);
-            logoBadge.Name = "logoBadge";
-            logoBadge.PawColor = Color.White;
-            logoBadge.Radius = 12;
-            logoBadge.Size = new Size(42, 42);
-            logoBadge.TabIndex = 0;
-            logoBadge.TabStop = false;
-            // 
-            // brandLabel
-            // 
-            brandLabel.BackColor = Color.Transparent;
-            brandLabel.Font = new Font("Segoe UI", 18F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            brandLabel.ForeColor = Color.FromArgb(19, 41, 75);
-            brandLabel.Location = new Point(108, 54);
-            brandLabel.Name = "brandLabel";
-            brandLabel.Size = new Size(180, 32);
-            brandLabel.TabIndex = 1;
-            brandLabel.Text = "Pawfect";
-            brandLabel.TextAlign = ContentAlignment.MiddleLeft;
-            brandLabel.UseMnemonic = false;
-            // 
-            // taglineLabel
-            // 
-            taglineLabel.BackColor = Color.Transparent;
-            taglineLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            taglineLabel.ForeColor = Color.FromArgb(58, 123, 213);
-            taglineLabel.Location = new Point(110, 87);
-            taglineLabel.Name = "taglineLabel";
-            taglineLabel.Size = new Size(260, 16);
-            taglineLabel.TabIndex = 2;
-            taglineLabel.Text = "GROOMING • HEALTH • HAPPINESS";
-            taglineLabel.TextAlign = ContentAlignment.MiddleLeft;
-            taglineLabel.UseMnemonic = false;
-            // 
-            // welcomeLabel
-            // 
-            welcomeLabel.BackColor = Color.Transparent;
-            welcomeLabel.Font = new Font("Segoe UI", 30F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            welcomeLabel.ForeColor = Color.FromArgb(19, 41, 75);
-            welcomeLabel.Location = new Point(56, 126);
-            welcomeLabel.Name = "welcomeLabel";
-            welcomeLabel.Size = new Size(440, 60);
-            welcomeLabel.TabIndex = 3;
-            welcomeLabel.Text = "Welcome Back!";
-            welcomeLabel.TextAlign = ContentAlignment.MiddleLeft;
-            welcomeLabel.UseMnemonic = false;
-            // 
-            // introLabel
-            // 
-            introLabel.BackColor = Color.Transparent;
-            introLabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            introLabel.ForeColor = Color.FromArgb(80, 96, 122);
-            introLabel.Location = new Point(60, 190);
-            introLabel.Name = "introLabel";
-            introLabel.Size = new Size(380, 64);
-            introLabel.TabIndex = 4;
-            introLabel.Text = "Log in to keep your pet's health and happiness on track.";
-            introLabel.UseMnemonic = false;
-            // 
-            // petsPicture
-            // 
-            petsPicture.BackColor = Color.Transparent;
-            petsPicture.Image = (Image)resources.GetObject("petsPicture.Image");
-            petsPicture.Location = new Point(160, 296);
-            petsPicture.Name = "petsPicture";
-            petsPicture.Size = new Size(190, 190);
-            petsPicture.SizeMode = PictureBoxSizeMode.Zoom;
-            petsPicture.TabIndex = 5;
-            petsPicture.TabStop = false;
-            // 
-            // heartLabel
-            // 
-            heartLabel.BackColor = Color.Transparent;
-            heartLabel.Font = new Font("Segoe UI Symbol", 16F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            heartLabel.ForeColor = Color.FromArgb(58, 123, 213);
-            heartLabel.Location = new Point(235, 494);
-            heartLabel.Name = "heartLabel";
-            heartLabel.Size = new Size(40, 32);
-            heartLabel.TabIndex = 6;
-            heartLabel.Text = "♡";
-            heartLabel.TextAlign = ContentAlignment.MiddleCenter;
-            heartLabel.UseMnemonic = false;
-            // 
-            // scriptLabel
-            // 
-            scriptLabel.BackColor = Color.Transparent;
-            scriptLabel.Font = new Font("Segoe Script", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            scriptLabel.ForeColor = Color.FromArgb(47, 107, 200);
-            scriptLabel.Location = new Point(105, 526);
-            scriptLabel.Name = "scriptLabel";
-            scriptLabel.Size = new Size(300, 36);
-            scriptLabel.TabIndex = 7;
-            scriptLabel.Text = "Happy Pets, Happy People ♥";
-            scriptLabel.TextAlign = ContentAlignment.MiddleCenter;
-            scriptLabel.UseMnemonic = false;
             // 
             // card
             // 
@@ -298,7 +199,7 @@ namespace MyApp
             rememberCheck.ForeColor = Color.FromArgb(68, 83, 106);
             rememberCheck.Location = new Point(40, 314);
             rememberCheck.Name = "rememberCheck";
-            rememberCheck.Size = new Size(109, 19);
+            rememberCheck.Size = new Size(104, 19);
             rememberCheck.TabIndex = 2;
             rememberCheck.Text = "Remember me";
             rememberCheck.UseVisualStyleBackColor = false;
@@ -353,6 +254,106 @@ namespace MyApp
             signUpLink.TextAlign = ContentAlignment.MiddleLeft;
             signUpLink.UseMnemonic = false;
             // 
+            // scriptLabel
+            // 
+            scriptLabel.BackColor = Color.Transparent;
+            scriptLabel.Font = new Font("Segoe Script", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            scriptLabel.ForeColor = Color.FromArgb(47, 107, 200);
+            scriptLabel.Location = new Point(105, 526);
+            scriptLabel.Name = "scriptLabel";
+            scriptLabel.Size = new Size(300, 36);
+            scriptLabel.TabIndex = 7;
+            scriptLabel.Text = "Happy Pets, Happy People ♥";
+            scriptLabel.TextAlign = ContentAlignment.MiddleCenter;
+            scriptLabel.UseMnemonic = false;
+            // 
+            // heartLabel
+            // 
+            heartLabel.BackColor = Color.Transparent;
+            heartLabel.Font = new Font("Segoe UI Symbol", 16F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            heartLabel.ForeColor = Color.FromArgb(58, 123, 213);
+            heartLabel.Location = new Point(235, 494);
+            heartLabel.Name = "heartLabel";
+            heartLabel.Size = new Size(40, 32);
+            heartLabel.TabIndex = 6;
+            heartLabel.Text = "♡";
+            heartLabel.TextAlign = ContentAlignment.MiddleCenter;
+            heartLabel.UseMnemonic = false;
+            // 
+            // petsPicture
+            // 
+            petsPicture.BackColor = Color.Transparent;
+            petsPicture.Image = (Image)resources.GetObject("petsPicture.Image");
+            petsPicture.Location = new Point(84, 248);
+            petsPicture.Name = "petsPicture";
+            petsPicture.Size = new Size(286, 251);
+            petsPicture.SizeMode = PictureBoxSizeMode.Zoom;
+            petsPicture.TabIndex = 5;
+            petsPicture.TabStop = false;
+            // 
+            // introLabel
+            // 
+            introLabel.BackColor = Color.Transparent;
+            introLabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            introLabel.ForeColor = Color.FromArgb(80, 96, 122);
+            introLabel.Location = new Point(60, 190);
+            introLabel.Name = "introLabel";
+            introLabel.Size = new Size(380, 64);
+            introLabel.TabIndex = 4;
+            introLabel.Text = "Log in to keep your pet's health and happiness on track.";
+            introLabel.UseMnemonic = false;
+            // 
+            // welcomeLabel
+            // 
+            welcomeLabel.BackColor = Color.Transparent;
+            welcomeLabel.Font = new Font("Segoe UI", 30F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            welcomeLabel.ForeColor = Color.FromArgb(19, 41, 75);
+            welcomeLabel.Location = new Point(56, 126);
+            welcomeLabel.Name = "welcomeLabel";
+            welcomeLabel.Size = new Size(440, 60);
+            welcomeLabel.TabIndex = 3;
+            welcomeLabel.Text = "Welcome Back!";
+            welcomeLabel.TextAlign = ContentAlignment.MiddleLeft;
+            welcomeLabel.UseMnemonic = false;
+            // 
+            // taglineLabel
+            // 
+            taglineLabel.BackColor = Color.Transparent;
+            taglineLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            taglineLabel.ForeColor = Color.FromArgb(58, 123, 213);
+            taglineLabel.Location = new Point(110, 87);
+            taglineLabel.Name = "taglineLabel";
+            taglineLabel.Size = new Size(260, 16);
+            taglineLabel.TabIndex = 2;
+            taglineLabel.Text = "GROOMING • HEALTH • HAPPINESS";
+            taglineLabel.TextAlign = ContentAlignment.MiddleLeft;
+            taglineLabel.UseMnemonic = false;
+            // 
+            // brandLabel
+            // 
+            brandLabel.BackColor = Color.Transparent;
+            brandLabel.Font = new Font("Segoe UI", 18F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            brandLabel.ForeColor = Color.FromArgb(19, 41, 75);
+            brandLabel.Location = new Point(108, 54);
+            brandLabel.Name = "brandLabel";
+            brandLabel.Size = new Size(180, 32);
+            brandLabel.TabIndex = 1;
+            brandLabel.Text = "Pawfect";
+            brandLabel.TextAlign = ContentAlignment.MiddleLeft;
+            brandLabel.UseMnemonic = false;
+            // 
+            // logoBadge
+            // 
+            logoBadge.BackColor = Color.Transparent;
+            logoBadge.FillColor = Color.FromArgb(58, 123, 213);
+            logoBadge.Location = new Point(58, 58);
+            logoBadge.Name = "logoBadge";
+            logoBadge.PawColor = Color.White;
+            logoBadge.Radius = 12;
+            logoBadge.Size = new Size(42, 42);
+            logoBadge.TabIndex = 0;
+            logoBadge.TabStop = false;
+            // 
             // LoginForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
@@ -369,9 +370,9 @@ namespace MyApp
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Pawfect - Sign in";
             backdrop.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)petsPicture).EndInit();
             card.ResumeLayout(false);
             card.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)petsPicture).EndInit();
             ResumeLayout(false);
         }
 

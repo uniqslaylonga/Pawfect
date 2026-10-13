@@ -1,7 +1,10 @@
 using System.Net;
-using System.Net.Mail;
+using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 
 namespace MyApp;
 
@@ -60,22 +63,41 @@ internal static class EmailOtp
         var salt = RandomNumberGenerator.GetBytes(16);
         var challenge = new OtpChallenge(toEmail.Trim(), salt, Hash(code, salt), DateTime.UtcNow + Lifetime);
 
-        try
+        MimeMessage message;
+        try { message = BuildMessage(settings, challenge.Email, recipientName, code); }
+        catch (ParseException ex) { throw new OtpException("An email address isn't valid - check the user and from lines in smtp.config.", ex); }
+
+        // Gmail accepts 587 (STARTTLS) and 465 (SSL). Some networks block one of them, so try the other as a fallback.
+        var ports = settings.Port == 465 ? new[] { 465, 587 } : new[] { settings.Port, 465 };
+        Exception? last = null;
+        foreach (int port in ports.Distinct())
         {
-            using var message = BuildMessage(settings, challenge.Email, recipientName, code);
-            using var client = new SmtpClient(settings.Host, settings.Port)
+            try
             {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(settings.User, settings.Password),
-                Timeout = 20_000,
-            };
-            await client.SendMailAsync(message).ConfigureAwait(false);
+                using var client = new SmtpClient { Timeout = 15_000 };
+                await client.ConnectAsync(settings.Host, port,
+                    port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls);
+                await client.AuthenticateAsync(settings.User, settings.Password);
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+                message.Dispose();
+                return challenge;
+            }
+            catch (MailKit.Security.AuthenticationException ex)
+            {
+                throw new OtpException($"The mail server refused the login - check the user and app password in smtp.config.\r\n({ex.Message})", ex);
+            }
+            catch (Exception ex) when (ex is SocketException or IOException or MailKit.ProtocolException or MailKit.CommandException or MailKit.ServiceNotConnectedException
+                                          or MailKit.Security.SslHandshakeException
+                                          or System.Security.Authentication.AuthenticationException
+                                          or TimeoutException or OperationCanceledException or InvalidOperationException)
+            {
+                if (ex.Message.Contains("5.7.", StringComparison.Ordinal) || ex.Message.Contains("not accepted", StringComparison.OrdinalIgnoreCase))
+                    throw new OtpException($"Gmail refused the login - the email or app password in smtp.config is wrong.\r\n({ex.Message})", ex);
+                last = ex;   // try the next port
+            }
         }
-        catch (Exception ex) when (ex is SmtpException or InvalidOperationException or FormatException or IOException)
-        {
-            throw new OtpException("We couldn't send the email. Check your internet connection and try again.", ex);
-        }
-        return challenge;
+        throw new OtpException($"We couldn't reach the mail server. Check your internet connection, or try another network.\r\n({last?.Message})", last);
     }
 
     public static void Verify(OtpChallenge challenge, string typed)
@@ -101,7 +123,7 @@ internal static class EmailOtp
 
     // ------------------------------------------------------------------ the email itself
 
-    private static MailMessage BuildMessage(SmtpSettings s, string to, string name, string code)
+    private static MimeMessage BuildMessage(SmtpSettings s, string to, string name, string code)
     {
         string first = WebUtility.HtmlEncode(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "there");
         int minutes = (int)Lifetime.TotalMinutes;
@@ -134,16 +156,11 @@ internal static class EmailOtp
  </td></tr>
 </table></body></html>";
 
-        var message = new MailMessage
-        {
-            From = new MailAddress(s.From),
-            Subject = $"{code} is your Pawfect verification code",
-            SubjectEncoding = Encoding.UTF8,
-            BodyEncoding = Encoding.UTF8,
-            Body = text,
-        };
-        message.To.Add(new MailAddress(to));
-        message.AlternateViews.Add(AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html"));
+        var message = new MimeMessage();
+        message.From.Add(MailboxAddress.Parse(s.From));
+        message.To.Add(MailboxAddress.Parse(to));
+        message.Subject = $"{code} is your Pawfect verification code";
+        message.Body = new BodyBuilder { TextBody = text, HtmlBody = html }.ToMessageBody();
         return message;
     }
 

@@ -164,19 +164,19 @@ namespace MyApp
             // 
             mainGrid.BackColor = Color.FromArgb(243, 247, 252);
             mainGrid.ColumnCount = 3;
-            mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 370F));
+            mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 296F));
             mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 370F));
+            mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 296F));
             mainGrid.Controls.Add(leftColumn, 0, 0);
             mainGrid.Controls.Add(cartCard, 1, 0);
             mainGrid.Controls.Add(paymentCard, 2, 0);
             mainGrid.Dock = DockStyle.Fill;
-            mainGrid.Location = new Point(25, 100);
+            mainGrid.Location = new Point(20, 80);
             mainGrid.Margin = new Padding(0);
             mainGrid.Name = "mainGrid";
             mainGrid.RowCount = 1;
             mainGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            mainGrid.Size = new Size(1118, 785);
+            mainGrid.Size = new Size(960, 810);
             mainGrid.TabIndex = 0;
             // 
             // leftColumn
@@ -188,12 +188,12 @@ namespace MyApp
             leftColumn.Controls.Add(itemsCard, 0, 1);
             leftColumn.Dock = DockStyle.Fill;
             leftColumn.Location = new Point(0, 0);
-            leftColumn.Margin = new Padding(0, 0, 20, 0);
+            leftColumn.Margin = new Padding(0, 0, 16, 0);
             leftColumn.Name = "leftColumn";
             leftColumn.RowCount = 2;
-            leftColumn.RowStyles.Add(new RowStyle(SizeType.Absolute, 365F));
+            leftColumn.RowStyles.Add(new RowStyle(SizeType.Absolute, 292F));
             leftColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            leftColumn.Size = new Size(350, 785);
+            leftColumn.Size = new Size(280, 810);
             leftColumn.TabIndex = 0;
             // 
             // select1Card
@@ -204,11 +204,11 @@ namespace MyApp
             select1Card.Dock = DockStyle.Fill;
             select1Card.FillColor = Color.White;
             select1Card.Location = new Point(0, 0);
-            select1Card.Margin = new Padding(0, 0, 0, 20);
+            select1Card.Margin = new Padding(0, 0, 0, 16);
             select1Card.Name = "select1Card";
-            select1Card.Padding = new Padding(20, 18, 20, 18);
+            select1Card.Padding = new Padding(16, 14, 16, 14);
             select1Card.Radius = 10;
-            select1Card.Size = new Size(350, 345);
+            select1Card.Size = new Size(280, 276);
             select1Card.TabIndex = 0;
             // 
             // select1Grid
@@ -221,15 +221,15 @@ namespace MyApp
             select1Grid.Controls.Add(customerSearch, 0, 2);
             select1Grid.Controls.Add(customerInfoHost, 0, 3);
             select1Grid.Dock = DockStyle.Fill;
-            select1Grid.Location = new Point(20, 18);
+            select1Grid.Location = new Point(16, 14);
             select1Grid.Margin = new Padding(0);
             select1Grid.Name = "select1Grid";
             select1Grid.RowCount = 4;
-            select1Grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F));
-            select1Grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            select1Grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
+            select1Grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            select1Grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            select1Grid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
             select1Grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            select1Grid.Size = new Size(310, 309);
+            select1Grid.Size = new Size(248, 248);
             select1Grid.TabIndex = 0;
             // 
             // select1Title
@@ -238,10 +238,9 @@ namespace MyApp
             select1Title.Dock = DockStyle.Fill;
             select1Title.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             select1Title.ForeColor = Color.FromArgb(31, 42, 60);
-            select1Title.Location = new Point(4, 0);
-            select1Title.Margin = new Padding(4, 0, 4, 0);
+            select1Title.Location = new Point(3, 0);
             select1Title.Name = "select1Title";
-            select1Title.Size = new Size(302, 35);
+            select1Title.Size = new Size(242, 28);
             select1Title.TabIndex = 0;
             select1Title.Text = "1. Select Customer / Appointment";
             select1Title.TextAlign = ContentAlignment.MiddleLeft;
@@ -252,8 +251,8 @@ namespace MyApp
             customerMode.BackColor = Color.White;
             customerMode.Dock = DockStyle.Fill;
             customerMode.Font = new Font("Segoe UI", 8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            customerMode.Location = new Point(0, 35);
-            customerMode.Margin = new Padding(0, 0, 0, 12);
+            customerMode.Location = new Point(0, 28);
+            customerMode.Margin = new Padding(0, 0, 0, 10);
             customerMode.Name = "customerMode";
             customerMode.Segments = new string[]
     {
@@ -261,7 +260,7 @@ namespace MyApp
     "From Appointment"
     };
             customerMode.SelectedIndex = 1;
-            customerMode.Size = new Size(310, 46);
+            customerMode.Size = new Size(248, 36);
             customerMode.TabIndex = 1;
             customerMode.SelectedIndexChanged += customerMode_SelectedIndexChanged;
             // 
@@ -272,13 +271,13 @@ namespace MyApp
             customerSearch.Dock = DockStyle.Fill;
             customerSearch.FillColor = Color.White;
             customerSearch.Glyph = "";
-            customerSearch.Location = new Point(0, 93);
-            customerSearch.Margin = new Padding(0, 0, 0, 12);
+            customerSearch.Location = new Point(0, 74);
+            customerSearch.Margin = new Padding(0, 0, 0, 10);
             customerSearch.Name = "customerSearch";
-            customerSearch.Padding = new Padding(12, 4, 12, 4);
+            customerSearch.Padding = new Padding(10, 3, 10, 3);
             customerSearch.Placeholder = "Search customer or appointment...";
             customerSearch.Radius = 8;
-            customerSearch.Size = new Size(310, 46);
+            customerSearch.Size = new Size(248, 36);
             customerSearch.TabIndex = 2;
             // 
             // customerInfoHost
@@ -288,10 +287,10 @@ namespace MyApp
             customerInfoHost.Controls.Add(customerResults);
             customerInfoHost.Controls.Add(customerCard);
             customerInfoHost.Dock = DockStyle.Fill;
-            customerInfoHost.Location = new Point(0, 151);
+            customerInfoHost.Location = new Point(0, 120);
             customerInfoHost.Margin = new Padding(0);
             customerInfoHost.Name = "customerInfoHost";
-            customerInfoHost.Size = new Size(310, 158);
+            customerInfoHost.Size = new Size(248, 128);
             customerInfoHost.TabIndex = 3;
             // 
             // customerEmpty
@@ -303,9 +302,8 @@ namespace MyApp
             customerEmpty.Glyph = "";
             customerEmpty.Hint = "Search above to attach an appointment to this sale.";
             customerEmpty.Location = new Point(0, 0);
-            customerEmpty.Margin = new Padding(4, 4, 4, 4);
             customerEmpty.Name = "customerEmpty";
-            customerEmpty.Size = new Size(310, 158);
+            customerEmpty.Size = new Size(248, 128);
             customerEmpty.TabIndex = 0;
             customerEmpty.TabStop = false;
             customerEmpty.Title = "No customer selected";
@@ -316,9 +314,8 @@ namespace MyApp
             customerResults.BackColor = Color.White;
             customerResults.Dock = DockStyle.Fill;
             customerResults.Location = new Point(0, 0);
-            customerResults.Margin = new Padding(4, 4, 4, 4);
             customerResults.Name = "customerResults";
-            customerResults.Size = new Size(310, 158);
+            customerResults.Size = new Size(248, 128);
             customerResults.TabIndex = 1;
             // 
             // customerCard
@@ -326,9 +323,8 @@ namespace MyApp
             customerCard.BackColor = Color.White;
             customerCard.Dock = DockStyle.Fill;
             customerCard.Location = new Point(0, 0);
-            customerCard.Margin = new Padding(4, 4, 4, 4);
             customerCard.Name = "customerCard";
-            customerCard.Size = new Size(310, 158);
+            customerCard.Size = new Size(248, 128);
             customerCard.TabIndex = 2;
             customerCard.TabStop = false;
             // 
@@ -339,12 +335,12 @@ namespace MyApp
             itemsCard.CornerColor = Color.FromArgb(243, 247, 252);
             itemsCard.Dock = DockStyle.Fill;
             itemsCard.FillColor = Color.White;
-            itemsCard.Location = new Point(0, 365);
+            itemsCard.Location = new Point(0, 292);
             itemsCard.Margin = new Padding(0);
             itemsCard.Name = "itemsCard";
-            itemsCard.Padding = new Padding(20, 18, 20, 18);
+            itemsCard.Padding = new Padding(16, 14, 16, 14);
             itemsCard.Radius = 10;
-            itemsCard.Size = new Size(350, 420);
+            itemsCard.Size = new Size(280, 518);
             itemsCard.TabIndex = 1;
             // 
             // itemsGrid
@@ -358,16 +354,16 @@ namespace MyApp
             itemsGrid.Controls.Add(chipsFlow, 0, 3);
             itemsGrid.Controls.Add(catalogList, 0, 4);
             itemsGrid.Dock = DockStyle.Fill;
-            itemsGrid.Location = new Point(20, 18);
+            itemsGrid.Location = new Point(16, 14);
             itemsGrid.Margin = new Padding(0);
             itemsGrid.Name = "itemsGrid";
             itemsGrid.RowCount = 5;
-            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 35F));
-            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
             itemsGrid.RowStyles.Add(new RowStyle());
             itemsGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            itemsGrid.Size = new Size(310, 384);
+            itemsGrid.Size = new Size(248, 490);
             itemsGrid.TabIndex = 0;
             // 
             // itemsTitle
@@ -376,10 +372,9 @@ namespace MyApp
             itemsTitle.Dock = DockStyle.Fill;
             itemsTitle.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             itemsTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            itemsTitle.Location = new Point(4, 0);
-            itemsTitle.Margin = new Padding(4, 0, 4, 0);
+            itemsTitle.Location = new Point(3, 0);
             itemsTitle.Name = "itemsTitle";
-            itemsTitle.Size = new Size(302, 35);
+            itemsTitle.Size = new Size(242, 28);
             itemsTitle.TabIndex = 0;
             itemsTitle.Text = "2. Add Items / Services";
             itemsTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -390,15 +385,15 @@ namespace MyApp
             catalogTabs.BackColor = Color.White;
             catalogTabs.Dock = DockStyle.Fill;
             catalogTabs.Font = new Font("Segoe UI", 8F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            catalogTabs.Location = new Point(0, 35);
-            catalogTabs.Margin = new Padding(0, 0, 0, 12);
+            catalogTabs.Location = new Point(0, 28);
+            catalogTabs.Margin = new Padding(0, 0, 0, 10);
             catalogTabs.Name = "catalogTabs";
             catalogTabs.Segments = new string[]
     {
     "Retail Items",
     "Services (Optional)"
     };
-            catalogTabs.Size = new Size(310, 46);
+            catalogTabs.Size = new Size(248, 36);
             catalogTabs.TabIndex = 1;
             catalogTabs.SelectedIndexChanged += catalogTabs_SelectedIndexChanged;
             // 
@@ -407,16 +402,16 @@ namespace MyApp
             catalogSearchRow.BackColor = Color.White;
             catalogSearchRow.ColumnCount = 2;
             catalogSearchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            catalogSearchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 48F));
+            catalogSearchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
             catalogSearchRow.Controls.Add(catalogSearch, 0, 0);
             catalogSearchRow.Controls.Add(resetFiltersButton, 1, 0);
             catalogSearchRow.Dock = DockStyle.Fill;
-            catalogSearchRow.Location = new Point(0, 93);
-            catalogSearchRow.Margin = new Padding(0, 0, 0, 12);
+            catalogSearchRow.Location = new Point(0, 74);
+            catalogSearchRow.Margin = new Padding(0, 0, 0, 10);
             catalogSearchRow.Name = "catalogSearchRow";
             catalogSearchRow.RowCount = 1;
             catalogSearchRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            catalogSearchRow.Size = new Size(310, 48);
+            catalogSearchRow.Size = new Size(248, 38);
             catalogSearchRow.TabIndex = 2;
             // 
             // catalogSearch
@@ -427,12 +422,12 @@ namespace MyApp
             catalogSearch.FillColor = Color.White;
             catalogSearch.Glyph = "";
             catalogSearch.Location = new Point(0, 0);
-            catalogSearch.Margin = new Padding(0, 0, 10, 0);
+            catalogSearch.Margin = new Padding(0, 0, 8, 0);
             catalogSearch.Name = "catalogSearch";
-            catalogSearch.Padding = new Padding(12, 4, 12, 4);
+            catalogSearch.Padding = new Padding(10, 3, 10, 3);
             catalogSearch.Placeholder = "Search by product name or code...";
             catalogSearch.Radius = 8;
-            catalogSearch.Size = new Size(252, 48);
+            catalogSearch.Size = new Size(202, 38);
             catalogSearch.TabIndex = 0;
             // 
             // resetFiltersButton
@@ -442,10 +437,10 @@ namespace MyApp
             resetFiltersButton.Font = new Font("Segoe UI", 8.5F);
             resetFiltersButton.Glyph = "";
             resetFiltersButton.Kind = MyApp.Controls.ButtonKind.Primary;
-            resetFiltersButton.Location = new Point(262, 0);
+            resetFiltersButton.Location = new Point(210, 0);
             resetFiltersButton.Margin = new Padding(0);
             resetFiltersButton.Name = "resetFiltersButton";
-            resetFiltersButton.Size = new Size(48, 48);
+            resetFiltersButton.Size = new Size(38, 38);
             resetFiltersButton.TabIndex = 1;
             resetFiltersButton.Click += resetFiltersButton_Click;
             // 
@@ -456,10 +451,10 @@ namespace MyApp
             chipsFlow.BackColor = Color.White;
             chipsFlow.Controls.Add(allChip);
             chipsFlow.Dock = DockStyle.Fill;
-            chipsFlow.Location = new Point(0, 153);
-            chipsFlow.Margin = new Padding(0, 0, 0, 5);
+            chipsFlow.Location = new Point(0, 122);
+            chipsFlow.Margin = new Padding(0, 0, 0, 4);
             chipsFlow.Name = "chipsFlow";
-            chipsFlow.Size = new Size(310, 40);
+            chipsFlow.Size = new Size(248, 32);
             chipsFlow.TabIndex = 3;
             // 
             // allChip
@@ -468,9 +463,9 @@ namespace MyApp
             allChip.BackColor = Color.White;
             allChip.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             allChip.Location = new Point(0, 0);
-            allChip.Margin = new Padding(0, 0, 8, 8);
+            allChip.Margin = new Padding(0, 0, 6, 6);
             allChip.Name = "allChip";
-            allChip.Size = new Size(64, 32);
+            allChip.Size = new Size(45, 26);
             allChip.TabIndex = 0;
             allChip.Text = "All";
             allChip.Click += categoryChip_Click;
@@ -481,10 +476,9 @@ namespace MyApp
             catalogList.BackColor = Color.White;
             catalogList.Controls.Add(catalogEmpty);
             catalogList.Dock = DockStyle.Fill;
-            catalogList.Location = new Point(4, 202);
-            catalogList.Margin = new Padding(4, 4, 4, 4);
+            catalogList.Location = new Point(3, 161);
             catalogList.Name = "catalogList";
-            catalogList.Size = new Size(302, 178);
+            catalogList.Size = new Size(242, 326);
             catalogList.TabIndex = 4;
             // 
             // catalogEmpty
@@ -496,9 +490,8 @@ namespace MyApp
             catalogEmpty.Glyph = "";
             catalogEmpty.Hint = "Products will show up here once they are added.";
             catalogEmpty.Location = new Point(0, 0);
-            catalogEmpty.Margin = new Padding(4, 4, 4, 4);
             catalogEmpty.Name = "catalogEmpty";
-            catalogEmpty.Size = new Size(302, 178);
+            catalogEmpty.Size = new Size(242, 326);
             catalogEmpty.TabIndex = 0;
             catalogEmpty.TabStop = false;
             catalogEmpty.Title = "No products yet";
@@ -510,12 +503,12 @@ namespace MyApp
             cartCard.CornerColor = Color.FromArgb(243, 247, 252);
             cartCard.Dock = DockStyle.Fill;
             cartCard.FillColor = Color.White;
-            cartCard.Location = new Point(370, 0);
-            cartCard.Margin = new Padding(0, 0, 20, 0);
+            cartCard.Location = new Point(296, 0);
+            cartCard.Margin = new Padding(0, 0, 16, 0);
             cartCard.Name = "cartCard";
-            cartCard.Padding = new Padding(20, 18, 20, 18);
+            cartCard.Padding = new Padding(16, 14, 16, 14);
             cartCard.Radius = 10;
-            cartCard.Size = new Size(358, 785);
+            cartCard.Size = new Size(352, 810);
             cartCard.TabIndex = 1;
             // 
             // cartGrid
@@ -529,16 +522,16 @@ namespace MyApp
             cartGrid.Controls.Add(notesPanel, 0, 3);
             cartGrid.Controls.Add(summaryPanel, 0, 4);
             cartGrid.Dock = DockStyle.Fill;
-            cartGrid.Location = new Point(20, 18);
+            cartGrid.Location = new Point(16, 14);
             cartGrid.Margin = new Padding(0);
             cartGrid.Name = "cartGrid";
             cartGrid.RowCount = 5;
-            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
-            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
+            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
             cartGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 140F));
-            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 145F));
-            cartGrid.Size = new Size(318, 749);
+            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 112F));
+            cartGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 116F));
+            cartGrid.Size = new Size(320, 782);
             cartGrid.TabIndex = 0;
             // 
             // cartHeader
@@ -550,8 +543,8 @@ namespace MyApp
             cartHeader.Location = new Point(0, 0);
             cartHeader.Margin = new Padding(0);
             cartHeader.Name = "cartHeader";
-            cartHeader.Padding = new Padding(0, 5, 0, 5);
-            cartHeader.Size = new Size(318, 50);
+            cartHeader.Padding = new Padding(0, 4, 0, 4);
+            cartHeader.Size = new Size(320, 40);
             cartHeader.TabIndex = 0;
             // 
             // cartTitle
@@ -560,10 +553,9 @@ namespace MyApp
             cartTitle.Dock = DockStyle.Fill;
             cartTitle.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             cartTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            cartTitle.Location = new Point(0, 5);
-            cartTitle.Margin = new Padding(4, 0, 4, 0);
+            cartTitle.Location = new Point(0, 4);
             cartTitle.Name = "cartTitle";
-            cartTitle.Size = new Size(193, 40);
+            cartTitle.Size = new Size(220, 32);
             cartTitle.TabIndex = 0;
             cartTitle.Text = "3. Transaction Cart";
             cartTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -576,10 +568,9 @@ namespace MyApp
             clearCartButton.Font = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             clearCartButton.Glyph = "";
             clearCartButton.Kind = MyApp.Controls.ButtonKind.Danger;
-            clearCartButton.Location = new Point(193, 5);
-            clearCartButton.Margin = new Padding(4, 4, 4, 4);
+            clearCartButton.Location = new Point(220, 4);
             clearCartButton.Name = "clearCartButton";
-            clearCartButton.Size = new Size(125, 40);
+            clearCartButton.Size = new Size(100, 32);
             clearCartButton.TabIndex = 1;
             clearCartButton.Text = "Clear Cart";
             clearCartButton.Click += clearCartButton_Click;
@@ -589,10 +580,10 @@ namespace MyApp
             cartColumns.BackColor = Color.FromArgb(246, 248, 251);
             cartColumns.Controls.Add(cartColumnsGrid);
             cartColumns.Dock = DockStyle.Fill;
-            cartColumns.Location = new Point(0, 50);
+            cartColumns.Location = new Point(0, 40);
             cartColumns.Margin = new Padding(0);
             cartColumns.Name = "cartColumns";
-            cartColumns.Size = new Size(318, 42);
+            cartColumns.Size = new Size(320, 34);
             cartColumns.TabIndex = 1;
             // 
             // cartColumnsGrid
@@ -604,7 +595,7 @@ namespace MyApp
             cartColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14F));
             cartColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16F));
             cartColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            cartColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 39F));
+            cartColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 34F));
             cartColumnsGrid.Controls.Add(colCartItem, 0, 0);
             cartColumnsGrid.Controls.Add(colCartType, 1, 0);
             cartColumnsGrid.Controls.Add(colCartPrice, 2, 0);
@@ -616,8 +607,8 @@ namespace MyApp
             cartColumnsGrid.Name = "cartColumnsGrid";
             cartColumnsGrid.RowCount = 1;
             cartColumnsGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            cartColumnsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            cartColumnsGrid.Size = new Size(318, 42);
+            cartColumnsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            cartColumnsGrid.Size = new Size(320, 34);
             cartColumnsGrid.TabIndex = 0;
             cartColumnsGrid.Paint += cartColumnsGrid_Paint;
             // 
@@ -630,8 +621,8 @@ namespace MyApp
             colCartItem.Location = new Point(0, 0);
             colCartItem.Margin = new Padding(0);
             colCartItem.Name = "colCartItem";
-            colCartItem.Padding = new Padding(5, 0, 0, 0);
-            colCartItem.Size = new Size(83, 42);
+            colCartItem.Padding = new Padding(4, 0, 0, 0);
+            colCartItem.Size = new Size(85, 34);
             colCartItem.TabIndex = 0;
             colCartItem.Text = "Item / Service";
             colCartItem.TextAlign = ContentAlignment.MiddleLeft;
@@ -643,10 +634,10 @@ namespace MyApp
             colCartType.Dock = DockStyle.Fill;
             colCartType.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colCartType.ForeColor = Color.FromArgb(68, 83, 106);
-            colCartType.Location = new Point(83, 0);
+            colCartType.Location = new Point(85, 0);
             colCartType.Margin = new Padding(0);
             colCartType.Name = "colCartType";
-            colCartType.Size = new Size(41, 42);
+            colCartType.Size = new Size(42, 34);
             colCartType.TabIndex = 1;
             colCartType.Text = "Type";
             colCartType.TextAlign = ContentAlignment.MiddleCenter;
@@ -658,10 +649,10 @@ namespace MyApp
             colCartPrice.Dock = DockStyle.Fill;
             colCartPrice.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colCartPrice.ForeColor = Color.FromArgb(68, 83, 106);
-            colCartPrice.Location = new Point(124, 0);
+            colCartPrice.Location = new Point(127, 0);
             colCartPrice.Margin = new Padding(0);
             colCartPrice.Name = "colCartPrice";
-            colCartPrice.Size = new Size(39, 42);
+            colCartPrice.Size = new Size(40, 34);
             colCartPrice.TabIndex = 2;
             colCartPrice.Text = "Price";
             colCartPrice.TextAlign = ContentAlignment.MiddleCenter;
@@ -673,10 +664,10 @@ namespace MyApp
             colCartQty.Dock = DockStyle.Fill;
             colCartQty.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colCartQty.ForeColor = Color.FromArgb(68, 83, 106);
-            colCartQty.Location = new Point(163, 0);
+            colCartQty.Location = new Point(167, 0);
             colCartQty.Margin = new Padding(0);
             colCartQty.Name = "colCartQty";
-            colCartQty.Size = new Size(44, 42);
+            colCartQty.Size = new Size(45, 34);
             colCartQty.TabIndex = 3;
             colCartQty.Text = "Qty";
             colCartQty.TextAlign = ContentAlignment.MiddleCenter;
@@ -688,11 +679,11 @@ namespace MyApp
             colCartSubtotal.Dock = DockStyle.Fill;
             colCartSubtotal.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colCartSubtotal.ForeColor = Color.FromArgb(68, 83, 106);
-            colCartSubtotal.Location = new Point(207, 0);
+            colCartSubtotal.Location = new Point(212, 0);
             colCartSubtotal.Margin = new Padding(0);
             colCartSubtotal.Name = "colCartSubtotal";
-            colCartSubtotal.Padding = new Padding(0, 0, 8, 0);
-            colCartSubtotal.Size = new Size(69, 42);
+            colCartSubtotal.Padding = new Padding(0, 0, 6, 0);
+            colCartSubtotal.Size = new Size(71, 34);
             colCartSubtotal.TabIndex = 4;
             colCartSubtotal.Text = "Subtotal";
             colCartSubtotal.TextAlign = ContentAlignment.MiddleRight;
@@ -704,10 +695,10 @@ namespace MyApp
             cartRowsHost.BackColor = Color.White;
             cartRowsHost.Controls.Add(cartEmpty);
             cartRowsHost.Dock = DockStyle.Fill;
-            cartRowsHost.Location = new Point(0, 92);
+            cartRowsHost.Location = new Point(0, 74);
             cartRowsHost.Margin = new Padding(0);
             cartRowsHost.Name = "cartRowsHost";
-            cartRowsHost.Size = new Size(318, 372);
+            cartRowsHost.Size = new Size(320, 480);
             cartRowsHost.TabIndex = 2;
             // 
             // cartEmpty
@@ -719,9 +710,8 @@ namespace MyApp
             cartEmpty.Glyph = "";
             cartEmpty.Hint = "Add products or services from the list on the left.";
             cartEmpty.Location = new Point(0, 0);
-            cartEmpty.Margin = new Padding(4, 4, 4, 4);
             cartEmpty.Name = "cartEmpty";
-            cartEmpty.Size = new Size(318, 372);
+            cartEmpty.Size = new Size(320, 480);
             cartEmpty.TabIndex = 0;
             cartEmpty.TabStop = false;
             cartEmpty.Title = "The cart is empty";
@@ -732,10 +722,10 @@ namespace MyApp
             notesPanel.Controls.Add(notesCard);
             notesPanel.Controls.Add(notesLabel);
             notesPanel.Dock = DockStyle.Fill;
-            notesPanel.Location = new Point(0, 464);
-            notesPanel.Margin = new Padding(0, 0, 0, 10);
+            notesPanel.Location = new Point(0, 554);
+            notesPanel.Margin = new Padding(0, 0, 0, 8);
             notesPanel.Name = "notesPanel";
-            notesPanel.Size = new Size(318, 130);
+            notesPanel.Size = new Size(320, 104);
             notesPanel.TabIndex = 3;
             // 
             // notesCard
@@ -745,12 +735,12 @@ namespace MyApp
             notesCard.CornerColor = Color.White;
             notesCard.Dock = DockStyle.Fill;
             notesCard.FillColor = Color.White;
-            notesCard.Location = new Point(0, 32);
+            notesCard.Location = new Point(0, 26);
             notesCard.Margin = new Padding(0);
             notesCard.Name = "notesCard";
-            notesCard.Padding = new Padding(12, 10, 12, 10);
+            notesCard.Padding = new Padding(10, 8, 10, 8);
             notesCard.Radius = 8;
-            notesCard.Size = new Size(318, 98);
+            notesCard.Size = new Size(320, 78);
             notesCard.TabIndex = 0;
             // 
             // notesBox
@@ -761,11 +751,10 @@ namespace MyApp
             notesBox.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             notesBox.ForeColor = Color.FromArgb(31, 42, 60);
             notesBox.Hint = "Add notes here... (e.g., special instructions, concerns, etc.)";
-            notesBox.Location = new Point(12, 10);
-            notesBox.Margin = new Padding(4, 4, 4, 4);
+            notesBox.Location = new Point(10, 8);
             notesBox.Multiline = true;
             notesBox.Name = "notesBox";
-            notesBox.Size = new Size(294, 78);
+            notesBox.Size = new Size(300, 62);
             notesBox.TabIndex = 0;
             // 
             // notesLabel
@@ -775,9 +764,8 @@ namespace MyApp
             notesLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             notesLabel.ForeColor = Color.FromArgb(68, 83, 106);
             notesLabel.Location = new Point(0, 0);
-            notesLabel.Margin = new Padding(4, 0, 4, 0);
             notesLabel.Name = "notesLabel";
-            notesLabel.Size = new Size(318, 32);
+            notesLabel.Size = new Size(320, 26);
             notesLabel.TabIndex = 1;
             notesLabel.Text = "Customer Notes (Optional)";
             notesLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -789,12 +777,12 @@ namespace MyApp
             summaryPanel.Controls.Add(summaryGrid);
             summaryPanel.Dock = DockStyle.Fill;
             summaryPanel.EdgeColor = Color.FromArgb(227, 233, 242);
-            summaryPanel.Location = new Point(0, 604);
+            summaryPanel.Location = new Point(0, 666);
             summaryPanel.Margin = new Padding(0);
             summaryPanel.Name = "summaryPanel";
-            summaryPanel.Padding = new Padding(0, 10, 0, 0);
+            summaryPanel.Padding = new Padding(0, 8, 0, 0);
             summaryPanel.Side = MyApp.Controls.Edge.Top;
-            summaryPanel.Size = new Size(318, 145);
+            summaryPanel.Size = new Size(320, 116);
             summaryPanel.TabIndex = 4;
             // 
             // summaryGrid
@@ -802,9 +790,9 @@ namespace MyApp
             summaryGrid.BackColor = Color.White;
             summaryGrid.ColumnCount = 4;
             summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 45F));
-            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 155F));
+            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 36F));
+            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 58F));
+            summaryGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124F));
             summaryGrid.Controls.Add(subtotalLabel, 0, 0);
             summaryGrid.Controls.Add(subtotalValue, 3, 0);
             summaryGrid.Controls.Add(discountLabel, 0, 1);
@@ -814,14 +802,14 @@ namespace MyApp
             summaryGrid.Controls.Add(totalLabel, 0, 2);
             summaryGrid.Controls.Add(totalValue, 3, 2);
             summaryGrid.Dock = DockStyle.Fill;
-            summaryGrid.Location = new Point(0, 10);
+            summaryGrid.Location = new Point(0, 8);
             summaryGrid.Margin = new Padding(0);
             summaryGrid.Name = "summaryGrid";
             summaryGrid.RowCount = 3;
-            summaryGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            summaryGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            summaryGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            summaryGrid.Size = new Size(318, 135);
+            summaryGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
+            summaryGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            summaryGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            summaryGrid.Size = new Size(320, 108);
             summaryGrid.TabIndex = 0;
             // 
             // subtotalLabel
@@ -831,10 +819,9 @@ namespace MyApp
             subtotalLabel.Dock = DockStyle.Fill;
             subtotalLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             subtotalLabel.ForeColor = Color.FromArgb(122, 136, 156);
-            subtotalLabel.Location = new Point(4, 0);
-            subtotalLabel.Margin = new Padding(4, 0, 4, 0);
+            subtotalLabel.Location = new Point(3, 0);
             subtotalLabel.Name = "subtotalLabel";
-            subtotalLabel.Size = new Size(155, 30);
+            subtotalLabel.Size = new Size(190, 24);
             subtotalLabel.TabIndex = 0;
             subtotalLabel.Text = "Subtotal";
             subtotalLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -846,10 +833,9 @@ namespace MyApp
             subtotalValue.Dock = DockStyle.Fill;
             subtotalValue.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             subtotalValue.ForeColor = Color.FromArgb(31, 42, 60);
-            subtotalValue.Location = new Point(167, 0);
-            subtotalValue.Margin = new Padding(4, 0, 4, 0);
+            subtotalValue.Location = new Point(199, 0);
             subtotalValue.Name = "subtotalValue";
-            subtotalValue.Size = new Size(147, 30);
+            subtotalValue.Size = new Size(118, 24);
             subtotalValue.TabIndex = 1;
             subtotalValue.TextAlign = ContentAlignment.MiddleRight;
             subtotalValue.UseMnemonic = false;
@@ -860,10 +846,9 @@ namespace MyApp
             discountLabel.Dock = DockStyle.Fill;
             discountLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             discountLabel.ForeColor = Color.FromArgb(122, 136, 156);
-            discountLabel.Location = new Point(4, 30);
-            discountLabel.Margin = new Padding(4, 0, 4, 0);
+            discountLabel.Location = new Point(3, 24);
             discountLabel.Name = "discountLabel";
-            discountLabel.Size = new Size(38, 42);
+            discountLabel.Size = new Size(96, 34);
             discountLabel.TabIndex = 2;
             discountLabel.Text = "Discount";
             discountLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -875,10 +860,10 @@ namespace MyApp
             discountMode.Dock = DockStyle.Fill;
             discountMode.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             discountMode.Kind = MyApp.Controls.ButtonKind.Soft;
-            discountMode.Location = new Point(46, 35);
-            discountMode.Margin = new Padding(0, 5, 5, 5);
+            discountMode.Location = new Point(102, 28);
+            discountMode.Margin = new Padding(0, 4, 4, 4);
             discountMode.Name = "discountMode";
-            discountMode.Size = new Size(40, 32);
+            discountMode.Size = new Size(32, 26);
             discountMode.TabIndex = 3;
             discountMode.Text = "%";
             discountMode.Click += discountMode_Click;
@@ -890,12 +875,12 @@ namespace MyApp
             discountCard.CornerColor = Color.White;
             discountCard.Dock = DockStyle.Fill;
             discountCard.FillColor = Color.White;
-            discountCard.Location = new Point(91, 35);
-            discountCard.Margin = new Padding(0, 5, 10, 5);
+            discountCard.Location = new Point(138, 28);
+            discountCard.Margin = new Padding(0, 4, 8, 4);
             discountCard.Name = "discountCard";
-            discountCard.Padding = new Padding(8, 6, 8, 2);
+            discountCard.Padding = new Padding(6, 5, 6, 2);
             discountCard.Radius = 6;
-            discountCard.Size = new Size(62, 32);
+            discountCard.Size = new Size(50, 26);
             discountCard.TabIndex = 4;
             // 
             // discountBox
@@ -905,10 +890,9 @@ namespace MyApp
             discountBox.Dock = DockStyle.Fill;
             discountBox.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             discountBox.ForeColor = Color.FromArgb(31, 42, 60);
-            discountBox.Location = new Point(8, 6);
-            discountBox.Margin = new Padding(4, 4, 4, 4);
+            discountBox.Location = new Point(6, 5);
             discountBox.Name = "discountBox";
-            discountBox.Size = new Size(46, 19);
+            discountBox.Size = new Size(38, 16);
             discountBox.TabIndex = 0;
             discountBox.Text = "0";
             discountBox.TextAlign = HorizontalAlignment.Center;
@@ -920,10 +904,9 @@ namespace MyApp
             discountValue.Dock = DockStyle.Fill;
             discountValue.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             discountValue.ForeColor = Color.FromArgb(31, 42, 60);
-            discountValue.Location = new Point(167, 30);
-            discountValue.Margin = new Padding(4, 0, 4, 0);
+            discountValue.Location = new Point(199, 24);
             discountValue.Name = "discountValue";
-            discountValue.Size = new Size(147, 42);
+            discountValue.Size = new Size(118, 34);
             discountValue.TabIndex = 5;
             discountValue.TextAlign = ContentAlignment.MiddleRight;
             discountValue.UseMnemonic = false;
@@ -935,10 +918,9 @@ namespace MyApp
             totalLabel.Dock = DockStyle.Fill;
             totalLabel.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             totalLabel.ForeColor = Color.FromArgb(31, 42, 60);
-            totalLabel.Location = new Point(4, 72);
-            totalLabel.Margin = new Padding(4, 0, 4, 0);
+            totalLabel.Location = new Point(3, 58);
             totalLabel.Name = "totalLabel";
-            totalLabel.Size = new Size(155, 63);
+            totalLabel.Size = new Size(190, 50);
             totalLabel.TabIndex = 6;
             totalLabel.Text = "Total Amount";
             totalLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -950,10 +932,9 @@ namespace MyApp
             totalValue.Dock = DockStyle.Fill;
             totalValue.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
             totalValue.ForeColor = Color.FromArgb(31, 42, 60);
-            totalValue.Location = new Point(167, 72);
-            totalValue.Margin = new Padding(4, 0, 4, 0);
+            totalValue.Location = new Point(199, 58);
             totalValue.Name = "totalValue";
-            totalValue.Size = new Size(147, 63);
+            totalValue.Size = new Size(118, 50);
             totalValue.TabIndex = 7;
             totalValue.TextAlign = ContentAlignment.MiddleRight;
             totalValue.UseMnemonic = false;
@@ -965,12 +946,12 @@ namespace MyApp
             paymentCard.CornerColor = Color.FromArgb(243, 247, 252);
             paymentCard.Dock = DockStyle.Fill;
             paymentCard.FillColor = Color.White;
-            paymentCard.Location = new Point(748, 0);
+            paymentCard.Location = new Point(664, 0);
             paymentCard.Margin = new Padding(0);
             paymentCard.Name = "paymentCard";
-            paymentCard.Padding = new Padding(20, 18, 20, 18);
+            paymentCard.Padding = new Padding(16, 14, 16, 14);
             paymentCard.Radius = 10;
-            paymentCard.Size = new Size(370, 785);
+            paymentCard.Size = new Size(296, 810);
             paymentCard.TabIndex = 2;
             // 
             // payGrid
@@ -988,20 +969,20 @@ namespace MyApp
             payGrid.Controls.Add(printButton, 0, 7);
             payGrid.Controls.Add(receiptPreview, 0, 8);
             payGrid.Dock = DockStyle.Fill;
-            payGrid.Location = new Point(20, 18);
+            payGrid.Location = new Point(16, 14);
             payGrid.Margin = new Padding(0);
             payGrid.Name = "payGrid";
             payGrid.RowCount = 9;
-            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
+            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 34F));
+            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
+            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 38F));
+            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 24F));
             payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
-            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
-            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
             payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));
-            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
+            payGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 54F));
             payGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            payGrid.Size = new Size(330, 749);
+            payGrid.Size = new Size(264, 782);
             payGrid.TabIndex = 0;
             // 
             // payTitle
@@ -1010,10 +991,9 @@ namespace MyApp
             payTitle.Dock = DockStyle.Fill;
             payTitle.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             payTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            payTitle.Location = new Point(4, 0);
-            payTitle.Margin = new Padding(4, 0, 4, 0);
+            payTitle.Location = new Point(3, 0);
             payTitle.Name = "payTitle";
-            payTitle.Size = new Size(322, 42);
+            payTitle.Size = new Size(258, 34);
             payTitle.TabIndex = 0;
             payTitle.Text = "4. Payment Details";
             payTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -1024,15 +1004,15 @@ namespace MyApp
             paymentMethod.BackColor = Color.White;
             paymentMethod.Dock = DockStyle.Fill;
             paymentMethod.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            paymentMethod.Location = new Point(0, 42);
-            paymentMethod.Margin = new Padding(0, 0, 0, 12);
+            paymentMethod.Location = new Point(0, 34);
+            paymentMethod.Margin = new Padding(0, 0, 0, 10);
             paymentMethod.Name = "paymentMethod";
             paymentMethod.Segments = new string[]
     {
     "Cash",
     "E-Wallet"
     };
-            paymentMethod.Size = new Size(330, 46);
+            paymentMethod.Size = new Size(264, 36);
             paymentMethod.TabIndex = 1;
             paymentMethod.SelectedIndexChanged += paymentMethod_SelectedIndexChanged;
             // 
@@ -1045,12 +1025,12 @@ namespace MyApp
             totalDueRow.Controls.Add(totalDueLabel, 0, 0);
             totalDueRow.Controls.Add(totalDueValue, 1, 0);
             totalDueRow.Dock = DockStyle.Fill;
-            totalDueRow.Location = new Point(0, 100);
+            totalDueRow.Location = new Point(0, 80);
             totalDueRow.Margin = new Padding(0);
             totalDueRow.Name = "totalDueRow";
             totalDueRow.RowCount = 1;
             totalDueRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            totalDueRow.Size = new Size(330, 48);
+            totalDueRow.Size = new Size(264, 38);
             totalDueRow.TabIndex = 2;
             // 
             // totalDueLabel
@@ -1059,10 +1039,9 @@ namespace MyApp
             totalDueLabel.Dock = DockStyle.Fill;
             totalDueLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             totalDueLabel.ForeColor = Color.FromArgb(122, 136, 156);
-            totalDueLabel.Location = new Point(4, 0);
-            totalDueLabel.Margin = new Padding(4, 0, 4, 0);
+            totalDueLabel.Location = new Point(3, 0);
             totalDueLabel.Name = "totalDueLabel";
-            totalDueLabel.Size = new Size(157, 48);
+            totalDueLabel.Size = new Size(126, 38);
             totalDueLabel.TabIndex = 0;
             totalDueLabel.Text = "Total Amount";
             totalDueLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1075,10 +1054,9 @@ namespace MyApp
             totalDueValue.Dock = DockStyle.Fill;
             totalDueValue.Font = new Font("Segoe UI", 15F, FontStyle.Bold, GraphicsUnit.Point, 0);
             totalDueValue.ForeColor = Color.FromArgb(31, 42, 60);
-            totalDueValue.Location = new Point(169, 0);
-            totalDueValue.Margin = new Padding(4, 0, 4, 0);
+            totalDueValue.Location = new Point(135, 0);
             totalDueValue.Name = "totalDueValue";
-            totalDueValue.Size = new Size(157, 48);
+            totalDueValue.Size = new Size(126, 38);
             totalDueValue.TabIndex = 1;
             totalDueValue.TextAlign = ContentAlignment.MiddleRight;
             totalDueValue.UseMnemonic = false;
@@ -1089,10 +1067,9 @@ namespace MyApp
             receivedLabel.Dock = DockStyle.Fill;
             receivedLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             receivedLabel.ForeColor = Color.FromArgb(31, 42, 60);
-            receivedLabel.Location = new Point(4, 148);
-            receivedLabel.Margin = new Padding(4, 0, 4, 0);
+            receivedLabel.Location = new Point(3, 118);
             receivedLabel.Name = "receivedLabel";
-            receivedLabel.Size = new Size(322, 30);
+            receivedLabel.Size = new Size(258, 24);
             receivedLabel.TabIndex = 3;
             receivedLabel.Text = "Amount Received";
             receivedLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1106,12 +1083,12 @@ namespace MyApp
             receivedCard.CornerColor = Color.White;
             receivedCard.Dock = DockStyle.Fill;
             receivedCard.FillColor = Color.White;
-            receivedCard.Location = new Point(0, 178);
-            receivedCard.Margin = new Padding(0, 0, 0, 10);
+            receivedCard.Location = new Point(0, 142);
+            receivedCard.Margin = new Padding(0, 0, 0, 8);
             receivedCard.Name = "receivedCard";
-            receivedCard.Padding = new Padding(12, 4, 12, 4);
+            receivedCard.Padding = new Padding(10, 3, 10, 3);
             receivedCard.Radius = 8;
-            receivedCard.Size = new Size(330, 50);
+            receivedCard.Size = new Size(264, 40);
             receivedCard.TabIndex = 4;
             // 
             // receivedHost
@@ -1119,11 +1096,10 @@ namespace MyApp
             receivedHost.BackColor = Color.White;
             receivedHost.Controls.Add(receivedBox);
             receivedHost.Dock = DockStyle.Fill;
-            receivedHost.Location = new Point(42, 4);
-            receivedHost.Margin = new Padding(4, 4, 4, 4);
+            receivedHost.Location = new Point(34, 3);
             receivedHost.Name = "receivedHost";
-            receivedHost.Padding = new Padding(0, 10, 0, 0);
-            receivedHost.Size = new Size(276, 42);
+            receivedHost.Padding = new Padding(0, 8, 0, 0);
+            receivedHost.Size = new Size(220, 34);
             receivedHost.TabIndex = 0;
             // 
             // receivedBox
@@ -1133,10 +1109,9 @@ namespace MyApp
             receivedBox.Dock = DockStyle.Fill;
             receivedBox.Font = new Font("Segoe UI", 11F, FontStyle.Bold, GraphicsUnit.Point, 0);
             receivedBox.ForeColor = Color.FromArgb(31, 42, 60);
-            receivedBox.Location = new Point(0, 10);
-            receivedBox.Margin = new Padding(4, 4, 4, 4);
+            receivedBox.Location = new Point(0, 8);
             receivedBox.Name = "receivedBox";
-            receivedBox.Size = new Size(276, 25);
+            receivedBox.Size = new Size(220, 20);
             receivedBox.TabIndex = 0;
             receivedBox.TextChanged += receivedBox_TextChanged;
             // 
@@ -1146,10 +1121,9 @@ namespace MyApp
             pesoLabel.Dock = DockStyle.Left;
             pesoLabel.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             pesoLabel.ForeColor = Color.FromArgb(58, 123, 213);
-            pesoLabel.Location = new Point(12, 4);
-            pesoLabel.Margin = new Padding(4, 0, 4, 0);
+            pesoLabel.Location = new Point(10, 3);
             pesoLabel.Name = "pesoLabel";
-            pesoLabel.Size = new Size(30, 42);
+            pesoLabel.Size = new Size(24, 34);
             pesoLabel.TabIndex = 1;
             pesoLabel.Text = "₱";
             pesoLabel.TextAlign = ContentAlignment.MiddleCenter;
@@ -1168,12 +1142,12 @@ namespace MyApp
             quickGrid.Controls.Add(quick3Button, 2, 0);
             quickGrid.Controls.Add(quick4Button, 3, 0);
             quickGrid.Dock = DockStyle.Fill;
-            quickGrid.Location = new Point(0, 238);
-            quickGrid.Margin = new Padding(0, 0, 0, 10);
+            quickGrid.Location = new Point(0, 190);
+            quickGrid.Margin = new Padding(0, 0, 0, 8);
             quickGrid.Name = "quickGrid";
             quickGrid.RowCount = 1;
             quickGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            quickGrid.Size = new Size(330, 48);
+            quickGrid.Size = new Size(264, 38);
             quickGrid.TabIndex = 5;
             // 
             // quick1Button
@@ -1182,9 +1156,9 @@ namespace MyApp
             quick1Button.Dock = DockStyle.Fill;
             quick1Button.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             quick1Button.Location = new Point(0, 0);
-            quick1Button.Margin = new Padding(0, 0, 8, 0);
+            quick1Button.Margin = new Padding(0, 0, 6, 0);
             quick1Button.Name = "quick1Button";
-            quick1Button.Size = new Size(74, 48);
+            quick1Button.Size = new Size(60, 38);
             quick1Button.TabIndex = 0;
             quick1Button.Click += quickAmount_Click;
             // 
@@ -1193,10 +1167,10 @@ namespace MyApp
             quick2Button.BackColor = Color.White;
             quick2Button.Dock = DockStyle.Fill;
             quick2Button.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            quick2Button.Location = new Point(82, 0);
-            quick2Button.Margin = new Padding(0, 0, 8, 0);
+            quick2Button.Location = new Point(66, 0);
+            quick2Button.Margin = new Padding(0, 0, 6, 0);
             quick2Button.Name = "quick2Button";
-            quick2Button.Size = new Size(74, 48);
+            quick2Button.Size = new Size(60, 38);
             quick2Button.TabIndex = 1;
             quick2Button.Click += quickAmount_Click;
             // 
@@ -1205,10 +1179,10 @@ namespace MyApp
             quick3Button.BackColor = Color.White;
             quick3Button.Dock = DockStyle.Fill;
             quick3Button.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            quick3Button.Location = new Point(164, 0);
-            quick3Button.Margin = new Padding(0, 0, 8, 0);
+            quick3Button.Location = new Point(132, 0);
+            quick3Button.Margin = new Padding(0, 0, 6, 0);
             quick3Button.Name = "quick3Button";
-            quick3Button.Size = new Size(74, 48);
+            quick3Button.Size = new Size(60, 38);
             quick3Button.TabIndex = 2;
             quick3Button.Click += quickAmount_Click;
             // 
@@ -1217,10 +1191,10 @@ namespace MyApp
             quick4Button.BackColor = Color.White;
             quick4Button.Dock = DockStyle.Fill;
             quick4Button.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            quick4Button.Location = new Point(246, 0);
+            quick4Button.Location = new Point(198, 0);
             quick4Button.Margin = new Padding(0);
             quick4Button.Name = "quick4Button";
-            quick4Button.Size = new Size(84, 48);
+            quick4Button.Size = new Size(66, 38);
             quick4Button.TabIndex = 3;
             quick4Button.Click += quickAmount_Click;
             // 
@@ -1232,12 +1206,12 @@ namespace MyApp
             changeCard.CornerColor = Color.White;
             changeCard.Dock = DockStyle.Fill;
             changeCard.FillColor = Color.FromArgb(229, 246, 236);
-            changeCard.Location = new Point(0, 296);
-            changeCard.Margin = new Padding(0, 0, 0, 10);
+            changeCard.Location = new Point(0, 236);
+            changeCard.Margin = new Padding(0, 0, 0, 8);
             changeCard.Name = "changeCard";
-            changeCard.Padding = new Padding(18, 0, 18, 0);
+            changeCard.Padding = new Padding(14, 0, 14, 0);
             changeCard.Radius = 8;
-            changeCard.Size = new Size(330, 62);
+            changeCard.Size = new Size(264, 50);
             changeCard.TabIndex = 6;
             // 
             // changeValue
@@ -1246,10 +1220,9 @@ namespace MyApp
             changeValue.Dock = DockStyle.Fill;
             changeValue.Font = new Font("Segoe UI", 15F, FontStyle.Bold, GraphicsUnit.Point, 0);
             changeValue.ForeColor = Color.FromArgb(46, 158, 91);
-            changeValue.Location = new Point(156, 0);
-            changeValue.Margin = new Padding(4, 0, 4, 0);
+            changeValue.Location = new Point(124, 0);
             changeValue.Name = "changeValue";
-            changeValue.Size = new Size(156, 62);
+            changeValue.Size = new Size(126, 50);
             changeValue.TabIndex = 0;
             changeValue.TextAlign = ContentAlignment.MiddleRight;
             changeValue.UseMnemonic = false;
@@ -1260,10 +1233,9 @@ namespace MyApp
             changeLabel.Dock = DockStyle.Left;
             changeLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             changeLabel.ForeColor = Color.FromArgb(31, 42, 60);
-            changeLabel.Location = new Point(18, 0);
-            changeLabel.Margin = new Padding(4, 0, 4, 0);
+            changeLabel.Location = new Point(14, 0);
             changeLabel.Name = "changeLabel";
-            changeLabel.Size = new Size(138, 62);
+            changeLabel.Size = new Size(110, 50);
             changeLabel.TabIndex = 1;
             changeLabel.Text = "Change";
             changeLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1274,10 +1246,10 @@ namespace MyApp
             printButton.BackColor = Color.White;
             printButton.Dock = DockStyle.Fill;
             printButton.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            printButton.Location = new Point(0, 368);
-            printButton.Margin = new Padding(0, 0, 0, 12);
+            printButton.Location = new Point(0, 294);
+            printButton.Margin = new Padding(0, 0, 0, 10);
             printButton.Name = "printButton";
-            printButton.Size = new Size(330, 56);
+            printButton.Size = new Size(264, 44);
             printButton.TabIndex = 7;
             printButton.Text = "Print Receipt";
             printButton.Click += printButton_Click;
@@ -1286,10 +1258,9 @@ namespace MyApp
             // 
             receiptPreview.BackColor = Color.White;
             receiptPreview.Dock = DockStyle.Fill;
-            receiptPreview.Location = new Point(4, 440);
-            receiptPreview.Margin = new Padding(4, 4, 4, 4);
+            receiptPreview.Location = new Point(3, 351);
             receiptPreview.Name = "receiptPreview";
-            receiptPreview.Size = new Size(322, 305);
+            receiptPreview.Size = new Size(258, 428);
             receiptPreview.TabIndex = 8;
             receiptPreview.TabStop = false;
             // 
@@ -1298,11 +1269,10 @@ namespace MyApp
             recentHost.BackColor = Color.FromArgb(243, 247, 252);
             recentHost.Controls.Add(recentCard);
             recentHost.Dock = DockStyle.Bottom;
-            recentHost.Location = new Point(25, 885);
-            recentHost.Margin = new Padding(4, 4, 4, 4);
+            recentHost.Location = new Point(20, 890);
             recentHost.Name = "recentHost";
-            recentHost.Padding = new Padding(0, 20, 0, 0);
-            recentHost.Size = new Size(1118, 332);
+            recentHost.Padding = new Padding(0, 16, 0, 0);
+            recentHost.Size = new Size(960, 266);
             recentHost.TabIndex = 1;
             // 
             // recentCard
@@ -1314,12 +1284,12 @@ namespace MyApp
             recentCard.CornerColor = Color.FromArgb(243, 247, 252);
             recentCard.Dock = DockStyle.Fill;
             recentCard.FillColor = Color.White;
-            recentCard.Location = new Point(0, 20);
+            recentCard.Location = new Point(0, 16);
             recentCard.Margin = new Padding(0);
             recentCard.Name = "recentCard";
-            recentCard.Padding = new Padding(20, 12, 20, 12);
+            recentCard.Padding = new Padding(16, 10, 16, 10);
             recentCard.Radius = 10;
-            recentCard.Size = new Size(1118, 312);
+            recentCard.Size = new Size(960, 250);
             recentCard.TabIndex = 0;
             // 
             // recentRowsHost
@@ -1328,10 +1298,9 @@ namespace MyApp
             recentRowsHost.BackColor = Color.White;
             recentRowsHost.Controls.Add(recentEmpty);
             recentRowsHost.Dock = DockStyle.Fill;
-            recentRowsHost.Location = new Point(20, 102);
-            recentRowsHost.Margin = new Padding(4, 4, 4, 4);
+            recentRowsHost.Location = new Point(16, 82);
             recentRowsHost.Name = "recentRowsHost";
-            recentRowsHost.Size = new Size(1078, 198);
+            recentRowsHost.Size = new Size(928, 158);
             recentRowsHost.TabIndex = 0;
             // 
             // recentEmpty
@@ -1343,9 +1312,8 @@ namespace MyApp
             recentEmpty.Glyph = "";
             recentEmpty.Hint = "Completed sales will show up here.";
             recentEmpty.Location = new Point(0, 0);
-            recentEmpty.Margin = new Padding(4, 4, 4, 4);
             recentEmpty.Name = "recentEmpty";
-            recentEmpty.Size = new Size(1078, 198);
+            recentEmpty.Size = new Size(928, 158);
             recentEmpty.TabIndex = 0;
             recentEmpty.TabStop = false;
             recentEmpty.Title = "No transactions yet";
@@ -1355,10 +1323,9 @@ namespace MyApp
             recentColumns.BackColor = Color.FromArgb(246, 248, 251);
             recentColumns.Controls.Add(recentColumnsGrid);
             recentColumns.Dock = DockStyle.Top;
-            recentColumns.Location = new Point(20, 60);
-            recentColumns.Margin = new Padding(4, 4, 4, 4);
+            recentColumns.Location = new Point(16, 48);
             recentColumns.Name = "recentColumns";
-            recentColumns.Size = new Size(1078, 42);
+            recentColumns.Size = new Size(928, 34);
             recentColumns.TabIndex = 1;
             // 
             // recentColumnsGrid
@@ -1387,7 +1354,7 @@ namespace MyApp
             recentColumnsGrid.Name = "recentColumnsGrid";
             recentColumnsGrid.RowCount = 1;
             recentColumnsGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            recentColumnsGrid.Size = new Size(1078, 42);
+            recentColumnsGrid.Size = new Size(928, 34);
             recentColumnsGrid.TabIndex = 0;
             // 
             // colRecReceipt
@@ -1399,8 +1366,8 @@ namespace MyApp
             colRecReceipt.Location = new Point(0, 0);
             colRecReceipt.Margin = new Padding(0);
             colRecReceipt.Name = "colRecReceipt";
-            colRecReceipt.Padding = new Padding(5, 0, 0, 0);
-            colRecReceipt.Size = new Size(161, 42);
+            colRecReceipt.Padding = new Padding(4, 0, 0, 0);
+            colRecReceipt.Size = new Size(139, 34);
             colRecReceipt.TabIndex = 0;
             colRecReceipt.Text = "Receipt No.";
             colRecReceipt.TextAlign = ContentAlignment.MiddleLeft;
@@ -1412,11 +1379,11 @@ namespace MyApp
             colRecDate.Dock = DockStyle.Fill;
             colRecDate.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecDate.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecDate.Location = new Point(161, 0);
+            colRecDate.Location = new Point(139, 0);
             colRecDate.Margin = new Padding(0);
             colRecDate.Name = "colRecDate";
-            colRecDate.Padding = new Padding(5, 0, 0, 0);
-            colRecDate.Size = new Size(183, 42);
+            colRecDate.Padding = new Padding(4, 0, 0, 0);
+            colRecDate.Size = new Size(157, 34);
             colRecDate.TabIndex = 1;
             colRecDate.Text = "Date & Time";
             colRecDate.TextAlign = ContentAlignment.MiddleLeft;
@@ -1428,11 +1395,11 @@ namespace MyApp
             colRecCustomer.Dock = DockStyle.Fill;
             colRecCustomer.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecCustomer.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecCustomer.Location = new Point(344, 0);
+            colRecCustomer.Location = new Point(296, 0);
             colRecCustomer.Margin = new Padding(0);
             colRecCustomer.Name = "colRecCustomer";
-            colRecCustomer.Padding = new Padding(5, 0, 0, 0);
-            colRecCustomer.Size = new Size(150, 42);
+            colRecCustomer.Padding = new Padding(4, 0, 0, 0);
+            colRecCustomer.Size = new Size(129, 34);
             colRecCustomer.TabIndex = 2;
             colRecCustomer.Text = "Customer";
             colRecCustomer.TextAlign = ContentAlignment.MiddleLeft;
@@ -1444,11 +1411,11 @@ namespace MyApp
             colRecItems.Dock = DockStyle.Fill;
             colRecItems.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecItems.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecItems.Location = new Point(494, 0);
+            colRecItems.Location = new Point(425, 0);
             colRecItems.Margin = new Padding(0);
             colRecItems.Name = "colRecItems";
-            colRecItems.Padding = new Padding(5, 0, 0, 0);
-            colRecItems.Size = new Size(172, 42);
+            colRecItems.Padding = new Padding(4, 0, 0, 0);
+            colRecItems.Size = new Size(148, 34);
             colRecItems.TabIndex = 3;
             colRecItems.Text = "Items / Services";
             colRecItems.TextAlign = ContentAlignment.MiddleLeft;
@@ -1460,11 +1427,11 @@ namespace MyApp
             colRecTotal.Dock = DockStyle.Fill;
             colRecTotal.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecTotal.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecTotal.Location = new Point(666, 0);
+            colRecTotal.Location = new Point(573, 0);
             colRecTotal.Margin = new Padding(0);
             colRecTotal.Name = "colRecTotal";
-            colRecTotal.Padding = new Padding(5, 0, 0, 0);
-            colRecTotal.Size = new Size(118, 42);
+            colRecTotal.Padding = new Padding(4, 0, 0, 0);
+            colRecTotal.Size = new Size(102, 34);
             colRecTotal.TabIndex = 4;
             colRecTotal.Text = "Total Amount";
             colRecTotal.TextAlign = ContentAlignment.MiddleLeft;
@@ -1476,10 +1443,10 @@ namespace MyApp
             colRecMethod.Dock = DockStyle.Fill;
             colRecMethod.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecMethod.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecMethod.Location = new Point(784, 0);
+            colRecMethod.Location = new Point(675, 0);
             colRecMethod.Margin = new Padding(0);
             colRecMethod.Name = "colRecMethod";
-            colRecMethod.Size = new Size(118, 42);
+            colRecMethod.Size = new Size(102, 34);
             colRecMethod.TabIndex = 5;
             colRecMethod.Text = "Payment Method";
             colRecMethod.TextAlign = ContentAlignment.MiddleCenter;
@@ -1491,10 +1458,10 @@ namespace MyApp
             colRecStatus.Dock = DockStyle.Fill;
             colRecStatus.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecStatus.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecStatus.Location = new Point(902, 0);
+            colRecStatus.Location = new Point(777, 0);
             colRecStatus.Margin = new Padding(0);
             colRecStatus.Name = "colRecStatus";
-            colRecStatus.Size = new Size(97, 42);
+            colRecStatus.Size = new Size(83, 34);
             colRecStatus.TabIndex = 6;
             colRecStatus.Text = "Status";
             colRecStatus.TextAlign = ContentAlignment.MiddleCenter;
@@ -1506,10 +1473,10 @@ namespace MyApp
             colRecActions.Dock = DockStyle.Fill;
             colRecActions.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             colRecActions.ForeColor = Color.FromArgb(68, 83, 106);
-            colRecActions.Location = new Point(999, 0);
+            colRecActions.Location = new Point(860, 0);
             colRecActions.Margin = new Padding(0);
             colRecActions.Name = "colRecActions";
-            colRecActions.Size = new Size(79, 42);
+            colRecActions.Size = new Size(68, 34);
             colRecActions.TabIndex = 7;
             colRecActions.Text = "Actions";
             colRecActions.TextAlign = ContentAlignment.MiddleCenter;
@@ -1522,10 +1489,9 @@ namespace MyApp
             recentHeader.Controls.Add(recentTitle);
             recentHeader.Controls.Add(recentIcon);
             recentHeader.Dock = DockStyle.Top;
-            recentHeader.Location = new Point(20, 12);
-            recentHeader.Margin = new Padding(4, 4, 4, 4);
+            recentHeader.Location = new Point(16, 10);
             recentHeader.Name = "recentHeader";
-            recentHeader.Size = new Size(1078, 48);
+            recentHeader.Size = new Size(928, 38);
             recentHeader.TabIndex = 2;
             // 
             // recentViewAll
@@ -1535,10 +1501,9 @@ namespace MyApp
             recentViewAll.Dock = DockStyle.Right;
             recentViewAll.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             recentViewAll.ForeColor = Color.FromArgb(58, 123, 213);
-            recentViewAll.Location = new Point(966, 0);
-            recentViewAll.Margin = new Padding(4, 0, 4, 0);
+            recentViewAll.Location = new Point(838, 0);
             recentViewAll.Name = "recentViewAll";
-            recentViewAll.Size = new Size(112, 48);
+            recentViewAll.Size = new Size(90, 38);
             recentViewAll.TabIndex = 0;
             recentViewAll.Text = "View All →";
             recentViewAll.TextAlign = ContentAlignment.MiddleRight;
@@ -1551,10 +1516,9 @@ namespace MyApp
             recentTitle.Dock = DockStyle.Left;
             recentTitle.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             recentTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            recentTitle.Location = new Point(38, 0);
-            recentTitle.Margin = new Padding(4, 0, 4, 0);
+            recentTitle.Location = new Point(30, 0);
             recentTitle.Name = "recentTitle";
-            recentTitle.Size = new Size(250, 48);
+            recentTitle.Size = new Size(200, 38);
             recentTitle.TabIndex = 1;
             recentTitle.Text = "Recent Transactions";
             recentTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -1567,9 +1531,8 @@ namespace MyApp
             recentIcon.Font = new Font("Segoe MDL2 Assets", 11F, FontStyle.Regular, GraphicsUnit.Point, 0);
             recentIcon.ForeColor = Color.FromArgb(58, 123, 213);
             recentIcon.Location = new Point(0, 0);
-            recentIcon.Margin = new Padding(4, 0, 4, 0);
             recentIcon.Name = "recentIcon";
-            recentIcon.Size = new Size(38, 48);
+            recentIcon.Size = new Size(30, 38);
             recentIcon.TabIndex = 2;
             recentIcon.Text = "";
             recentIcon.TextAlign = ContentAlignment.MiddleCenter;
@@ -1581,10 +1544,9 @@ namespace MyApp
             actionsBar.Controls.Add(actionsFlow);
             actionsBar.Controls.Add(dateTimePanel);
             actionsBar.Dock = DockStyle.Top;
-            actionsBar.Location = new Point(25, 25);
-            actionsBar.Margin = new Padding(4, 4, 4, 4);
+            actionsBar.Location = new Point(20, 20);
             actionsBar.Name = "actionsBar";
-            actionsBar.Size = new Size(1118, 75);
+            actionsBar.Size = new Size(960, 60);
             actionsBar.TabIndex = 2;
             // 
             // actionsFlow
@@ -1595,10 +1557,9 @@ namespace MyApp
             actionsFlow.Controls.Add(historyButton);
             actionsFlow.Dock = DockStyle.Fill;
             actionsFlow.Location = new Point(0, 0);
-            actionsFlow.Margin = new Padding(4, 4, 4, 4);
             actionsFlow.Name = "actionsFlow";
-            actionsFlow.Padding = new Padding(0, 12, 0, 0);
-            actionsFlow.Size = new Size(828, 75);
+            actionsFlow.Padding = new Padding(0, 10, 0, 0);
+            actionsFlow.Size = new Size(728, 60);
             actionsFlow.TabIndex = 0;
             actionsFlow.WrapContents = false;
             // 
@@ -1608,10 +1569,10 @@ namespace MyApp
             newTransactionButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
             newTransactionButton.Glyph = "";
             newTransactionButton.Kind = MyApp.Controls.ButtonKind.Primary;
-            newTransactionButton.Location = new Point(0, 12);
-            newTransactionButton.Margin = new Padding(0, 0, 12, 0);
+            newTransactionButton.Location = new Point(0, 10);
+            newTransactionButton.Margin = new Padding(0, 0, 10, 0);
             newTransactionButton.Name = "newTransactionButton";
-            newTransactionButton.Size = new Size(188, 48);
+            newTransactionButton.Size = new Size(150, 38);
             newTransactionButton.TabIndex = 0;
             newTransactionButton.Text = "New Transaction";
             newTransactionButton.Click += newTransactionButton_Click;
@@ -1621,10 +1582,10 @@ namespace MyApp
             ongoingButton.BackColor = Color.FromArgb(243, 247, 252);
             ongoingButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             ongoingButton.Glyph = "";
-            ongoingButton.Location = new Point(200, 12);
-            ongoingButton.Margin = new Padding(0, 0, 12, 0);
+            ongoingButton.Location = new Point(160, 10);
+            ongoingButton.Margin = new Padding(0, 0, 10, 0);
             ongoingButton.Name = "ongoingButton";
-            ongoingButton.Size = new Size(225, 48);
+            ongoingButton.Size = new Size(180, 38);
             ongoingButton.TabIndex = 1;
             ongoingButton.Text = "Ongoing Appointments";
             ongoingButton.Click += ongoingButton_Click;
@@ -1634,10 +1595,10 @@ namespace MyApp
             historyButton.BackColor = Color.FromArgb(243, 247, 252);
             historyButton.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             historyButton.Glyph = "";
-            historyButton.Location = new Point(437, 12);
-            historyButton.Margin = new Padding(0, 0, 12, 0);
+            historyButton.Location = new Point(350, 10);
+            historyButton.Margin = new Padding(0, 0, 10, 0);
             historyButton.Name = "historyButton";
-            historyButton.Size = new Size(200, 48);
+            historyButton.Size = new Size(160, 38);
             historyButton.TabIndex = 2;
             historyButton.Text = "Transaction History";
             historyButton.Click += historyButton_Click;
@@ -1650,10 +1611,9 @@ namespace MyApp
             dateTimePanel.Controls.Add(timeIcon);
             dateTimePanel.Controls.Add(timeLabel);
             dateTimePanel.Dock = DockStyle.Right;
-            dateTimePanel.Location = new Point(828, 0);
-            dateTimePanel.Margin = new Padding(4, 4, 4, 4);
+            dateTimePanel.Location = new Point(728, 0);
             dateTimePanel.Name = "dateTimePanel";
-            dateTimePanel.Size = new Size(290, 75);
+            dateTimePanel.Size = new Size(232, 60);
             dateTimePanel.TabIndex = 1;
             // 
             // dateIcon
@@ -1661,10 +1621,9 @@ namespace MyApp
             dateIcon.BackColor = Color.FromArgb(243, 247, 252);
             dateIcon.Font = new Font("Segoe MDL2 Assets", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             dateIcon.ForeColor = Color.FromArgb(122, 136, 156);
-            dateIcon.Location = new Point(0, 22);
-            dateIcon.Margin = new Padding(4, 0, 4, 0);
+            dateIcon.Location = new Point(0, 18);
             dateIcon.Name = "dateIcon";
-            dateIcon.Size = new Size(25, 30);
+            dateIcon.Size = new Size(20, 24);
             dateIcon.TabIndex = 0;
             dateIcon.Text = "";
             dateIcon.TextAlign = ContentAlignment.MiddleCenter;
@@ -1675,10 +1634,9 @@ namespace MyApp
             dateLabel.BackColor = Color.FromArgb(243, 247, 252);
             dateLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             dateLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            dateLabel.Location = new Point(28, 22);
-            dateLabel.Margin = new Padding(4, 0, 4, 0);
+            dateLabel.Location = new Point(22, 18);
             dateLabel.Name = "dateLabel";
-            dateLabel.Size = new Size(125, 30);
+            dateLabel.Size = new Size(100, 24);
             dateLabel.TabIndex = 1;
             dateLabel.TextAlign = ContentAlignment.MiddleLeft;
             dateLabel.UseMnemonic = false;
@@ -1688,10 +1646,9 @@ namespace MyApp
             timeIcon.BackColor = Color.FromArgb(243, 247, 252);
             timeIcon.Font = new Font("Segoe MDL2 Assets", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             timeIcon.ForeColor = Color.FromArgb(122, 136, 156);
-            timeIcon.Location = new Point(160, 22);
-            timeIcon.Margin = new Padding(4, 0, 4, 0);
+            timeIcon.Location = new Point(128, 18);
             timeIcon.Name = "timeIcon";
-            timeIcon.Size = new Size(25, 30);
+            timeIcon.Size = new Size(20, 24);
             timeIcon.TabIndex = 2;
             timeIcon.Text = "";
             timeIcon.TextAlign = ContentAlignment.MiddleCenter;
@@ -1702,10 +1659,9 @@ namespace MyApp
             timeLabel.BackColor = Color.FromArgb(243, 247, 252);
             timeLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             timeLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            timeLabel.Location = new Point(188, 22);
-            timeLabel.Margin = new Padding(4, 0, 4, 0);
+            timeLabel.Location = new Point(150, 18);
             timeLabel.Name = "timeLabel";
-            timeLabel.Size = new Size(95, 30);
+            timeLabel.Size = new Size(76, 24);
             timeLabel.TabIndex = 3;
             timeLabel.TextAlign = ContentAlignment.MiddleLeft;
             timeLabel.UseMnemonic = false;
@@ -1717,7 +1673,7 @@ namespace MyApp
             // 
             // BillingPage
             // 
-            AutoScaleDimensions = new SizeF(120F, 120F);
+            AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoScroll = true;
             AutoScrollMinSize = new Size(960, 910);
@@ -1725,10 +1681,9 @@ namespace MyApp
             Controls.Add(mainGrid);
             Controls.Add(recentHost);
             Controls.Add(actionsBar);
-            Margin = new Padding(4, 4, 4, 4);
             Name = "BillingPage";
-            Padding = new Padding(25, 25, 25, 25);
-            Size = new Size(1168, 894);
+            Padding = new Padding(20);
+            Size = new Size(866, 647);
             mainGrid.ResumeLayout(false);
             leftColumn.ResumeLayout(false);
             select1Card.ResumeLayout(false);

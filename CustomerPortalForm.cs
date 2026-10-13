@@ -154,12 +154,12 @@ internal sealed class CustomerPortalForm : Form
             _appointments.SelectedItems[0].Tag is AppointmentItem { Status: AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled };
     }
 
-    private void Book()
+    private void Book(int? petId = null, string? service = null)
     {
         if (_customer is not { } c) return;
         try
         {
-            using var form = new CustomerBookingForm(c.Id, c.Name, _user.Email);
+            using var form = new CustomerBookingForm(c.Id, c.Name, _user.Email, petId, service);
             if (form.ShowDialog(this) == DialogResult.OK)
             {
                 Reload();
@@ -178,7 +178,13 @@ internal sealed class CustomerPortalForm : Form
     {
         if (_customer is not { } c) return;
         using var form = new AddPetForm(c.Id, c.Name, _user.Email);
-        if (form.ShowDialog(this) == DialogResult.OK) Reload();
+        if (form.ShowDialog(this) != DialogResult.OK)
+        {
+            if (form.CreatedPetId is not null) Reload();   // the pet was saved even though the dialog was closed before the end
+            return;
+        }
+        Reload();
+        if (form.ChosenPetId is int petId) Book(petId, form.ChosenService);   // picked an existing pet: go on to the appointment request
     }
 
     private void ScanCard()
@@ -237,7 +243,7 @@ internal sealed class CustomerBookingForm : DialogBase
     private readonly PawTimePicker _time = new();
     private readonly TextBox _notes = new() { Multiline = true, Height = 60, MaxLength = 300, ScrollBars = ScrollBars.Vertical };
 
-    public CustomerBookingForm(int customerId, string customerName, string loginEmail) : base("Request Appointment", "Send Request", "\uE787", "Tell us when you'd like to come in")
+    public CustomerBookingForm(int customerId, string customerName, string loginEmail, int? petId = null, string? serviceHint = null) : base("Request Appointment", "Send Request", "\uE787", "Tell us when you'd like to come in")
     {
         _customerId = customerId;
         _customerName = customerName;
@@ -257,7 +263,13 @@ internal sealed class CustomerBookingForm : DialogBase
         _date.MinDate = DateTime.Today;
         _date.Value = DateTime.Today;
         _time.Value = TimeSpan.FromHours(9);
-        if (_pets.Count > 0) _pet.SelectedIndex = 0;
+        if (serviceHint is { Length: > 0 })   // the service picked in Pet Details (Bath Only, Full Groom, Nail Trim, Ear Cleaning)
+        {
+            string key = serviceHint.Split(' ')[0];
+            int s = _services.FindIndex(x => x.Name.Contains(key, StringComparison.OrdinalIgnoreCase));
+            if (s >= 0) _service.SelectedIndex = s;
+        }
+        if (_pets.Count > 0) _pet.SelectedIndex = Math.Max(0, _pets.FindIndex(p => p.Id == petId));
         FitHeight();
 
         Shown += (_, _) =>

@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.*" />
+    <PackageReference Include="MailKit" Version="4.*" />
   </ItemGroup>
 
   <!-- Google Vision key: paste it into vision.key (one line). It is copied next to Pawfect.exe on every build.

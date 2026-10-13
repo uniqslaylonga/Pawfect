@@ -22,8 +22,14 @@ namespace MyApp
             logoBadge = new MyApp.Controls.PawBadge();
             brandLabel = new System.Windows.Forms.Label();
             stepContact = new MyApp.Controls.StepDot();
-            stepLine = new System.Windows.Forms.Panel();
-            stepPet = new MyApp.Controls.StepDot();
+            stepLine1 = new System.Windows.Forms.Panel();
+            stepSelect = new MyApp.Controls.StepDot();
+            stepLine2 = new System.Windows.Forms.Panel();
+            stepVaccine = new MyApp.Controls.StepDot();
+            stepLine3 = new System.Windows.Forms.Panel();
+            stepGrooming = new MyApp.Controls.StepDot();
+            stepLine4 = new System.Windows.Forms.Panel();
+            stepTicket = new MyApp.Controls.StepDot();
             titleLabel = new System.Windows.Forms.Label();
             subtitleLabel = new System.Windows.Forms.Label();
             emailLabel = new System.Windows.Forms.Label();
@@ -49,6 +55,16 @@ namespace MyApp
             resendLabel = new System.Windows.Forms.Label();
             otpCard = new MyApp.Controls.CardPanel();
             contactPanel = new System.Windows.Forms.Panel();
+            tabMyPets = new MyApp.Controls.SegmentButton();
+            tabAddPet = new MyApp.Controls.SegmentButton();
+            newPetPaw = new MyApp.Controls.PawBadge();
+            newPetTitle = new System.Windows.Forms.Label();
+            newPetHint = new System.Windows.Forms.Label();
+            newPetArrowLabel = new System.Windows.Forms.Label();
+            newPetArrow = new MyApp.Controls.CardPanel();
+            newPetCard = new MyApp.Controls.CardPanel();
+            petsFlow = new System.Windows.Forms.FlowLayoutPanel();
+            myPetsView = new System.Windows.Forms.Panel();
             ownerLabel = new System.Windows.Forms.Label();
             petNameLabel = new System.Windows.Forms.Label();
             petNameField = new MyApp.Controls.InputField();
@@ -58,16 +74,22 @@ namespace MyApp
             breedField = new MyApp.Controls.InputField();
             petErrorLabel = new System.Windows.Forms.Label();
             savePetButton = new MyApp.Controls.PrimaryButton();
-            petCard = new MyApp.Controls.CardPanel();
-            petPanel = new System.Windows.Forms.Panel();
+            addPetCard = new MyApp.Controls.CardPanel();
+            addPetView = new System.Windows.Forms.Panel();
+            selectPanel = new System.Windows.Forms.Panel();
             backButton = new System.Windows.Forms.Button();
-            cornerPaw = new MyApp.Controls.PawBadge();
+            continueButton = new MyApp.Controls.PrimaryButton();
             resendTimer = new System.Windows.Forms.Timer(components);
             orBadge.SuspendLayout();
             otpCard.SuspendLayout();
             contactPanel.SuspendLayout();
-            petCard.SuspendLayout();
-            petPanel.SuspendLayout();
+            newPetArrow.SuspendLayout();
+            newPetCard.SuspendLayout();
+            petsFlow.SuspendLayout();
+            myPetsView.SuspendLayout();
+            addPetCard.SuspendLayout();
+            addPetView.SuspendLayout();
+            selectPanel.SuspendLayout();
             SuspendLayout();
             // 
             // logoBadge
@@ -97,7 +119,7 @@ namespace MyApp
             // stepContact
             // 
             stepContact.BackColor = Color.FromArgb(243, 247, 252);
-            stepContact.Location = new Point(610, 14);
+            stepContact.Location = new Point(340, 14);
             stepContact.Name = "stepContact";
             stepContact.Number = 1;
             stepContact.Size = new Size(80, 48);
@@ -105,24 +127,81 @@ namespace MyApp
             stepContact.TabStop = false;
             stepContact.Text = "Contact";
             // 
-            // stepLine
+            // stepLine1
             // 
-            stepLine.BackColor = Color.FromArgb(227, 233, 242);
-            stepLine.Location = new Point(690, 25);
-            stepLine.Name = "stepLine";
-            stepLine.Size = new Size(80, 1);
-            stepLine.TabIndex = 3;
+            stepLine1.BackColor = Color.FromArgb(227, 233, 242);
+            stepLine1.Location = new Point(420, 25);
+            stepLine1.Name = "stepLine1";
+            stepLine1.Size = new Size(30, 1);
+            stepLine1.TabIndex = 3;
             // 
-            // stepPet
+            // stepSelect
             // 
-            stepPet.BackColor = Color.FromArgb(243, 247, 252);
-            stepPet.Location = new Point(770, 14);
-            stepPet.Name = "stepPet";
-            stepPet.Number = 2;
-            stepPet.Size = new Size(80, 48);
-            stepPet.State = MyApp.Controls.StepState.Pending;
-            stepPet.TabStop = false;
-            stepPet.Text = "Pet Details";
+            stepSelect.BackColor = Color.FromArgb(243, 247, 252);
+            stepSelect.Location = new Point(450, 14);
+            stepSelect.Name = "stepSelect";
+            stepSelect.Number = 2;
+            stepSelect.Size = new Size(80, 48);
+            stepSelect.State = MyApp.Controls.StepState.Pending;
+            stepSelect.TabStop = false;
+            stepSelect.Text = "Select Pet";
+            // 
+            // stepLine2
+            // 
+            stepLine2.BackColor = Color.FromArgb(227, 233, 242);
+            stepLine2.Location = new Point(530, 25);
+            stepLine2.Name = "stepLine2";
+            stepLine2.Size = new Size(30, 1);
+            stepLine2.TabIndex = 5;
+            // 
+            // stepVaccine
+            // 
+            stepVaccine.BackColor = Color.FromArgb(243, 247, 252);
+            stepVaccine.Location = new Point(560, 14);
+            stepVaccine.Name = "stepVaccine";
+            stepVaccine.Number = 3;
+            stepVaccine.Size = new Size(80, 48);
+            stepVaccine.State = MyApp.Controls.StepState.Pending;
+            stepVaccine.TabStop = false;
+            stepVaccine.Text = "Vaccine Check";
+            // 
+            // stepLine3
+            // 
+            stepLine3.BackColor = Color.FromArgb(227, 233, 242);
+            stepLine3.Location = new Point(640, 25);
+            stepLine3.Name = "stepLine3";
+            stepLine3.Size = new Size(30, 1);
+            stepLine3.TabIndex = 7;
+            // 
+            // stepGrooming
+            // 
+            stepGrooming.BackColor = Color.FromArgb(243, 247, 252);
+            stepGrooming.Location = new Point(670, 14);
+            stepGrooming.Name = "stepGrooming";
+            stepGrooming.Number = 4;
+            stepGrooming.Size = new Size(80, 48);
+            stepGrooming.State = MyApp.Controls.StepState.Pending;
+            stepGrooming.TabStop = false;
+            stepGrooming.Text = "Grooming";
+            // 
+            // stepLine4
+            // 
+            stepLine4.BackColor = Color.FromArgb(227, 233, 242);
+            stepLine4.Location = new Point(750, 25);
+            stepLine4.Name = "stepLine4";
+            stepLine4.Size = new Size(30, 1);
+            stepLine4.TabIndex = 9;
+            // 
+            // stepTicket
+            // 
+            stepTicket.BackColor = Color.FromArgb(243, 247, 252);
+            stepTicket.Location = new Point(780, 14);
+            stepTicket.Name = "stepTicket";
+            stepTicket.Number = 5;
+            stepTicket.Size = new Size(80, 48);
+            stepTicket.State = MyApp.Controls.StepState.Pending;
+            stepTicket.TabStop = false;
+            stepTicket.Text = "Ticket";
             // 
             // titleLabel
             // 
@@ -132,7 +211,7 @@ namespace MyApp
             titleLabel.Location = new Point(40, 84);
             titleLabel.Name = "titleLabel";
             titleLabel.Size = new Size(820, 36);
-            titleLabel.TabIndex = 5;
+            titleLabel.TabIndex = 11;
             titleLabel.Text = "Enter Your Contact Information";
             titleLabel.TextAlign = ContentAlignment.MiddleLeft;
             titleLabel.UseMnemonic = false;
@@ -145,7 +224,7 @@ namespace MyApp
             subtitleLabel.Location = new Point(40, 122);
             subtitleLabel.Name = "subtitleLabel";
             subtitleLabel.Size = new Size(820, 22);
-            subtitleLabel.TabIndex = 6;
+            subtitleLabel.TabIndex = 12;
             subtitleLabel.Text = "We'll email you a 6-digit code to confirm it's you.";
             subtitleLabel.TextAlign = ContentAlignment.MiddleLeft;
             subtitleLabel.UseMnemonic = false;
@@ -466,16 +545,137 @@ namespace MyApp
             contactPanel.Location = new Point(0, 150);
             contactPanel.Name = "contactPanel";
             contactPanel.Size = new Size(900, 330);
-            contactPanel.TabIndex = 7;
+            contactPanel.TabIndex = 13;
+            // 
+            // tabMyPets
+            // 
+            tabMyPets.Active = true;
+            tabMyPets.BackColor = Color.FromArgb(243, 247, 252);
+            tabMyPets.Glyph = "\uE77B";
+            tabMyPets.Location = new Point(40, 0);
+            tabMyPets.Name = "tabMyPets";
+            tabMyPets.Size = new Size(403, 44);
+            tabMyPets.TabIndex = 0;
+            tabMyPets.Text = "My Pets";
+            // 
+            // tabAddPet
+            // 
+            tabAddPet.BackColor = Color.FromArgb(243, 247, 252);
+            tabAddPet.Glyph = "\uE710";
+            tabAddPet.Location = new Point(457, 0);
+            tabAddPet.Name = "tabAddPet";
+            tabAddPet.Size = new Size(403, 44);
+            tabAddPet.TabIndex = 1;
+            tabAddPet.Text = "Add New Pet";
+            // 
+            // newPetPaw
+            // 
+            newPetPaw.BackColor = Color.FromArgb(250, 252, 255);
+            newPetPaw.FillColor = Color.FromArgb(250, 252, 255);
+            newPetPaw.Location = new Point(110, 30);
+            newPetPaw.Name = "newPetPaw";
+            newPetPaw.PawColor = Color.FromArgb(96, 165, 250);
+            newPetPaw.Radius = 10;
+            newPetPaw.Size = new Size(40, 40);
+            newPetPaw.TabStop = false;
+            // 
+            // newPetTitle
+            // 
+            newPetTitle.BackColor = Color.FromArgb(250, 252, 255);
+            newPetTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            newPetTitle.ForeColor = Color.FromArgb(31, 42, 60);
+            newPetTitle.Location = new Point(0, 84);
+            newPetTitle.Name = "newPetTitle";
+            newPetTitle.Size = new Size(260, 24);
+            newPetTitle.TabIndex = 1;
+            newPetTitle.Text = "New Pet?";
+            newPetTitle.TextAlign = ContentAlignment.MiddleCenter;
+            newPetTitle.UseMnemonic = false;
+            // 
+            // newPetHint
+            // 
+            newPetHint.BackColor = Color.FromArgb(250, 252, 255);
+            newPetHint.Font = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            newPetHint.ForeColor = Color.FromArgb(122, 136, 156);
+            newPetHint.Location = new Point(0, 110);
+            newPetHint.Name = "newPetHint";
+            newPetHint.Size = new Size(260, 22);
+            newPetHint.TabIndex = 2;
+            newPetHint.Text = "Add your pet's details.";
+            newPetHint.TextAlign = ContentAlignment.MiddleCenter;
+            newPetHint.UseMnemonic = false;
+            // 
+            // newPetArrowLabel
+            // 
+            newPetArrowLabel.BackColor = Color.FromArgb(96, 165, 250);
+            newPetArrowLabel.Dock = DockStyle.Fill;
+            newPetArrowLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            newPetArrowLabel.ForeColor = Color.White;
+            newPetArrowLabel.Name = "newPetArrowLabel";
+            newPetArrowLabel.Text = "\u2192";
+            newPetArrowLabel.TextAlign = ContentAlignment.MiddleCenter;
+            newPetArrowLabel.UseMnemonic = false;
+            // 
+            // newPetArrow
+            // 
+            newPetArrow.Controls.Add(newPetArrowLabel);
+            newPetArrow.BackColor = Color.FromArgb(250, 252, 255);
+            newPetArrow.BorderColor = Color.FromArgb(96, 165, 250);
+            newPetArrow.CornerColor = Color.FromArgb(250, 252, 255);
+            newPetArrow.FillColor = Color.FromArgb(96, 165, 250);
+            newPetArrow.Location = new Point(116, 152);
+            newPetArrow.Margin = new Padding(0);
+            newPetArrow.Name = "newPetArrow";
+            newPetArrow.Radius = 14;
+            newPetArrow.Size = new Size(28, 28);
+            newPetArrow.TabIndex = 3;
+            // 
+            // newPetCard
+            // 
+            newPetCard.Controls.Add(newPetArrow);
+            newPetCard.Controls.Add(newPetHint);
+            newPetCard.Controls.Add(newPetTitle);
+            newPetCard.Controls.Add(newPetPaw);
+            newPetCard.BackColor = Color.FromArgb(243, 247, 252);
+            newPetCard.BorderColor = Color.FromArgb(214, 230, 251);
+            newPetCard.CornerColor = Color.FromArgb(243, 247, 252);
+            newPetCard.Cursor = Cursors.Hand;
+            newPetCard.FillColor = Color.FromArgb(250, 252, 255);
+            newPetCard.Location = new Point(0, 0);
+            newPetCard.Margin = new Padding(0, 0, 20, 20);
+            newPetCard.Name = "newPetCard";
+            newPetCard.Radius = 14;
+            newPetCard.Size = new Size(260, 200);
+            newPetCard.TabIndex = 0;
+            // 
+            // petsFlow
+            // 
+            petsFlow.Controls.Add(newPetCard);
+            petsFlow.AutoScroll = true;
+            petsFlow.BackColor = Color.FromArgb(243, 247, 252);
+            petsFlow.Dock = DockStyle.Fill;
+            petsFlow.Location = new Point(0, 0);
+            petsFlow.Name = "petsFlow";
+            petsFlow.Size = new Size(820, 262);
+            petsFlow.TabIndex = 0;
+            // 
+            // myPetsView
+            // 
+            myPetsView.Controls.Add(petsFlow);
+            myPetsView.BackColor = Color.FromArgb(243, 247, 252);
+            myPetsView.Location = new Point(40, 60);
+            myPetsView.Name = "myPetsView";
+            myPetsView.Size = new Size(820, 262);
+            myPetsView.TabIndex = 2;
             // 
             // ownerLabel
             // 
             ownerLabel.BackColor = Color.White;
             ownerLabel.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             ownerLabel.ForeColor = Color.FromArgb(122, 136, 156);
-            ownerLabel.Location = new Point(24, 18);
+            ownerLabel.Location = new Point(24, 12);
             ownerLabel.Name = "ownerLabel";
-            ownerLabel.Size = new Size(332, 20);
+            ownerLabel.Size = new Size(772, 20);
             ownerLabel.TabIndex = 0;
             ownerLabel.Text = "";
             ownerLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -486,9 +686,9 @@ namespace MyApp
             petNameLabel.BackColor = Color.White;
             petNameLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             petNameLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            petNameLabel.Location = new Point(24, 46);
+            petNameLabel.Location = new Point(24, 40);
             petNameLabel.Name = "petNameLabel";
-            petNameLabel.Size = new Size(332, 16);
+            petNameLabel.Size = new Size(236, 16);
             petNameLabel.TabIndex = 1;
             petNameLabel.Text = "PET NAME";
             petNameLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -500,13 +700,13 @@ namespace MyApp
             petNameField.CornerColor = Color.White;
             petNameField.FillColor = Color.White;
             petNameField.Glyph = "\uE77B";
-            petNameField.Location = new Point(24, 64);
+            petNameField.Location = new Point(24, 58);
             petNameField.Margin = new Padding(0);
             petNameField.Name = "petNameField";
             petNameField.Padding = new Padding(10, 3, 10, 3);
             petNameField.Placeholder = "e.g. Bella";
             petNameField.Radius = 12;
-            petNameField.Size = new Size(332, 46);
+            petNameField.Size = new Size(236, 46);
             petNameField.TabIndex = 2;
             // 
             // speciesLabel
@@ -514,9 +714,9 @@ namespace MyApp
             speciesLabel.BackColor = Color.White;
             speciesLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             speciesLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            speciesLabel.Location = new Point(24, 118);
+            speciesLabel.Location = new Point(292, 40);
             speciesLabel.Name = "speciesLabel";
-            speciesLabel.Size = new Size(332, 16);
+            speciesLabel.Size = new Size(236, 16);
             speciesLabel.TabIndex = 3;
             speciesLabel.Text = "SPECIES";
             speciesLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -528,13 +728,13 @@ namespace MyApp
             speciesField.CornerColor = Color.White;
             speciesField.FillColor = Color.White;
             speciesField.Glyph = "\uE8EC";
-            speciesField.Location = new Point(24, 136);
+            speciesField.Location = new Point(292, 58);
             speciesField.Margin = new Padding(0);
             speciesField.Name = "speciesField";
             speciesField.Padding = new Padding(10, 3, 10, 3);
             speciesField.Placeholder = "e.g. Dog, Cat";
             speciesField.Radius = 12;
-            speciesField.Size = new Size(332, 46);
+            speciesField.Size = new Size(236, 46);
             speciesField.TabIndex = 4;
             // 
             // breedLabel
@@ -542,9 +742,9 @@ namespace MyApp
             breedLabel.BackColor = Color.White;
             breedLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             breedLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            breedLabel.Location = new Point(24, 190);
+            breedLabel.Location = new Point(560, 40);
             breedLabel.Name = "breedLabel";
-            breedLabel.Size = new Size(332, 16);
+            breedLabel.Size = new Size(236, 16);
             breedLabel.TabIndex = 5;
             breedLabel.Text = "BREED";
             breedLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -556,13 +756,13 @@ namespace MyApp
             breedField.CornerColor = Color.White;
             breedField.FillColor = Color.White;
             breedField.Glyph = "\uE734";
-            breedField.Location = new Point(24, 208);
+            breedField.Location = new Point(560, 58);
             breedField.Margin = new Padding(0);
             breedField.Name = "breedField";
             breedField.Padding = new Padding(10, 3, 10, 3);
             breedField.Placeholder = "e.g. Shih Tzu";
             breedField.Radius = 12;
-            breedField.Size = new Size(332, 46);
+            breedField.Size = new Size(236, 46);
             breedField.TabIndex = 6;
             // 
             // petErrorLabel
@@ -570,9 +770,9 @@ namespace MyApp
             petErrorLabel.BackColor = Color.White;
             petErrorLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             petErrorLabel.ForeColor = Color.FromArgb(239, 68, 68);
-            petErrorLabel.Location = new Point(24, 258);
+            petErrorLabel.Location = new Point(24, 114);
             petErrorLabel.Name = "petErrorLabel";
-            petErrorLabel.Size = new Size(332, 20);
+            petErrorLabel.Size = new Size(772, 20);
             petErrorLabel.TabIndex = 7;
             petErrorLabel.Text = "";
             petErrorLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -582,44 +782,57 @@ namespace MyApp
             // 
             savePetButton.BackColor = Color.White;
             savePetButton.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            savePetButton.Location = new Point(24, 280);
+            savePetButton.Location = new Point(24, 142);
             savePetButton.Name = "savePetButton";
             savePetButton.Radius = 12;
-            savePetButton.Size = new Size(332, 40);
+            savePetButton.Size = new Size(260, 44);
             savePetButton.TabIndex = 8;
             savePetButton.Text = "Add Pet  \u2192";
             // 
-            // petCard
+            // addPetCard
             // 
-            petCard.Controls.Add(savePetButton);
-            petCard.Controls.Add(petErrorLabel);
-            petCard.Controls.Add(breedField);
-            petCard.Controls.Add(breedLabel);
-            petCard.Controls.Add(speciesField);
-            petCard.Controls.Add(speciesLabel);
-            petCard.Controls.Add(petNameField);
-            petCard.Controls.Add(petNameLabel);
-            petCard.Controls.Add(ownerLabel);
-            petCard.BackColor = Color.FromArgb(243, 247, 252);
-            petCard.BorderColor = Color.FromArgb(227, 233, 242);
-            petCard.CornerColor = Color.FromArgb(243, 247, 252);
-            petCard.FillColor = Color.White;
-            petCard.Location = new Point(260, 0);
-            petCard.Margin = new Padding(0);
-            petCard.Name = "petCard";
-            petCard.Radius = 18;
-            petCard.Size = new Size(380, 330);
-            petCard.TabIndex = 0;
+            addPetCard.Controls.Add(savePetButton);
+            addPetCard.Controls.Add(petErrorLabel);
+            addPetCard.Controls.Add(breedField);
+            addPetCard.Controls.Add(breedLabel);
+            addPetCard.Controls.Add(speciesField);
+            addPetCard.Controls.Add(speciesLabel);
+            addPetCard.Controls.Add(petNameField);
+            addPetCard.Controls.Add(petNameLabel);
+            addPetCard.Controls.Add(ownerLabel);
+            addPetCard.BackColor = Color.FromArgb(243, 247, 252);
+            addPetCard.BorderColor = Color.FromArgb(227, 233, 242);
+            addPetCard.CornerColor = Color.FromArgb(243, 247, 252);
+            addPetCard.FillColor = Color.White;
+            addPetCard.Location = new Point(0, 0);
+            addPetCard.Margin = new Padding(0);
+            addPetCard.Name = "addPetCard";
+            addPetCard.Radius = 14;
+            addPetCard.Size = new Size(820, 200);
+            addPetCard.TabIndex = 0;
             // 
-            // petPanel
+            // addPetView
             // 
-            petPanel.Controls.Add(petCard);
-            petPanel.BackColor = Color.FromArgb(243, 247, 252);
-            petPanel.Location = new Point(0, 150);
-            petPanel.Name = "petPanel";
-            petPanel.Size = new Size(900, 330);
-            petPanel.TabIndex = 8;
-            petPanel.Visible = false;
+            addPetView.Controls.Add(addPetCard);
+            addPetView.BackColor = Color.FromArgb(243, 247, 252);
+            addPetView.Location = new Point(40, 60);
+            addPetView.Name = "addPetView";
+            addPetView.Size = new Size(820, 262);
+            addPetView.TabIndex = 3;
+            addPetView.Visible = false;
+            // 
+            // selectPanel
+            // 
+            selectPanel.Controls.Add(addPetView);
+            selectPanel.Controls.Add(myPetsView);
+            selectPanel.Controls.Add(tabAddPet);
+            selectPanel.Controls.Add(tabMyPets);
+            selectPanel.BackColor = Color.FromArgb(243, 247, 252);
+            selectPanel.Location = new Point(0, 150);
+            selectPanel.Name = "selectPanel";
+            selectPanel.Size = new Size(900, 330);
+            selectPanel.TabIndex = 14;
+            selectPanel.Visible = false;
             // 
             // backButton
             // 
@@ -631,20 +844,22 @@ namespace MyApp
             backButton.Location = new Point(40, 490);
             backButton.Name = "backButton";
             backButton.Size = new Size(96, 36);
-            backButton.TabIndex = 9;
+            backButton.TabIndex = 15;
             backButton.Text = "\u2190  Back";
             backButton.UseVisualStyleBackColor = false;
             // 
-            // cornerPaw
+            // continueButton
             // 
-            cornerPaw.BackColor = Color.FromArgb(243, 247, 252);
-            cornerPaw.FillColor = Color.FromArgb(243, 247, 252);
-            cornerPaw.Location = new Point(812, 484);
-            cornerPaw.Name = "cornerPaw";
-            cornerPaw.PawColor = Color.FromArgb(214, 230, 251);
-            cornerPaw.Radius = 10;
-            cornerPaw.Size = new Size(40, 40);
-            cornerPaw.TabStop = false;
+            continueButton.BackColor = Color.White;
+            continueButton.Enabled = false;
+            continueButton.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            continueButton.Location = new Point(730, 486);
+            continueButton.Name = "continueButton";
+            continueButton.Radius = 12;
+            continueButton.Size = new Size(130, 42);
+            continueButton.TabIndex = 16;
+            continueButton.Text = "Continue  \u2192";
+            continueButton.Visible = false;
             // 
             // resendTimer
             // 
@@ -656,14 +871,20 @@ namespace MyApp
             AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.FromArgb(243, 247, 252);
             ClientSize = new Size(900, 540);
-            Controls.Add(cornerPaw);
+            Controls.Add(continueButton);
             Controls.Add(backButton);
-            Controls.Add(petPanel);
+            Controls.Add(selectPanel);
             Controls.Add(contactPanel);
             Controls.Add(subtitleLabel);
             Controls.Add(titleLabel);
-            Controls.Add(stepPet);
-            Controls.Add(stepLine);
+            Controls.Add(stepTicket);
+            Controls.Add(stepLine4);
+            Controls.Add(stepGrooming);
+            Controls.Add(stepLine3);
+            Controls.Add(stepVaccine);
+            Controls.Add(stepLine2);
+            Controls.Add(stepSelect);
+            Controls.Add(stepLine1);
             Controls.Add(stepContact);
             Controls.Add(brandLabel);
             Controls.Add(logoBadge);
@@ -680,8 +901,13 @@ namespace MyApp
             orBadge.ResumeLayout(false);
             otpCard.ResumeLayout(false);
             contactPanel.ResumeLayout(false);
-            petCard.ResumeLayout(false);
-            petPanel.ResumeLayout(false);
+            newPetArrow.ResumeLayout(false);
+            newPetCard.ResumeLayout(false);
+            petsFlow.ResumeLayout(false);
+            myPetsView.ResumeLayout(false);
+            addPetCard.ResumeLayout(false);
+            addPetView.ResumeLayout(false);
+            selectPanel.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -690,8 +916,14 @@ namespace MyApp
         private MyApp.Controls.PawBadge logoBadge;
         private System.Windows.Forms.Label brandLabel;
         private MyApp.Controls.StepDot stepContact;
-        private System.Windows.Forms.Panel stepLine;
-        private MyApp.Controls.StepDot stepPet;
+        private System.Windows.Forms.Panel stepLine1;
+        private MyApp.Controls.StepDot stepSelect;
+        private System.Windows.Forms.Panel stepLine2;
+        private MyApp.Controls.StepDot stepVaccine;
+        private System.Windows.Forms.Panel stepLine3;
+        private MyApp.Controls.StepDot stepGrooming;
+        private System.Windows.Forms.Panel stepLine4;
+        private MyApp.Controls.StepDot stepTicket;
         private System.Windows.Forms.Label titleLabel;
         private System.Windows.Forms.Label subtitleLabel;
         private System.Windows.Forms.Label emailLabel;
@@ -717,6 +949,16 @@ namespace MyApp
         private System.Windows.Forms.Label resendLabel;
         private MyApp.Controls.CardPanel otpCard;
         private System.Windows.Forms.Panel contactPanel;
+        private MyApp.Controls.SegmentButton tabMyPets;
+        private MyApp.Controls.SegmentButton tabAddPet;
+        private MyApp.Controls.PawBadge newPetPaw;
+        private System.Windows.Forms.Label newPetTitle;
+        private System.Windows.Forms.Label newPetHint;
+        private System.Windows.Forms.Label newPetArrowLabel;
+        private MyApp.Controls.CardPanel newPetArrow;
+        private MyApp.Controls.CardPanel newPetCard;
+        private System.Windows.Forms.FlowLayoutPanel petsFlow;
+        private System.Windows.Forms.Panel myPetsView;
         private System.Windows.Forms.Label ownerLabel;
         private System.Windows.Forms.Label petNameLabel;
         private MyApp.Controls.InputField petNameField;
@@ -726,10 +968,11 @@ namespace MyApp
         private MyApp.Controls.InputField breedField;
         private System.Windows.Forms.Label petErrorLabel;
         private MyApp.Controls.PrimaryButton savePetButton;
-        private MyApp.Controls.CardPanel petCard;
-        private System.Windows.Forms.Panel petPanel;
+        private MyApp.Controls.CardPanel addPetCard;
+        private System.Windows.Forms.Panel addPetView;
+        private System.Windows.Forms.Panel selectPanel;
         private System.Windows.Forms.Button backButton;
-        private MyApp.Controls.PawBadge cornerPaw;
+        private MyApp.Controls.PrimaryButton continueButton;
         private System.Windows.Forms.Timer resendTimer;
     }
 }
