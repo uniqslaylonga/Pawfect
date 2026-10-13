@@ -25,6 +25,8 @@ internal sealed class PetViewerForm : Form
     private readonly TableLayoutPanel _details = new();
     private readonly Label _cardHeader = new();
     private readonly PictureBox _cardBox = new();
+    private readonly Label _vaxHeader = new();
+    private readonly ListView _vaxList = new();
     private readonly Button _editDetails;
     private readonly Dictionary<int, Image?> _thumbs = new();
 
@@ -50,7 +52,7 @@ internal sealed class PetViewerForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
-        ClientSize = new Size(960, 700);
+        ClientSize = new Size(960, 780);
 
         _editDetails = MakeButton("Edit details", 110, primary: false);
         var addPet = MakeButton("Add pet", 90, primary: false);
@@ -119,6 +121,27 @@ internal sealed class PetViewerForm : Form
         _cardHeader.TextAlign = ContentAlignment.BottomLeft;
         _cardHeader.Text = "Vaccination card  (click the picture to enlarge)";
 
+        // vaccination records read from the scanned card (shown above the card picture)
+        _vaxList.Dock = DockStyle.Top;
+        _vaxList.Height = 120;
+        _vaxList.View = View.Details;
+        _vaxList.FullRowSelect = true;
+        _vaxList.MultiSelect = false;
+        _vaxList.HideSelection = false;
+        _vaxList.BorderStyle = BorderStyle.FixedSingle;
+        _vaxList.Columns.Add("Vaccine", 190);
+        _vaxList.Columns.Add("Date given", 120);
+        _vaxList.Columns.Add("Weight", 80);
+        _vaxList.Columns.Add("Batch / Lot", 120);
+        _vaxList.Columns.Add("Expires", 120);
+
+        _vaxHeader.Dock = DockStyle.Top;
+        _vaxHeader.Height = 32;
+        _vaxHeader.Font = Theme.Face(10f, FontStyle.Bold);
+        _vaxHeader.TextAlign = ContentAlignment.BottomLeft;
+        _vaxHeader.UseMnemonic = false;
+        _vaxHeader.Text = "Vaccination records";
+
         // top block: [photo][gap][name / species / details]
         _details.Dock = DockStyle.Fill;
         _details.ColumnCount = 2;
@@ -161,6 +184,8 @@ internal sealed class PetViewerForm : Form
         _content.Padding = new Padding(20, 16, 20, 12);
         _content.Controls.Add(_cardBox);
         _content.Controls.Add(_cardHeader);
+        _content.Controls.Add(_vaxList);
+        _content.Controls.Add(_vaxHeader);
         _content.Controls.Add(_top);
         _content.Controls.Add(_noPets);
 
@@ -295,18 +320,20 @@ internal sealed class PetViewerForm : Form
 
         _listTitle.Text = _pets.Count == 1 ? "1 pet" : $"{_pets.Count} pets";
         _noPets.Visible = _pets.Count == 0;
-        _top.Visible = _cardHeader.Visible = _cardBox.Visible = pet is not null;
+        _top.Visible = _cardHeader.Visible = _cardBox.Visible = _vaxHeader.Visible = _vaxList.Visible = pet is not null;
         _editDetails.Enabled = pet is not null;
 
         if (pet is null)
         {
             SetImage(_photoBox, ref _photoImage, null);
             SetImage(_cardBox, ref _cardImage, null);
+            _vaxList.Items.Clear();
             return;
         }
 
         SetImage(_photoBox, ref _photoImage, pet.Photo);
         SetImage(_cardBox, ref _cardImage, pet.VaccinationCard);
+        ShowVaccinations(pet.Id);
 
         _nameLabel.Text = pet.Name;
         string kind = string.Join(" - ", new[] { pet.Species, pet.Breed }.Where(s => !string.IsNullOrWhiteSpace(s)));
@@ -322,6 +349,43 @@ internal sealed class PetViewerForm : Form
             ("Color", Or(pet.CoatColor)),
             ("Notes", Or(pet.Notes)),
         });
+    }
+
+    /// <summary>Lists the vaccinations saved from the scanned card (newest first). Expired ones are shown in red.</summary>
+    private void ShowVaccinations(int petId)
+    {
+        _vaxList.BeginUpdate();
+        _vaxList.Items.Clear();
+        try
+        {
+            var records = PetVaccinations.GetForPet(petId);
+            _vaxHeader.Text = records.Count == 0 ? "Vaccination records  (none scanned yet)" : $"Vaccination records  ({records.Count})";
+            foreach (var r in records)
+            {
+                var item = new ListViewItem(new[]
+                {
+                    r.Vaccine,
+                    r.Given is { } g ? g.ToString("MMM d, yyyy") : "-",
+                    r.WeightKg is { } w ? $"{w:0.##} kg" : "-",
+                    r.BatchNo.Length == 0 ? "-" : r.BatchNo,
+                    r.Expires is { } e ? e.ToString("MMM d, yyyy") : "-",
+                });
+                if (r.Expires is { } expiry && expiry.Date < DateTime.Today)
+                {
+                    item.ForeColor = Color.FromArgb(200, 40, 40);
+                    item.SubItems[4].Text += "  (expired)";
+                }
+                _vaxList.Items.Add(item);
+            }
+        }
+        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
+        {
+            _vaxHeader.Text = "Vaccination records  (couldn't be loaded)";
+        }
+        finally
+        {
+            _vaxList.EndUpdate();
+        }
     }
 
     private static string Or(string value) => string.IsNullOrWhiteSpace(value) ? "Not set" : value;
