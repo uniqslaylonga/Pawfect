@@ -24,7 +24,8 @@ internal sealed record AppointmentItem(
     string Groomer = "",
     string Room = "",
     string Notes = "",
-    string QueueNumber = "");
+    string QueueNumber = "",
+    byte[]? PetPhoto = null);
 
 /// <summary>Label and colours for each appointment status.</summary>
 internal static class AppointmentStatusStyle

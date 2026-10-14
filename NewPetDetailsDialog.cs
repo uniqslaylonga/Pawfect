@@ -273,6 +273,7 @@ internal sealed class NewPetDetailsDialog : Form
     {
         string name = _name.Box.Text.Trim();
         if (name.Length == 0) { Fail("Enter your pet's name.", _name.Box); return; }
+        if (!PetNameRules.IsValid(name)) { Fail(PetNameRules.Hint, _name.Box); return; }
         if (!_dog.Selected && !_cat.Selected) { Fail("Choose Dog or Cat."); return; }
 
         if (!decimal.TryParse(_weight.Box.Text.Trim().Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var weight)

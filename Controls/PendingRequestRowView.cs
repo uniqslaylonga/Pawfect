@@ -33,6 +33,15 @@ internal sealed class PendingRequestRowView : Control
         BackColor = Color.White;
         Height = RowHeight;
         TabStop = false;
+        _photo = AvatarImages.FromBytes(item.PetPhoto);   // decoded once, not on every repaint
+    }
+
+    private readonly Image? _photo;
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _photo?.Dispose();
+        base.Dispose(disposing);
     }
 
     public AppointmentItem Item { get; }
@@ -121,10 +130,15 @@ internal sealed class PendingRequestRowView : Control
         int avatar = 34;
         int avatarY = (Height - avatar) / 2;
         var avatarRect = new Rectangle(c1.X + CellPad, avatarY, avatar, avatar);
-        using (var b = new SolidBrush(Color.FromArgb(254, 243, 224)))
-            g.FillEllipse(b, avatarRect);
-        string initial = Item.PetName.Trim().Length > 0 ? Item.PetName.Trim()[..1].ToUpperInvariant() : "";
-        TextRenderer.DrawText(g, initial, Theme.Face(10f, FontStyle.Bold), avatarRect, Color.FromArgb(199, 122, 10), CenterFlags);
+        if (_photo is not null)
+            AvatarImages.DrawCircle(g, _photo, avatarRect);   // the pet's profile picture
+        else
+        {
+            using (var b = new SolidBrush(Color.FromArgb(254, 243, 224)))
+                g.FillEllipse(b, avatarRect);
+            string initial = Item.PetName.Trim().Length > 0 ? Item.PetName.Trim()[..1].ToUpperInvariant() : "";
+            TextRenderer.DrawText(g, initial, Theme.Face(10f, FontStyle.Bold), avatarRect, Color.FromArgb(199, 122, 10), CenterFlags);
+        }
 
         int textX = avatarRect.Right + 10;
         int textW = Math.Max(20, c1.Right - textX - 6);

@@ -36,7 +36,8 @@ internal sealed partial class AddPetForm : Form
     public AddPetForm()
     {
         InitializeComponent();
-        _otpBoxes = new[] { otpBox1, otpBox2, otpBox3, otpBox4, otpBox5, otpBox6 };
+        _otpBoxes = new[] { otpBox1.Box, otpBox2.Box, otpBox3.Box, otpBox4.Box, otpBox5.Box, otpBox6.Box };
+        foreach (var b in _otpBoxes) b.Enabled = false;   // switched on once the code has been sent
         WireUp();
         ShowContactStep();
     }
@@ -74,6 +75,9 @@ internal sealed partial class AddPetForm : Form
 
         emailField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         mobileField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
+        mobileField.Box.MaxLength = 20;
+        mobileField.Box.KeyPress += MobileBox_KeyPress;      // no letters while typing
+        mobileField.Box.TextChanged += MobileBox_TextChanged; // ...or when pasting
         petNameField.Box.TextChanged += (_, _) => petErrorLabel.Text = "";
         petNameField.Box.MaxLength = 60;
         speciesField.Box.MaxLength = 30;
@@ -196,6 +200,27 @@ internal sealed partial class AddPetForm : Form
     }
 
     private void ShowContactError(string message) => contactErrorLabel.Text = message;
+
+    // ---- mobile number: digits (and + - ( ) space) only
+
+    private static bool IsPhoneChar(char c) => char.IsAsciiDigit(c) || c is ' ' or '+' or '-' or '(' or ')';
+
+    private void MobileBox_KeyPress(object? sender, KeyPressEventArgs e)
+    {
+        if (!char.IsControl(e.KeyChar) && !IsPhoneChar(e.KeyChar)) e.Handled = true;
+    }
+
+    private void MobileBox_TextChanged(object? sender, EventArgs e)
+    {
+        var box = mobileField.Box;
+        string clean = new(box.Text.Where(IsPhoneChar).ToArray());
+        if (clean == box.Text) return;
+
+        // Pasted letters are dropped; keep the cursor where the person expects it.
+        int caret = box.SelectionStart - box.Text.Take(box.SelectionStart).Count(c => !IsPhoneChar(c));
+        box.Text = clean;
+        box.SelectionStart = Math.Clamp(caret, 0, clean.Length);
+    }
 
     // ---- the six boxes
 
@@ -339,6 +364,12 @@ internal sealed partial class AddPetForm : Form
         if (string.IsNullOrWhiteSpace(petNameField.Value))
         {
             petErrorLabel.Text = "Enter your pet's name.";
+            petNameField.Box.Focus();
+            return;
+        }
+        if (!PetNameRules.IsValid(petNameField.Value))
+        {
+            petErrorLabel.Text = PetNameRules.Hint;
             petNameField.Box.Focus();
             return;
         }

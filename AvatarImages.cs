@@ -67,6 +67,29 @@ internal static class AvatarImages
         }
     }
 
+    /// <summary>Paints the picture clipped to a circle that fills the rectangle (cropped to fit, never stretched).</summary>
+    public static void DrawCircle(Graphics g, Image photo, Rectangle r)
+    {
+        var oldSmooth = g.SmoothingMode;
+        var oldInterp = g.InterpolationMode;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        using (var clip = new GraphicsPath())
+        {
+            clip.AddEllipse(r);
+            var state = g.Save();
+            g.SetClip(clip, CombineMode.Intersect);
+            float scale = Math.Max((float)r.Width / photo.Width, (float)r.Height / photo.Height);
+            float w = photo.Width * scale, h = photo.Height * scale;
+            g.DrawImage(photo, r.X + (r.Width - w) / 2f, r.Y + (r.Height - h) / 2f, w, h);
+            g.Restore(state);
+        }
+        using (var ring = new Pen(Color.FromArgb(40, 0, 0, 0)))
+            g.DrawEllipse(ring, r.X, r.Y, r.Width - 1, r.Height - 1);
+        g.SmoothingMode = oldSmooth;
+        g.InterpolationMode = oldInterp;
+    }
+
     /// <summary>Shows the picture in a round badge, or the plain person icon when there is none.</summary>
     public static void Show(IconBadge badge, byte[]? bytes) => badge.Photo = FromBytes(bytes);
 }

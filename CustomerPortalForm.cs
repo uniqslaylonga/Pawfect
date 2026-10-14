@@ -14,9 +14,8 @@ internal sealed class CustomerPortalForm : Form
     private readonly ListView _pets = NewList("Pet", 160, "Species", 120, "Breed", 200);
     private readonly ListView _history = NewList("Receipt", 120, "Date", 170, "Services", 80, "Items", 80, "Total", 110, "Paid by", 100);
     private readonly Label _welcome = new();
-    private readonly Button _bookButton = ActionButton("Request Appointment", primary: true);
     private readonly Button _cancelButton = ActionButton("Cancel Appointment", primary: false);
-    private readonly Button _addPetButton = ActionButton("Add Pet", primary: false);
+    private readonly Button _addPetButton = ActionButton("Add Pet / Get Ticket", primary: true);
     private readonly Button _scanCardButton = ActionButton("Scan Vaccination Card", primary: false);
     private List<AppointmentItem> _appointmentData = new();
 
@@ -53,7 +52,7 @@ internal sealed class CustomerPortalForm : Form
         tabs.TabPages.Add(Tab("Purchase History", _history));
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 56, Padding = new Padding(20, 10, 20, 8), BackColor = Color.White };
-        buttons.Controls.AddRange(new Control[] { _bookButton, _cancelButton, _addPetButton, _scanCardButton });
+        buttons.Controls.AddRange(new Control[] { _addPetButton, _cancelButton, _scanCardButton });
 
         var body = new Panel { Dock = DockStyle.Fill, Padding = new Padding(20, 16, 20, 12) };
         body.Controls.Add(tabs);
@@ -62,10 +61,10 @@ internal sealed class CustomerPortalForm : Form
         Controls.Add(buttons);
         Controls.Add(header);
 
-        _bookButton.Click += (_, _) => Book();
         _cancelButton.Click += (_, _) => CancelSelected();
         _addPetButton.Click += (_, _) => AddPet();
         _scanCardButton.Width = 190;
+        _addPetButton.Width = 170;
         _scanCardButton.Click += (_, _) => ScanCard();
         _appointments.SelectedIndexChanged += (_, _) => UpdateButtons();
 
@@ -108,7 +107,7 @@ internal sealed class CustomerPortalForm : Form
             _customer = EmployeeData.GetCustomerForLogin(_user.Email);
             if (_customer is not { } c)
             {
-                _bookButton.Enabled = _addPetButton.Enabled = _scanCardButton.Enabled = _cancelButton.Enabled = false;
+                _addPetButton.Enabled = _scanCardButton.Enabled = _cancelButton.Enabled = false;
                 _welcome.Text = $"Welcome, {_user.Name}  \u2014  this login isn't linked to a customer record yet.";
                 return;
             }
@@ -147,32 +146,33 @@ internal sealed class CustomerPortalForm : Form
     private void UpdateButtons()
     {
         bool linked = _customer is not null;
-        _bookButton.Enabled = linked;
         _addPetButton.Enabled = linked;
         _scanCardButton.Enabled = linked;
         _cancelButton.Enabled = linked && _appointments.SelectedItems.Count == 1 &&
             _appointments.SelectedItems[0].Tag is AppointmentItem { Status: AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled };
     }
 
-    private void Book(int? petId = null, string? service = null)
+    /// <summary>After the service step: the visit is queued right away (no date or time to pick) and the ticket is shown.</summary>
+    private void GetQueueTicket(int petId, string? serviceName)
     {
         if (_customer is not { } c) return;
         try
         {
-            using var form = new CustomerBookingForm(c.Id, c.Name, _user.Email, petId, service);
-            if (form.ShowDialog(this) == DialogResult.OK)
+            var service = EmployeeData.GetServices().FirstOrDefault(x => string.Equals(x.Name, serviceName, StringComparison.OrdinalIgnoreCase));
+            if (service is null)
             {
-                Reload();
-                if (form.Ticket is { } ticket)   // step 5: the queue ticket (the same request is now on the staff Appointments page)
-                {
-                    using var ticketForm = new QueueTicketForm(ticket);
-                    ticketForm.ShowDialog(this);
-                }
+                Msg.Show(this, "That service isn't available right now. Please pick another one.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
             }
+
+            var ticket = EmployeeData.AddOwnAppointment(c.Id, petId, service.Id, DateTime.Now, _user.Email);   // saved as Pending, so staff see it too
+            Reload();
+            using var ticketForm = new QueueTicketForm(ticket);
+            ticketForm.ShowDialog(this);
         }
-        catch (SqlException ex)
+        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
         {
-            Msg.Show(this, "Couldn't open the request form.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            Msg.Show(this, "Couldn't create your queue ticket.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -186,7 +186,7 @@ internal sealed class CustomerPortalForm : Form
             return;
         }
         Reload();
-        if (form.ChosenPetId is int petId) Book(petId, form.ChosenService);   // picked an existing pet: go on to the appointment request
+        if (form.ChosenPetId is int petId) GetQueueTicket(petId, form.ChosenService);   // service chosen: straight to the queue ticket
     }
 
     private void ScanCard()
@@ -227,83 +227,5 @@ internal sealed class CustomerPortalForm : Form
             return;
         }
         Reload();
-    }
-}
-
-/// <summary>A customer asks for an appointment (pet, service, preferred day/time, notes). The shop schedules it.</summary>
-internal sealed class CustomerBookingForm : DialogBase
-{
-    private readonly int _customerId;
-    private readonly string _email;
-    private readonly string _customerName;
-    private readonly List<PetRecord> _pets;
-    private readonly List<ServiceOffering> _services;
-
-    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet" };
-    private readonly PawSelect _service = new() { Placeholder = "Choose a service" };
-    private readonly PawDatePicker _date = new();
-    private readonly PawTimePicker _time = new();
-    private readonly TextBox _notes = new() { Multiline = true, Height = 60, MaxLength = 300, ScrollBars = ScrollBars.Vertical };
-
-    /// <summary>Set once the request is saved: the queue ticket shown to the customer.</summary>
-    public QueueTicket? Ticket { get; private set; }
-
-    public CustomerBookingForm(int customerId, string customerName, string loginEmail, int? petId = null, string? serviceHint = null) : base("Request Appointment", "Send Request", "\uE787", "Tell us when you'd like to come in")
-    {
-        _customerId = customerId;
-        _customerName = customerName;
-        _email = loginEmail;
-        _pets = EmployeeData.GetPets().Where(p => p.CustomerId == customerId).ToList();
-        _services = EmployeeData.GetServices();
-
-        _pet.Items.AddRange(_pets.Select(p => (object)p.Name).ToArray());
-        _service.Items.AddRange(_services.Select(s => (object)$"{s.Name}  \u00B7  {Money.Format(s.Price)}").ToArray());
-
-        AddRow("Pet *", _pet);
-        AddRow("Service *", _service);
-        AddRow("Preferred date *", _date);
-        AddRow("Preferred time *", _time);
-        AddRow("Notes", _notes);
-
-        _date.MinDate = DateTime.Today;
-        _date.Value = DateTime.Today;
-        _time.Value = TimeSpan.FromHours(9);
-        if (serviceHint is { Length: > 0 })   // the service picked in Pet Details (Bath Only, Full Groom, Nail Trim, Ear Cleaning)
-        {
-            int s = _services.FindIndex(x => string.Equals(x.Name, serviceHint, StringComparison.OrdinalIgnoreCase));   // the exact card from step 4
-            if (s < 0)
-            {
-                string key = serviceHint.Split(' ')[0];
-                s = _services.FindIndex(x => x.Name.Contains(key, StringComparison.OrdinalIgnoreCase));
-            }
-            if (s >= 0) _service.SelectedIndex = s;
-        }
-        if (_pets.Count > 0) _pet.SelectedIndex = Math.Max(0, _pets.FindIndex(p => p.Id == petId));
-        FitHeight();
-
-        Shown += (_, _) =>
-        {
-            if (_pets.Count == 0) ShowError("Add a pet first (Add Pet button).");
-            else if (_services.Count == 0) ShowError("No services are available yet.");
-        };
-    }
-
-    protected override void OnSaveClicked()
-    {
-        if (_pet.SelectedIndex < 0) { ShowError("Choose a pet."); return; }
-        if (_service.SelectedIndex < 0) { ShowError("Choose a service."); return; }
-
-        var start = _date.Value.Date + _time.Value;
-        if (start < DateTime.Now.AddMinutes(-1)) { ShowError("Pick a time that hasn't passed yet."); return; }
-
-        try
-        {
-            Ticket = EmployeeData.AddOwnAppointment(_customerId, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start, _email, _notes.Text);
-            DialogResult = DialogResult.OK;
-        }
-        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
-        {
-            ShowDatabaseError(this, ex);
-        }
     }
 }

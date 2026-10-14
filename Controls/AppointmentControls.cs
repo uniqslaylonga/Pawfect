@@ -286,6 +286,15 @@ internal sealed class AppointmentRowView : Control
         BackColor = Color.White;
         Height = RowHeight;
         TabStop = false;
+        _photo = AvatarImages.FromBytes(item.PetPhoto);   // decoded once, not on every repaint
+    }
+
+    private readonly Image? _photo;
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _photo?.Dispose();
+        base.Dispose(disposing);
     }
 
     public AppointmentItem Item { get; }
@@ -417,11 +426,16 @@ internal sealed class AppointmentRowView : Control
         // Pet
         var c2 = Col(2);
         var (petFill, petFore) = PetTint(Item.PetName);
-        using (var b = new SolidBrush(petFill))
-            g.FillEllipse(b, c2.X + 4, avatarY, avatar, avatar);
-        string initial = Item.PetName.Trim().Length > 0 ? Item.PetName.Trim()[..1].ToUpperInvariant() : "";
-        TextRenderer.DrawText(g, initial, Theme.Face(9f, FontStyle.Bold), new Rectangle(c2.X + 4, avatarY, avatar, avatar),
-            petFore, CenterFlags);
+        var petAvatar = new Rectangle(c2.X + 4, avatarY, avatar, avatar);
+        if (_photo is not null)
+            AvatarImages.DrawCircle(g, _photo, petAvatar);   // the pet's profile picture
+        else
+        {
+            using (var b = new SolidBrush(petFill))
+                g.FillEllipse(b, petAvatar);
+            string initial = Item.PetName.Trim().Length > 0 ? Item.PetName.Trim()[..1].ToUpperInvariant() : "";
+            TextRenderer.DrawText(g, initial, Theme.Face(9f, FontStyle.Bold), petAvatar, petFore, CenterFlags);
+        }
         TextRenderer.DrawText(g, Item.PetName, nameFont,
             new Rectangle(c2.X + 38, line1, c2.Width - 42, 18), Theme.Text, LineFlags);
         TextRenderer.DrawText(g, Item.PetBreed, subFont,

@@ -44,12 +44,12 @@ namespace MyApp
             otpIcon = new System.Windows.Forms.Label();
             otpTitle = new System.Windows.Forms.Label();
             otpHint = new System.Windows.Forms.Label();
-            otpBox1 = new System.Windows.Forms.TextBox();
-            otpBox2 = new System.Windows.Forms.TextBox();
-            otpBox3 = new System.Windows.Forms.TextBox();
-            otpBox4 = new System.Windows.Forms.TextBox();
-            otpBox5 = new System.Windows.Forms.TextBox();
-            otpBox6 = new System.Windows.Forms.TextBox();
+            otpBox1 = new MyApp.Controls.OtpBox();
+            otpBox2 = new MyApp.Controls.OtpBox();
+            otpBox3 = new MyApp.Controls.OtpBox();
+            otpBox4 = new MyApp.Controls.OtpBox();
+            otpBox5 = new MyApp.Controls.OtpBox();
+            otpBox6 = new MyApp.Controls.OtpBox();
             otpErrorLabel = new System.Windows.Forms.Label();
             verifyButton = new MyApp.Controls.PrimaryButton();
             resendLabel = new System.Windows.Forms.Label();
@@ -383,87 +383,75 @@ namespace MyApp
             // 
             // otpBox1
             // 
-            otpBox1.BackColor = Color.White;
-            otpBox1.BorderStyle = BorderStyle.FixedSingle;
-            otpBox1.Enabled = false;
-            otpBox1.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            otpBox1.ForeColor = Color.FromArgb(31, 42, 60);
-            otpBox1.Location = new Point(25, 104);
-            otpBox1.MaxLength = 1;
+            otpBox1.BorderColor = Color.FromArgb(205, 217, 234);
+            otpBox1.CornerColor = Color.White;
+            otpBox1.FillColor = Color.White;
+            otpBox1.Location = new Point(24, 104);
+            otpBox1.Margin = new Padding(0);
             otpBox1.Name = "otpBox1";
-            otpBox1.Size = new Size(44, 38);
+            otpBox1.Radius = 10;
+            otpBox1.Size = new Size(47, 46);
             otpBox1.TabIndex = 3;
-            otpBox1.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox2
             // 
-            otpBox2.BackColor = Color.White;
-            otpBox2.BorderStyle = BorderStyle.FixedSingle;
-            otpBox2.Enabled = false;
-            otpBox2.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            otpBox2.ForeColor = Color.FromArgb(31, 42, 60);
-            otpBox2.Location = new Point(82, 104);
-            otpBox2.MaxLength = 1;
+            otpBox2.BorderColor = Color.FromArgb(205, 217, 234);
+            otpBox2.CornerColor = Color.White;
+            otpBox2.FillColor = Color.White;
+            otpBox2.Location = new Point(81, 104);
+            otpBox2.Margin = new Padding(0);
             otpBox2.Name = "otpBox2";
-            otpBox2.Size = new Size(44, 38);
+            otpBox2.Radius = 10;
+            otpBox2.Size = new Size(47, 46);
             otpBox2.TabIndex = 4;
-            otpBox2.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox3
             // 
-            otpBox3.BackColor = Color.White;
-            otpBox3.BorderStyle = BorderStyle.FixedSingle;
-            otpBox3.Enabled = false;
-            otpBox3.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            otpBox3.ForeColor = Color.FromArgb(31, 42, 60);
-            otpBox3.Location = new Point(139, 104);
-            otpBox3.MaxLength = 1;
+            otpBox3.BorderColor = Color.FromArgb(205, 217, 234);
+            otpBox3.CornerColor = Color.White;
+            otpBox3.FillColor = Color.White;
+            otpBox3.Location = new Point(138, 104);
+            otpBox3.Margin = new Padding(0);
             otpBox3.Name = "otpBox3";
-            otpBox3.Size = new Size(44, 38);
+            otpBox3.Radius = 10;
+            otpBox3.Size = new Size(47, 46);
             otpBox3.TabIndex = 5;
-            otpBox3.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox4
             // 
-            otpBox4.BackColor = Color.White;
-            otpBox4.BorderStyle = BorderStyle.FixedSingle;
-            otpBox4.Enabled = false;
-            otpBox4.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            otpBox4.ForeColor = Color.FromArgb(31, 42, 60);
-            otpBox4.Location = new Point(196, 104);
-            otpBox4.MaxLength = 1;
+            otpBox4.BorderColor = Color.FromArgb(205, 217, 234);
+            otpBox4.CornerColor = Color.White;
+            otpBox4.FillColor = Color.White;
+            otpBox4.Location = new Point(195, 104);
+            otpBox4.Margin = new Padding(0);
             otpBox4.Name = "otpBox4";
-            otpBox4.Size = new Size(44, 38);
+            otpBox4.Radius = 10;
+            otpBox4.Size = new Size(47, 46);
             otpBox4.TabIndex = 6;
-            otpBox4.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox5
             // 
-            otpBox5.BackColor = Color.White;
-            otpBox5.BorderStyle = BorderStyle.FixedSingle;
-            otpBox5.Enabled = false;
-            otpBox5.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            otpBox5.ForeColor = Color.FromArgb(31, 42, 60);
-            otpBox5.Location = new Point(253, 104);
-            otpBox5.MaxLength = 1;
+            otpBox5.BorderColor = Color.FromArgb(205, 217, 234);
+            otpBox5.CornerColor = Color.White;
+            otpBox5.FillColor = Color.White;
+            otpBox5.Location = new Point(252, 104);
+            otpBox5.Margin = new Padding(0);
             otpBox5.Name = "otpBox5";
-            otpBox5.Size = new Size(44, 38);
+            otpBox5.Radius = 10;
+            otpBox5.Size = new Size(47, 46);
             otpBox5.TabIndex = 7;
-            otpBox5.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox6
             // 
-            otpBox6.BackColor = Color.White;
-            otpBox6.BorderStyle = BorderStyle.FixedSingle;
-            otpBox6.Enabled = false;
-            otpBox6.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            otpBox6.ForeColor = Color.FromArgb(31, 42, 60);
-            otpBox6.Location = new Point(310, 104);
-            otpBox6.MaxLength = 1;
+            otpBox6.BorderColor = Color.FromArgb(205, 217, 234);
+            otpBox6.CornerColor = Color.White;
+            otpBox6.FillColor = Color.White;
+            otpBox6.Location = new Point(309, 104);
+            otpBox6.Margin = new Padding(0);
             otpBox6.Name = "otpBox6";
-            otpBox6.Size = new Size(44, 38);
+            otpBox6.Radius = 10;
+            otpBox6.Size = new Size(47, 46);
             otpBox6.TabIndex = 8;
-            otpBox6.TextAlign = HorizontalAlignment.Center;
             // 
             // otpErrorLabel
             // 
@@ -936,12 +924,12 @@ namespace MyApp
         private System.Windows.Forms.Label otpIcon;
         private System.Windows.Forms.Label otpTitle;
         private System.Windows.Forms.Label otpHint;
-        private System.Windows.Forms.TextBox otpBox1;
-        private System.Windows.Forms.TextBox otpBox2;
-        private System.Windows.Forms.TextBox otpBox3;
-        private System.Windows.Forms.TextBox otpBox4;
-        private System.Windows.Forms.TextBox otpBox5;
-        private System.Windows.Forms.TextBox otpBox6;
+        private MyApp.Controls.OtpBox otpBox1;
+        private MyApp.Controls.OtpBox otpBox2;
+        private MyApp.Controls.OtpBox otpBox3;
+        private MyApp.Controls.OtpBox otpBox4;
+        private MyApp.Controls.OtpBox otpBox5;
+        private MyApp.Controls.OtpBox otpBox6;
         private System.Windows.Forms.Label otpErrorLabel;
         private MyApp.Controls.PrimaryButton verifyButton;
         private System.Windows.Forms.Label resendLabel;

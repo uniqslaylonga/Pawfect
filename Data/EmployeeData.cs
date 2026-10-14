@@ -218,7 +218,7 @@ ORDER BY Price, Name";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N'')
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -228,6 +228,7 @@ LEFT JOIN dbo.Rooms rm   ON rm.RoomId   = a.RoomId
 ORDER BY a.StartTime";
 
         using var conn = Open();
+        PetProfiles.EnsureColumns(conn);   // makes sure Pets.PhotoImage exists before it is selected
         using var cmd = Cmd(conn, sql);
         using var r = cmd.ExecuteReader();
         var list = new List<AppointmentItem>();
@@ -236,7 +237,8 @@ ORDER BY a.StartTime";
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
-                r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12)));
+                r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12),
+                r.IsDBNull(13) ? null : (byte[])r.GetValue(13)));
         }
         return list;
     }

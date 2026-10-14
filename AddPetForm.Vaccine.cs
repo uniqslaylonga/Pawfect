@@ -109,7 +109,7 @@ internal sealed partial class AddPetForm
             default:
                 SetBanner(BannerKind.Warning, isNew
                     ? "This pet is new to our system. A valid vaccine card is required before proceeding to grooming."
-                    : $"{petName} has no vaccine card on file. A valid vaccine card is required before proceeding to grooming.");
+                    : $"{PetNameRules.Short(petName)} has no vaccine card on file. A valid vaccine card is required before proceeding to grooming.");
                 titleLabel.Text = "Scan Your Pet's Vaccine Card";
                 subtitleLabel.Text = "Please scan the vaccine card for verification.";
                 _vaccineInfoText!.Text = "Place the vaccine card in the frame and make sure it's clear and readable.";
