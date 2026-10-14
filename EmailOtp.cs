@@ -138,8 +138,10 @@ internal static class EmailOtp
  <tr><td align=""center"">
   <table role=""presentation"" width=""480"" cellpadding=""0"" cellspacing=""0"" style=""max-width:480px;width:100%;background:#FFFFFF;border:1px solid #E3E9F2;border-radius:16px;"">
    <tr><td style=""padding:28px 32px 8px 32px;"">
-     <span style=""display:inline-block;background:#3A7BD5;color:#FFFFFF;border-radius:10px;padding:6px 10px;font-size:18px;"">&#128062;</span>
-     <span style=""font-size:20px;font-weight:700;color:#1F2A3C;vertical-align:middle;margin-left:8px;"">Pawfect</span>
+     <table role=""presentation"" cellpadding=""0"" cellspacing=""0""><tr>
+      <td style=""padding-right:12px;""><img src=""cid:pawfect-logo"" width=""40"" height=""40"" alt="""" style=""display:block;border:0;width:40px;height:40px;""></td>
+      <td style=""font-size:20px;font-weight:700;color:#1F2A3C;vertical-align:middle;"">Pawfect</td>
+     </tr></table>
    </td></tr>
    <tr><td style=""padding:8px 32px 0 32px;"">
      <h1 style=""margin:12px 0 6px 0;font-size:22px;color:#13294B;"">Verify it's you</h1>
@@ -160,7 +162,13 @@ internal static class EmailOtp
         message.From.Add(MailboxAddress.Parse(s.From));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = $"{code} is your Pawfect verification code";
-        message.Body = new BodyBuilder { TextBody = text, HtmlBody = html }.ToMessageBody();
+        // The logo travels inside the message (cid:) so it shows even when the mail client blocks remote images.
+        var body = new BodyBuilder { TextBody = text };
+        var logo = body.LinkedResources.Add("pawfect-logo.png", MyApp.Controls.PawBadge.RenderPng(120, Theme.Primary, Color.White, 27f),
+            new ContentType("image", "png"));
+        logo.ContentId = "pawfect-logo";
+        body.HtmlBody = html;
+        message.Body = body.ToMessageBody();
         return message;
     }
 
@@ -215,7 +223,7 @@ internal static class EmailOtp
         {
             // Unreadable folder; fall through to "not configured".
         }
-        done:
+    done:
 
         if (!values.TryGetValue("host", out var host) || !values.TryGetValue("user", out var user) ||
             !values.TryGetValue("password", out var password))

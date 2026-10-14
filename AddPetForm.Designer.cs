@@ -77,7 +77,7 @@ namespace MyApp
             addPetCard = new MyApp.Controls.CardPanel();
             addPetView = new System.Windows.Forms.Panel();
             selectPanel = new System.Windows.Forms.Panel();
-            backButton = new System.Windows.Forms.Button();
+            backButton = new MyApp.Controls.PawButton();
             continueButton = new MyApp.Controls.PrimaryButton();
             resendTimer = new System.Windows.Forms.Timer(components);
             orBadge.SuspendLayout();
@@ -838,15 +838,13 @@ namespace MyApp
             // 
             backButton.BackColor = Color.White;
             backButton.Cursor = Cursors.Hand;
-            backButton.FlatStyle = FlatStyle.Flat;
             backButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            backButton.ForeColor = Color.FromArgb(68, 83, 106);
+            backButton.Kind = MyApp.Controls.PawButtonKind.Outline;
             backButton.Location = new Point(40, 490);
             backButton.Name = "backButton";
             backButton.Size = new Size(96, 36);
             backButton.TabIndex = 15;
             backButton.Text = "\u2190  Back";
-            backButton.UseVisualStyleBackColor = false;
             // 
             // continueButton
             // 
@@ -971,7 +969,7 @@ namespace MyApp
         private MyApp.Controls.CardPanel addPetCard;
         private System.Windows.Forms.Panel addPetView;
         private System.Windows.Forms.Panel selectPanel;
-        private System.Windows.Forms.Button backButton;
+        private MyApp.Controls.PawButton backButton;
         private MyApp.Controls.PrimaryButton continueButton;
         private System.Windows.Forms.Timer resendTimer;
     }

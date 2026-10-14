@@ -141,19 +141,21 @@ internal sealed class PawBadge : Control
     [DefaultValue(10)]
     public int Radius { get => _radius; set { _radius = value; Invalidate(); } }
 
-    protected override void OnPaint(PaintEventArgs e)
+    protected override void OnPaint(PaintEventArgs e) => Draw(e.Graphics, Width, Height, _fill, _paw, _radius);
+
+    /// <summary>Draws the logo (rounded square + paw) into a <paramref name="width"/> x <paramref name="height"/> area.</summary>
+    internal static void Draw(Graphics g, int width, int height, Color fill, Color pawColor, float radius)
     {
-        var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        using (var path = Ui.RoundRect(new RectangleF(0, 0, Width - 1, Height - 1), _radius))
-        using (var bg = new SolidBrush(_fill))
+        using (var path = Ui.RoundRect(new RectangleF(0, 0, width - 1, height - 1), radius))
+        using (var bg = new SolidBrush(fill))
             g.FillPath(bg, path);
 
-        float s = Math.Min(Width, Height) * 0.58f;
-        float ox = (Width - s) / 2f;
-        float oy = (Height - s) / 2f + s * 0.03f;
-        using var brush = new SolidBrush(_paw);
+        float s = Math.Min(width, height) * 0.58f;
+        float ox = (width - s) / 2f;
+        float oy = (height - s) / 2f + s * 0.03f;
+        using var brush = new SolidBrush(pawColor);
 
         void Blob(float cx, float cy, float w, float h)
             => g.FillEllipse(brush, ox + (cx - w / 2f) * s, oy + (cy - h / 2f) * s, w * s, h * s);
@@ -163,6 +165,20 @@ internal sealed class PawBadge : Control
         Blob(0.36f, 0.20f, 0.20f, 0.28f);
         Blob(0.64f, 0.20f, 0.20f, 0.28f);
         Blob(0.88f, 0.43f, 0.20f, 0.26f);
+    }
+
+    /// <summary>The logo as a transparent-cornered PNG (used inline in e-mails, where emoji and web fonts are unreliable).</summary>
+    internal static byte[] RenderPng(int pixels, Color fill, Color pawColor, float radius)
+    {
+        using var bitmap = new Bitmap(pixels, pixels);
+        using (var g = Graphics.FromImage(bitmap))
+        {
+            g.Clear(Color.Transparent);
+            Draw(g, pixels, pixels, fill, pawColor, radius);
+        }
+        using var output = new MemoryStream();
+        bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+        return output.ToArray();
     }
 }
 

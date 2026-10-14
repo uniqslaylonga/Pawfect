@@ -311,10 +311,10 @@ internal sealed partial class AddPetForm : Form
 
     private void ContinueWithPet()
     {
-        // on the vaccine step Continue scans the card first, then moves on
+        // on the vaccine step Continue scans the card first, then moves on (a card that is already on file and valid just moves on)
         if (VaccineStepVisible)
         {
-            if (_vaccineDone) FinishVaccineStep(); else ScanVaccineCard();
+            if (_vaccineDone || _vaccineState == VaccineState.Valid) FinishVaccineStep(); else ScanVaccineCard();
             return;
         }
 

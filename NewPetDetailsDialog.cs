@@ -152,20 +152,33 @@ internal sealed class NewPetDetailsDialog : Form
     {
         var close = new Label
         {
-            Text = "\uE711", Font = Theme.GlyphFont(10f), ForeColor = Theme.Muted, BackColor = Color.White,
-            TextAlign = ContentAlignment.MiddleCenter, Cursor = Cursors.Hand, Bounds = new Rectangle(534, 22, 28, 28),
+            Text = "\uE711",
+            Font = Theme.GlyphFont(10f),
+            ForeColor = Theme.Muted,
+            BackColor = Color.White,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Cursor = Cursors.Hand,
+            Bounds = new Rectangle(534, 22, 28, 28),
         };
         close.Click += (_, _) => DialogResult = DialogResult.Cancel;
 
         var title = new Label
         {
-            Text = "Pet Details", Font = Theme.Face(14f, FontStyle.Bold), ForeColor = Theme.Text, BackColor = Color.White,
-            AutoSize = true, Location = new Point(88, 20),
+            Text = "Pet Details",
+            Font = Theme.Face(14f, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            BackColor = Color.White,
+            AutoSize = true,
+            Location = new Point(88, 20),
         };
         var sub = new Label
         {
             Text = _existing is null ? "Please answer a few quick questions about your pet." : $"Check {_existing.Name}'s details before continuing.",
-            Font = Theme.Face(8.5f), ForeColor = Theme.Muted, BackColor = Color.White, AutoSize = true, Location = new Point(88, 50),
+            Font = Theme.Face(8.5f),
+            ForeColor = Theme.Muted,
+            BackColor = Color.White,
+            AutoSize = true,
+            Location = new Point(88, 50),
         };
         Controls.Add(close);
         Controls.Add(title);
@@ -310,17 +323,28 @@ internal sealed class NewPetDetailsDialog : Form
             BackColor = Color.White;
             Box = new TextBox
             {
-                BorderStyle = BorderStyle.None, Font = Theme.Face(9.5f), BackColor = Color.White, ForeColor = Theme.Text,
-                Multiline = multiline, AcceptsReturn = multiline,
+                BorderStyle = BorderStyle.None,
+                Font = Theme.Face(9.5f),
+                BackColor = Color.White,
+                ForeColor = Theme.Text,
+                Multiline = multiline,
+                AcceptsReturn = multiline,
             };
             Controls.Add(Box);
             Box.GotFocus += (_, _) => Invalidate();
             Box.LostFocus += (_, _) => Invalidate();
-            Layout += (_, _) => PlaceBox();
+            PlaceBox();
         }
+
+        // The inner TextBox used to be positioned by a Layout handler that was attached too late to ever run,
+        // leaving it at (0,0) at its default size. Position it from the overrides instead, so it is also
+        // re-placed once Suffix (an init-only property set after construction) is known.
+        protected override void OnLayout(LayoutEventArgs e) { base.OnLayout(e); PlaceBox(); }
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); PlaceBox(); }
 
         private void PlaceBox()
         {
+            if (Box is null) return; // OnLayout can fire from the constructor's Size assignment, before Box exists
             int right = Suffix.Length > 0 ? 40 : 14;
             if (Box.Multiline) Box.SetBounds(14, 10, Width - 14 - right, Height - 18);
             else Box.SetBounds(14, (Height - Box.PreferredHeight) / 2, Width - 14 - right, Box.PreferredHeight);
@@ -341,7 +365,7 @@ internal sealed class NewPetDetailsDialog : Form
         protected override void OnClick(EventArgs e) { Box.Focus(); base.OnClick(e); }
     }
 
-    /// <summary>A selectable card (Dog / Cat, Male / Female, a service). Radio-style ones show a check circle in the corner.</summary>
+    /// <summary>A selectable card (Dog / Cat, Male / Female, a service). Radio-style ones show a check circle at the right, vertically centered.</summary>
     private sealed class ChoiceTile : Control
     {
         private bool _selected;
@@ -376,11 +400,14 @@ internal sealed class NewPetDetailsDialog : Form
                 g.DrawPath(pen, path);
             }
 
-            TextRenderer.DrawText(g, Text, Font, new Rectangle(4, 0, Width - 8, Height), _selected ? Theme.Primary : Theme.TextSoft,
+            // Radio tiles keep the right-hand strip free for the circle so the label never runs under it.
+            const int dotSize = 16, dotMargin = 8;
+            int textRight = _radio ? dotSize + dotMargin + 4 : 4;
+            TextRenderer.DrawText(g, Text, Font, new Rectangle(4, 0, Width - 4 - textRight, Height), _selected ? Theme.Primary : Theme.TextSoft,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
             if (!_radio) return;
-            var dot = new Rectangle(Width - 24, 6, 16, 16);
+            var dot = new Rectangle(Width - dotMargin - dotSize - 1, (Height - dotSize) / 2, dotSize, dotSize);
             if (_selected)
             {
                 using var b = new SolidBrush(Theme.Primary);

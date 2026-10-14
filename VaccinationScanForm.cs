@@ -1,3 +1,4 @@
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Globalization;
 using Microsoft.Data.SqlClient;
@@ -15,29 +16,31 @@ internal sealed class VaccinationScanForm : DialogBase
     private readonly string _customerName;
     private readonly List<PetRecord> _pets;
 
-    private readonly PawButton _choose = new() { Text = "Choose photo\u2026", Kind = PawButtonKind.Primary, Size = new Size(140, 34) };
+    private readonly PawButton _choose = new() { Text = "Choose photo\u2026", Kind = PawButtonKind.Primary, Size = new Size(126, 34) };
     private readonly PawButton _camera = new() { Text = "Use camera", Kind = PawButtonKind.Outline, Size = new Size(120, 34) };
-    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(12, 9, 0, 0) };
-    private readonly Label _engineLabel = new() { AutoSize = false, Height = 44, TextAlign = ContentAlignment.MiddleLeft, Text = "\u2014" };
+    private readonly Label _status = new() { AutoSize = false, ForeColor = Theme.Muted, Font = Theme.Face(8.5f), BackColor = Color.White };
+    private readonly Label _engineLabel = new() { AutoSize = false, AutoEllipsis = true, Font = Theme.Face(8f), BackColor = Color.White };
+    private readonly ToolTip _tip = new();
+    private readonly CardPreview _preview = new();
     private readonly TextBox _name = new();
     private readonly TextBox _species = new();
     private readonly TextBox _breed = new();
-    private readonly PawSelect _sex = new() { Placeholder = "Not stated" };
+    private readonly PawSelect _sex = new() { Placeholder = "Not stated", BackColor = Color.White };
     private readonly TextBox _birth = new() { PlaceholderText = "e.g. Dec 5, 2024" };
     private readonly TextBox _weight = new() { PlaceholderText = "kg, e.g. 3.8" };
-    private readonly Label _owner = new() { AutoSize = false, Height = 28, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly Label _owner = new() { AutoSize = false, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleLeft, BackColor = Color.White };
     private readonly ListView _list = new()
     {
-        Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, MultiSelect = false,
-        HideSelection = false, BorderStyle = BorderStyle.FixedSingle,
+        View = View.Details,
+        FullRowSelect = true,
+        MultiSelect = false,
+        HideSelection = false,
+        BorderStyle = BorderStyle.None,
+        BackColor = Color.White,
     };
 
-    private readonly PictureBox _photoBox = new()
-    {
-        Size = new Size(96, 96), SizeMode = PictureBoxSizeMode.Zoom, BorderStyle = BorderStyle.FixedSingle,
-        BackColor = Theme.Subtle,
-    };
-    private readonly Label _photoNote = new() { AutoSize = true, ForeColor = Theme.Muted, Margin = new Padding(12, 38, 0, 0) };
+    private readonly PictureBox _photoBox = new() { SizeMode = PictureBoxSizeMode.Zoom, BackColor = Theme.Subtle };
+    private readonly Label _photoNote = new() { AutoSize = false, ForeColor = Theme.Muted, Font = Theme.Face(8f), BackColor = Color.White };
 
     private readonly List<ScannedVaccination> _rows = new();
     private byte[]? _cardJpeg;
@@ -56,43 +59,73 @@ internal sealed class VaccinationScanForm : DialogBase
         _forPetId = forPetId;
         _pets = EmployeeData.GetPets().Where(p => p.CustomerId == customerId).ToList();
 
-        ClientSize = new Size(700, ClientSize.Height);
+        // Landscape: card photo + pet details side by side, the vaccination table across the bottom.
+        ClientSize = new Size(920, 640);
+        Grid.Visible = false;   // DialogBase's tall "label | input" grid is replaced by the cards below
 
-        var photoRow = new FlowLayoutPanel { Height = 44, WrapContents = false, FlowDirection = FlowDirection.LeftToRight };
-        photoRow.Controls.Add(_camera);
-        photoRow.Controls.Add(_choose);
-        photoRow.Controls.Add(_status);
+        var body = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Bg };
+        Controls.Add(body);
+        body.BringToFront();    // docked last, so it fills whatever the header, error strip and button bar leave
+
+        // ---- card photo
+        var photoCard = NewCard(body, new Rectangle(16, 16, 290, 276));
+        photoCard.Controls.Add(Caption("Card photo", 18, 14));
+        _preview.SetBounds(18, 44, 254, 112);
+        _camera.Location = new Point(18, 168);
+        _choose.Location = new Point(146, 168);
+        _status.SetBounds(18, 206, 254, 44);
+        _engineLabel.SetBounds(18, 252, 254, 16);
+        photoCard.Controls.AddRange(new Control[] { _preview, _camera, _choose, _status, _engineLabel });
         _status.Text = "Details are read from the card automatically.";
+        SetEngine("\u2014", Theme.Muted);
 
-        _sex.Items.AddRange(new object[] { "Male", "Female" });
+        // ---- pet details
+        var detailsCard = NewCard(body, new Rectangle(322, 16, 582, 276));
+        detailsCard.Controls.Add(Caption("Pet details", 18, 14));
 
-        _list.Columns.Add("Date given", 110);
-        _list.Columns.Add("Vaccine", 170);
-        _list.Columns.Add("Weight", 70);
-        _list.Columns.Add("Batch / Lot", 110);
-        _list.Columns.Add("Expires", 110);
-
-        var table = new Panel { Height = 210 };
-        table.Controls.Add(_list);
-
-        AddRow("Card photo", photoRow);
-        AddRow("Read with", _engineLabel);
-
-        var photoPreview = new FlowLayoutPanel { Height = 104, WrapContents = false, FlowDirection = FlowDirection.LeftToRight };
-        photoPreview.Controls.Add(_photoBox);
-        photoPreview.Controls.Add(_photoNote);
+        var photoFrame = new CardPanel
+        {
+            Radius = 12,
+            FillColor = Theme.Subtle,
+            CornerColor = Color.White,
+            BackColor = Theme.Subtle,
+            Padding = new Padding(4),
+            Bounds = new Rectangle(18, 48, 104, 104),
+        };
+        _photoBox.Dock = DockStyle.Fill;
+        photoFrame.Controls.Add(_photoBox);
+        _photoNote.SetBounds(18, 158, 108, 64);
         _photoNote.Text = "The pet's picture is taken from the card.";
-        AddRow("Pet photo", photoPreview);
+        detailsCard.Controls.Add(photoFrame);
+        detailsCard.Controls.Add(_photoNote);
 
-        AddRow("Pet name *", _name);
-        AddRow("Species", _species);
-        AddRow("Breed", _breed);
-        AddRow("Sex", _sex);
-        AddRow("Birthdate", _birth);
-        AddRow("Weight (kg)", _weight);
-        AddRow("Owner on card", _owner);
-        AddRow("Vaccinations", table);
-        FitHeight();
+        const int c1 = 142, c2 = 362, fw = 200;
+        _sex.Items.AddRange(new object[] { "Male", "Female" });
+        AddField(detailsCard, "Pet name *", _name, c1, 44, fw);
+        AddField(detailsCard, "Species", _species, c2, 44, fw);
+        AddField(detailsCard, "Breed", _breed, c1, 110, fw);
+        AddField(detailsCard, "Sex", _sex, c2, 110, fw);
+        AddField(detailsCard, "Birthdate", _birth, c1, 176, fw);
+        AddField(detailsCard, "Weight (kg)", _weight, c2, 176, fw);
+
+        var ownerCaption = Ui.Text("Owner on card", 8.5f, Theme.TextSoft, Color.White, FontStyle.Bold);
+        ownerCaption.SetBounds(c1, 244, 100, 22);
+        _owner.SetBounds(c1 + 104, 244, 582 - c1 - 104 - 20, 22);
+        detailsCard.Controls.Add(ownerCaption);
+        detailsCard.Controls.Add(_owner);
+
+        // ---- vaccinations (grows or shrinks with the window when the error strip shows)
+        var tableCard = NewCard(body, new Rectangle(16, 308, 888, 180));
+        tableCard.Controls.Add(Caption("Vaccinations", 18, 12));
+        _list.Columns.Add("Date given", 140);
+        _list.Columns.Add("Vaccine", 280);
+        _list.Columns.Add("Weight", 100);
+        _list.Columns.Add("Batch / Lot", 160);
+        _list.Columns.Add("Expires", 150);
+        _list.SetBounds(18, 40, 852, 126);
+        tableCard.Controls.Add(_list);
+        tableCard.SizeChanged += (_, _) => _list.Height = Math.Max(60, tableCard.Height - 40 - 14);
+        body.Resize += (_, _) => tableCard.Height = Math.Max(120, body.ClientSize.Height - tableCard.Top - 16);
 
         // The card is read by the scanner only. Customers can't type over what it found; a wrong read is fixed by scanning again.
         foreach (var box in new[] { _name, _species, _breed, _birth, _weight })
@@ -106,6 +139,138 @@ internal sealed class VaccinationScanForm : DialogBase
 
         _camera.Click += async (_, _) => await CameraAndScanAsync();
         _choose.Click += async (_, _) => await ChooseAndScanAsync();
+        _preview.Click += async (_, _) => { if (_choose.Enabled) await ChooseAndScanAsync(); };
+    }
+
+    // ------------------------------------------------------------------ layout helpers
+
+    private static CardPanel NewCard(Control parent, Rectangle bounds)
+    {
+        var card = new CardPanel
+        {
+            Radius = 14,
+            FillColor = Color.White,
+            CornerColor = Theme.Bg,
+            BorderColor = Theme.Border,
+            BackColor = Color.White,
+            Bounds = bounds,
+        };
+        parent.Controls.Add(card);
+        return card;
+    }
+
+    private static Label Caption(string text, int x, int y)
+    {
+        var l = Ui.Text(text, 9.5f, Theme.Text, Color.White, FontStyle.Bold);
+        l.SetBounds(x, y, 260, 22);
+        return l;
+    }
+
+    /// <summary>Small bold caption with the (rounded) editor under it.</summary>
+    private static void AddField(Control parent, string caption, Control editor, int x, int y, int width)
+    {
+        var cap = Ui.Text(caption, 8.5f, Theme.TextSoft, Color.White, FontStyle.Bold);
+        cap.SetBounds(x, y, width, 18);
+        parent.Controls.Add(cap);
+
+        Control cell = editor is TextBox ? FieldFrame.ForEditor(editor) : editor;
+        cell.SetBounds(x, y + 20, width, 36);
+        parent.Controls.Add(cell);
+    }
+
+    private void SetEngine(string engine, Color color)
+    {
+        _engineLabel.Text = "Read with: " + engine;
+        _engineLabel.ForeColor = color;
+        _tip.SetToolTip(_engineLabel, engine);   // long "offline: ..." reasons are cut off in the label
+    }
+
+    private void ShowCardPicture(byte[]? jpeg)
+    {
+        Image? thumb = null;
+        if (jpeg is not null)
+        {
+            try
+            {
+                using var ms = new MemoryStream(jpeg);
+                using var source = Image.FromStream(ms);
+                double scale = Math.Min(1.0, 640.0 / Math.Max(source.Width, source.Height));
+                thumb = new Bitmap(source, new Size(Math.Max(1, (int)(source.Width * scale)), Math.Max(1, (int)(source.Height * scale))));
+            }
+            catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException) { }
+        }
+        _preview.Picture = thumb;
+    }
+
+    /// <summary>The photo frame: brackets and a camera tile until a card is read, then the card itself.</summary>
+    private sealed class CardPreview : Control
+    {
+        private Image? _picture;
+
+        public CardPreview()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = Color.White;
+            Cursor = Cursors.Hand;
+        }
+
+        public Image? Picture
+        {
+            get => _picture;
+            set { var old = _picture; _picture = value; old?.Dispose(); Invalidate(); }
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = new Rectangle(0, 0, Width - 1, Height - 1);
+
+            using (var path = Ui.RoundRect(r, 12))
+            {
+                using var fill = new SolidBrush(Theme.PrimarySoft);
+                using var pen = new Pen(Theme.Border);
+                g.FillPath(fill, path);
+                g.DrawPath(pen, path);
+            }
+
+            if (_picture is { } pic)
+            {
+                var area = Rectangle.Inflate(r, -14, -14);
+                float scale = Math.Min(area.Width / (float)pic.Width, area.Height / (float)pic.Height);
+                int w = Math.Max(1, (int)(pic.Width * scale)), h = Math.Max(1, (int)(pic.Height * scale));
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(pic, new Rectangle(area.X + (area.Width - w) / 2, area.Y + (area.Height - h) / 2, w, h));
+            }
+            else
+            {
+                var tile = new Rectangle(Width / 2 - 20, 22, 40, 40);
+                using (var path = Ui.RoundRect(tile, 10))
+                {
+                    using var white = new SolidBrush(Color.White);
+                    using var pen = new Pen(Theme.Border);
+                    g.FillPath(white, path);
+                    g.DrawPath(pen, path);
+                }
+                TextRenderer.DrawText(g, "\uE722", Theme.GlyphFont(14f), tile, Theme.Primary,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                TextRenderer.DrawText(g, "Click to choose a photo", Theme.Face(8.5f), new Rectangle(0, 70, Width, 24), Theme.Muted,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            }
+
+            using var br = new Pen(Theme.Primary, 2.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            int m = 8, len = 16, rw = Width - 1, rh = Height - 1;
+            g.DrawLines(br, new[] { new Point(m, m + len), new Point(m, m), new Point(m + len, m) });
+            g.DrawLines(br, new[] { new Point(rw - m - len, m), new Point(rw - m, m), new Point(rw - m, m + len) });
+            g.DrawLines(br, new[] { new Point(m, rh - m - len), new Point(m, rh - m), new Point(m + len, rh - m) });
+            g.DrawLines(br, new[] { new Point(rw - m - len, rh - m), new Point(rw - m, rh - m), new Point(rw - m, rh - m - len) });
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _picture?.Dispose();
+            base.Dispose(disposing);
+        }
     }
 
     // ------------------------------------------------------------------ scanning
@@ -168,8 +333,7 @@ internal sealed class VaccinationScanForm : DialogBase
         {
             var read = await ReadCardAsync(jpeg);
             var card = read.Card;
-            _engineLabel.Text = read.Engine;
-            _engineLabel.ForeColor = read.Engine == "Google Vision" ? Color.FromArgb(30, 130, 76) : Color.FromArgb(199, 122, 10);
+            SetEngine(read.Engine, read.Engine == "Google Vision" ? Color.FromArgb(30, 130, 76) : Color.FromArgb(199, 122, 10));
 
             if (card.IsEmpty)
             {
@@ -198,9 +362,11 @@ internal sealed class VaccinationScanForm : DialogBase
             byte[]? petPhoto = null;
             try { petPhoto = await Task.Run(() => PetPhotoFinder.Find(jpeg, read.Pieces)); }
             catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException
-                                          or System.Runtime.InteropServices.ExternalException) { }
+                                          or System.Runtime.InteropServices.ExternalException)
+            { }
 
             _cardJpeg = jpeg;
+            ShowCardPicture(jpeg);
             Fill(card with { Vaccinations = stamped });
             ShowPetPhoto(petPhoto);
 
@@ -223,6 +389,7 @@ internal sealed class VaccinationScanForm : DialogBase
     private void Reject(string reason)
     {
         _cardJpeg = null;
+        ShowCardPicture(null);
         Fill(new ScannedCard("", "", "", "", null, null, "", "", new List<ScannedVaccination>()));
         ShowPetPhoto(null);
         _status.Text = "Card not accepted.";
