@@ -270,8 +270,12 @@ internal sealed class CustomerBookingForm : DialogBase
         _time.Value = TimeSpan.FromHours(9);
         if (serviceHint is { Length: > 0 })   // the service picked in Pet Details (Bath Only, Full Groom, Nail Trim, Ear Cleaning)
         {
-            string key = serviceHint.Split(' ')[0];
-            int s = _services.FindIndex(x => x.Name.Contains(key, StringComparison.OrdinalIgnoreCase));
+            int s = _services.FindIndex(x => string.Equals(x.Name, serviceHint, StringComparison.OrdinalIgnoreCase));   // the exact card from step 4
+            if (s < 0)
+            {
+                string key = serviceHint.Split(' ')[0];
+                s = _services.FindIndex(x => x.Name.Contains(key, StringComparison.OrdinalIgnoreCase));
+            }
             if (s >= 0) _service.SelectedIndex = s;
         }
         if (_pets.Count > 0) _pet.SelectedIndex = Math.Max(0, _pets.FindIndex(p => p.Id == petId));

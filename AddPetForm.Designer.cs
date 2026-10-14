@@ -179,10 +179,10 @@ namespace MyApp
             stepGrooming.Location = new Point(670, 14);
             stepGrooming.Name = "stepGrooming";
             stepGrooming.Number = 4;
-            stepGrooming.Size = new Size(80, 48);
+            stepGrooming.Size = new Size(80, 60);
             stepGrooming.State = MyApp.Controls.StepState.Pending;
             stepGrooming.TabStop = false;
-            stepGrooming.Text = "Grooming";
+            stepGrooming.Text = "Service";
             // 
             // stepLine4
             // 

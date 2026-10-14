@@ -79,6 +79,7 @@ internal sealed partial class AddPetForm
 
     private void ShowVaccineStep(int petId, string petName, bool isNew, VaccineState state = VaccineState.Missing)
     {
+        HideServiceStep();
         EnsureVaccinePanel();
         _vaccinePetId = petId;
         _vaccinePetName = petName;
@@ -139,6 +140,7 @@ internal sealed partial class AddPetForm
 
     private void HideVaccineStep()
     {
+        HideServiceStep();
         if (_vaccinePanel is not null) _vaccinePanel.Visible = false;
         if (_skipButton is not null) _skipButton.Visible = false;
         stepVaccine.State = StepState.Pending;
@@ -218,11 +220,7 @@ internal sealed partial class AddPetForm
     }
 
     /// <summary>Done with the vaccine step: the caller opens the appointment request for this pet.</summary>
-    private void FinishVaccineStep()
-    {
-        ChosenPetId = _vaccinePetId;
-        DialogResult = DialogResult.OK;
-    }
+    private void FinishVaccineStep() => ShowServiceStep();   // step 4: choose the grooming service
 
     // ------------------------------------------------------------------ the panel
 

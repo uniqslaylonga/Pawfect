@@ -97,7 +97,7 @@ internal sealed partial class AddPetForm : Form
             else if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                if (VaccineStepVisible) ContinueWithPet();
+                if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
                 else if (selectPanel.Visible) { if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
                 else if (_otpBoxes.Any(b => b.Focused) || verifyButton.Enabled) VerifyCode();
                 else SendOtp();
@@ -311,6 +311,12 @@ internal sealed partial class AddPetForm : Form
 
     private void ContinueWithPet()
     {
+        if (ServiceStepVisible)
+        {
+            FinishServiceStep();   // step 4: on to the appointment request with this service
+            return;
+        }
+
         // on the vaccine step Continue scans the card first, then moves on (a card that is already on file and valid just moves on)
         if (VaccineStepVisible)
         {
@@ -377,6 +383,11 @@ internal sealed partial class AddPetForm : Form
 
     private void GoBack()
     {
+        if (ServiceStepVisible)
+        {
+            BackToVaccineStep();
+            return;
+        }
         if (VaccineStepVisible)
         {
             ShowSelectStep();   // back to the pet list (a pet saved a moment ago is in it now)

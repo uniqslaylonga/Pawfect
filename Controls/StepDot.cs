@@ -10,6 +10,7 @@ internal sealed class StepDot : Control
 {
     private int _number = 1;
     private StepState _state = StepState.Pending;
+    private string _caption = "";
 
     public StepDot()
     {
@@ -28,6 +29,10 @@ internal sealed class StepDot : Control
     [Category("Pawfect"), Description("Pending = white circle, Active = blue circle, Done = blue circle with a tick.")]
     [DefaultValue(StepState.Pending)]
     public StepState State { get => _state; set { _state = value; Invalidate(); } }
+
+    [Category("Pawfect"), Description("Optional small second line under the label, e.g. (30 mins).")]
+    [DefaultValue("")]
+    public string Caption { get => _caption; set { _caption = value ?? ""; Invalidate(); } }
 
     protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
 
@@ -58,5 +63,13 @@ internal sealed class StepDot : Control
             _state == StepState.Active ? Theme.Primary : Theme.Muted,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.Top |
             TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+
+        if (_caption.Length > 0)
+        {
+            var small = Theme.Face(7f);   // cached by Theme, so not disposed here
+            TextRenderer.DrawText(g, _caption, small, new Rectangle(0, d + 21, Width, Math.Max(0, Height - d - 21)),
+                Theme.Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.Top |
+                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+        }
     }
 }

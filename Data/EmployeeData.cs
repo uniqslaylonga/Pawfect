@@ -178,6 +178,30 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
         return list;
     }
 
+    /// <summary>
+    /// The cards on step 4 (Choose a Grooming Service): every active Grooming / Add-ons service once. A service that has
+    /// several sizes shows its "All" size row when there is one, otherwise its lowest price ("prices may vary" note).
+    /// </summary>
+    public static List<ServiceChoice> GetServiceChoices()
+    {
+        const string sql = @"
+SELECT ServiceId, Name, Price, DurationMinutes
+FROM (
+    SELECT ServiceId, Name, Price, DurationMinutes,
+           ROW_NUMBER() OVER (PARTITION BY Name ORDER BY CASE WHEN Size = N'All' THEN 0 ELSE 1 END, Price, ServiceId) AS rn
+    FROM dbo.Services
+    WHERE IsActive = 1 AND Category IN (N'Grooming', N'Add-ons')
+) x
+WHERE rn = 1
+ORDER BY Price, Name";
+        using var conn = Open();
+        using var cmd = Cmd(conn, sql);
+        using var r = cmd.ExecuteReader();
+        var list = new List<ServiceChoice>();
+        while (r.Read()) list.Add(new ServiceChoice(r.GetInt32(0), r.GetString(1), r.GetDecimal(2), r.GetInt32(3)));
+        return list;
+    }
+
     public static List<ProductItem> GetProducts()
     {
         using var conn = Open();
