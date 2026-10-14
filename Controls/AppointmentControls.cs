@@ -429,8 +429,16 @@ internal sealed class AppointmentRowView : Control
 
         // Service
         var c3 = Col(3);
-        TextRenderer.DrawText(g, Item.Service, textFont,
-            new Rectangle(c3.X + 4, 0, c3.Width - 8, Height), Theme.TextSoft, LineFlags);
+        if (Item.QueueNumber.Length > 0)
+        {
+            TextRenderer.DrawText(g, Item.Service, nameFont,
+                new Rectangle(c3.X + 4, line1, c3.Width - 8, 18), Theme.TextSoft, LineFlags);
+            TextRenderer.DrawText(g, "Queue #" + Item.QueueNumber, subFont,
+                new Rectangle(c3.X + 4, line2, c3.Width - 8, 16), Theme.Primary, LineFlags);
+        }
+        else
+            TextRenderer.DrawText(g, Item.Service, textFont,
+                new Rectangle(c3.X + 4, 0, c3.Width - 8, Height), Theme.TextSoft, LineFlags);
 
         // Status
         var c4 = Col(4);

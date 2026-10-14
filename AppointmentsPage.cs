@@ -169,7 +169,7 @@ internal partial class AppointmentsPage : UserControl
     private static bool Matches(AppointmentItem a, string query)
     {
         static bool Has(string value, string q) => value.Contains(q, StringComparison.CurrentCultureIgnoreCase);
-        return Has(a.CustomerName, query) || Has(a.PetName, query) || Has(a.Service, query);
+        return Has(a.CustomerName, query) || Has(a.PetName, query) || Has(a.Service, query) || Has(a.QueueNumber, query);
     }
 
     private int PageCount => Math.Max(1, (int)Math.Ceiling(_filtered.Count / (double)PageSize));

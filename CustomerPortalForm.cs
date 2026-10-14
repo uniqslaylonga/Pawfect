@@ -10,7 +10,7 @@ internal sealed class CustomerPortalForm : Form
     private readonly UserAccount _user;
     private (int Id, string Name)? _customer;
 
-    private readonly ListView _appointments = NewList("When", 170, "Pet", 110, "Service", 170, "Status", 100, "Groomer", 110, "Room", 110);
+    private readonly ListView _appointments = NewList("Queue #", 70, "When", 170, "Pet", 110, "Service", 170, "Status", 100, "Groomer", 110, "Room", 110);
     private readonly ListView _pets = NewList("Pet", 160, "Species", 120, "Breed", 200);
     private readonly ListView _history = NewList("Receipt", 120, "Date", 170, "Services", 80, "Items", 80, "Total", 110, "Paid by", 100);
     private readonly Label _welcome = new();
@@ -120,7 +120,7 @@ internal sealed class CustomerPortalForm : Form
             foreach (var a in _appointmentData)
                 _appointments.Items.Add(new ListViewItem(new[]
                 {
-                    a.Start.ToString("ddd, MMM d, yyyy  h:mm tt", culture), a.PetName, a.Service, AppointmentStatusStyle.Label(a.Status),
+                    a.QueueNumber.Length == 0 ? "\u2014" : a.QueueNumber, a.Start.ToString("ddd, MMM d, yyyy  h:mm tt", culture), a.PetName, a.Service, AppointmentStatusStyle.Label(a.Status),
                     a.Groomer.Length == 0 ? "\u2014" : a.Groomer, a.Room.Length == 0 ? "\u2014" : a.Room,
                 }) { Tag = a });
 
@@ -163,9 +163,11 @@ internal sealed class CustomerPortalForm : Form
             if (form.ShowDialog(this) == DialogResult.OK)
             {
                 Reload();
-                Msg.Show(this,
-                    "Your request was sent.\n\nThe shop will set the day, time, groomer and room, and it will show here once it is confirmed.",
-                    "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (form.Ticket is { } ticket)   // step 5: the queue ticket (the same request is now on the staff Appointments page)
+                {
+                    using var ticketForm = new QueueTicketForm(ticket);
+                    ticketForm.ShowDialog(this);
+                }
             }
         }
         catch (SqlException ex)
@@ -243,6 +245,9 @@ internal sealed class CustomerBookingForm : DialogBase
     private readonly PawTimePicker _time = new();
     private readonly TextBox _notes = new() { Multiline = true, Height = 60, MaxLength = 300, ScrollBars = ScrollBars.Vertical };
 
+    /// <summary>Set once the request is saved: the queue ticket shown to the customer.</summary>
+    public QueueTicket? Ticket { get; private set; }
+
     public CustomerBookingForm(int customerId, string customerName, string loginEmail, int? petId = null, string? serviceHint = null) : base("Request Appointment", "Send Request", "\uE787", "Tell us when you'd like to come in")
     {
         _customerId = customerId;
@@ -289,7 +294,7 @@ internal sealed class CustomerBookingForm : DialogBase
 
         try
         {
-            EmployeeData.AddOwnAppointment(_customerId, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start, _email, _notes.Text);
+            Ticket = EmployeeData.AddOwnAppointment(_customerId, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id, start, _email, _notes.Text);
             DialogResult = DialogResult.OK;
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)

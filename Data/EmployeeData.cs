@@ -29,14 +29,38 @@ internal sealed record GroomerOption(int Id, string Name);
 /// <summary>A grooming room / station an appointment can be assigned to.</summary>
 internal sealed record RoomOption(int Id, string Name);
 
+/// <summary>The queue ticket a customer gets when an appointment request is saved (it is also an appointment on the staff side).</summary>
+internal sealed record QueueTicket(int AppointmentId, string QueueNumber, string PetName, string PetBreed, string Service, int DurationMinutes);
+
 /// <summary>Every database call the employee screens make. All of them throw SqlException if the database can't be reached.</summary>
 internal static class EmployeeData
 {
+    private static bool _schemaChecked;
+
     private static SqlConnection Open()
     {
         var conn = new SqlConnection(Database.ConnectionString);
         conn.Open();
+        EnsureQueueColumn(conn);
         return conn;
+    }
+
+    /// <summary>Adds Appointments.QueueNumber the first time the app connects, so Sql/queue_ticket.sql doesn't have to be run by hand.</summary>
+    private static void EnsureQueueColumn(SqlConnection conn)
+    {
+        if (_schemaChecked) return;
+        try
+        {
+            using var cmd = new SqlCommand(@"
+IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'QueueNumber') IS NULL
+    ALTER TABLE dbo.Appointments ADD QueueNumber NVARCHAR(10) NULL;", conn);
+            cmd.ExecuteNonQuery();
+            _schemaChecked = true;
+        }
+        catch (SqlException)
+        {
+            // no permission to alter the table: the real error shows up in the query that needs the column
+        }
     }
 
     private static SqlCommand Cmd(SqlConnection conn, string sql, SqlTransaction? tx = null)
@@ -170,7 +194,7 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N'')
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N'')
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -188,7 +212,7 @@ ORDER BY a.StartTime";
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
-                r.GetString(9), r.GetString(10), r.GetString(11)));
+                r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12)));
         }
         return list;
     }
@@ -716,7 +740,7 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N'')
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.QueueNumber, N'')
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -736,7 +760,7 @@ ORDER BY a.StartTime DESC";
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status,
-                Groomer: r.GetString(8), Room: r.GetString(9)));
+                Groomer: r.GetString(8), Room: r.GetString(9), QueueNumber: r.GetString(10)));
         }
         return list;
     }
@@ -782,20 +806,56 @@ WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confi
     /// A customer's appointment request: it is saved as Pending with their preferred day/time and notes, and an
     /// employee sets the real schedule (day, time, groomer, room) from Edit. The pet must belong to the customer.
     /// </summary>
-    public static void AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "")
+    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "")
     {
         using var conn = Open();
-        using var cmd = Cmd(conn, @"
-INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes)
-SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N'')
-FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1");
-        P(cmd, "@c", SqlDbType.Int, customerId);
-        P(cmd, "@p", SqlDbType.Int, petId);
-        P(cmd, "@s", SqlDbType.Int, serviceId);
-        P(cmd, "@t", SqlDbType.DateTime2, start);
-        P(cmd, "@email", SqlDbType.NVarChar, loginEmail, 256);
-        P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
-        if (cmd.ExecuteNonQuery() == 0)
-            throw new InvalidOperationException("That pet doesn't belong to this account.");
+        using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+
+        // The queue number is the next one for that day: A01, A02, ... (the lock keeps two requests from getting the same number).
+        int appointmentId;
+        string queueNumber;
+        using (var cmd = Cmd(conn, @"
+DECLARE @n INT = (SELECT COUNT(*) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
+                  WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL) + 1;
+DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
+
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber)
+OUTPUT INSERTED.AppointmentId, INSERTED.QueueNumber
+SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q
+FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx))
+        {
+            P(cmd, "@c", SqlDbType.Int, customerId);
+            P(cmd, "@p", SqlDbType.Int, petId);
+            P(cmd, "@s", SqlDbType.Int, serviceId);
+            P(cmd, "@t", SqlDbType.DateTime2, start);
+            P(cmd, "@email", SqlDbType.NVarChar, loginEmail, 256);
+            P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
+            using var r = cmd.ExecuteReader();
+            if (!r.Read())
+                throw new InvalidOperationException("That pet doesn't belong to this account.");
+            appointmentId = r.GetInt32(0);
+            queueNumber = r.GetString(1);
+        }
+
+        string petName, breed, service;
+        int minutes;
+        using (var cmd = Cmd(conn, @"
+SELECT p.Name, ISNULL(p.Breed, N''), s.Name, s.DurationMinutes
+FROM dbo.Appointments a
+JOIN dbo.Pets p     ON p.PetId     = a.PetId
+JOIN dbo.Services s ON s.ServiceId = a.ServiceId
+WHERE a.AppointmentId = @id", tx))
+        {
+            P(cmd, "@id", SqlDbType.Int, appointmentId);
+            using var r = cmd.ExecuteReader();
+            r.Read();
+            petName = r.GetString(0);
+            breed = r.GetString(1);
+            service = r.GetString(2);
+            minutes = r.GetInt32(3);
+        }
+
+        tx.Commit();
+        return new QueueTicket(appointmentId, queueNumber, petName, breed, service, minutes);
     }
 }
