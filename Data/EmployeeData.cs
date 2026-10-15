@@ -752,42 +752,6 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
         return r.Read() ? (r.GetInt32(0), r.GetString(1)) : null;
     }
 
-    /// <summary>
-    /// Used by the "I'm New Here" flow once the emailed code is verified: returns the customer already registered with
-    /// this email (so a returning person is never duplicated), or creates a new customer record from the contact details.
-    /// </summary>
-    public static (int Id, string Name, bool IsNew) FindOrCreateCustomerByContact(string email, string phone)
-    {
-        using var conn = Open();
-        using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
-
-        using (var cmd = Cmd(conn,
-            "SELECT TOP 1 CustomerId, FullName FROM dbo.Customers WITH (UPDLOCK, HOLDLOCK) WHERE IsActive = 1 AND Email = @e ORDER BY CustomerId", tx))
-        {
-            P(cmd, "@e", SqlDbType.NVarChar, email.Trim(), 256);
-            using var r = cmd.ExecuteReader();
-            if (r.Read())
-                return (r.GetInt32(0), r.GetString(1), false);
-        }
-
-        // No name is asked for on the contact step, so the part of the email before the @ stands in until staff update it.
-        string email2 = email.Trim();
-        int at = email2.IndexOf('@');
-        string name = at > 0 ? email2[..at] : email2;
-
-        int id;
-        using (var cmd = Cmd(conn,
-            "INSERT INTO dbo.Customers (FullName, Phone, Email, Address) OUTPUT INSERTED.CustomerId VALUES (@n, @p, @e, N'')", tx))
-        {
-            P(cmd, "@n", SqlDbType.NVarChar, name, 100);
-            P(cmd, "@p", SqlDbType.NVarChar, phone.Trim(), 30);
-            P(cmd, "@e", SqlDbType.NVarChar, email2, 256);
-            id = (int)cmd.ExecuteScalar()!;
-        }
-        tx.Commit();
-        return (id, name, true);
-    }
-
     /// <summary>The email and phone saved on a customer's record (empty strings when blank).</summary>
     public static (string Email, string Phone) GetCustomerContact(int customerId)
     {

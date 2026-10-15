@@ -31,7 +31,6 @@ namespace MyApp
             namePawB = new MyApp.Controls.PawBadge();
             subtitleLabel = new Label();
             startButton = new MyApp.Controls.PrimaryButton();
-            newButton = new MyApp.Controls.PrimaryButton();
             scriptLabel = new Label();
             blobPanel = new MyApp.Controls.BlobPanel();
             petsPicture = new PictureBox();
@@ -186,27 +185,16 @@ namespace MyApp
             startButton.Radius = 27;
             startButton.Size = new Size(222, 54);
             startButton.TabIndex = 11;
-            startButton.Text = "Log In   →";
-            // 
-            // newButton
-            // 
-            newButton.BackColor = Color.FromArgb(243, 247, 252);
-            newButton.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            newButton.Location = new Point(94, 372);
-            newButton.Name = "newButton";
-            newButton.Radius = 27;
-            newButton.Size = new Size(222, 54);
-            newButton.TabIndex = 14;
-            newButton.Text = "I'm New Here";
+            startButton.Text = "Start   →";
             // 
             // scriptLabel
             // 
             scriptLabel.BackColor = Color.Transparent;
             scriptLabel.Font = new Font("Segoe Script", 16F, FontStyle.Regular, GraphicsUnit.Point, 0);
             scriptLabel.ForeColor = Color.FromArgb(74, 126, 205);
-            scriptLabel.Location = new Point(80, 450);
+            scriptLabel.Location = new Point(80, 420);
             scriptLabel.Name = "scriptLabel";
-            scriptLabel.Size = new Size(200, 120);
+            scriptLabel.Size = new Size(200, 140);
             scriptLabel.TabIndex = 12;
             scriptLabel.Text = "Happy\r\n  Pets\r\n  Happy ♡\r\n     People";
             scriptLabel.UseMnemonic = false;
@@ -244,7 +232,6 @@ namespace MyApp
             ClientSize = new Size(1000, 620);
             Controls.Add(blobPanel);
             Controls.Add(scriptLabel);
-            Controls.Add(newButton);
             Controls.Add(startButton);
             Controls.Add(subtitleLabel);
             Controls.Add(namePawB);
@@ -284,7 +271,6 @@ namespace MyApp
         private MyApp.Controls.PawBadge namePawB;
         private System.Windows.Forms.Label subtitleLabel;
         private MyApp.Controls.PrimaryButton startButton;
-        private MyApp.Controls.PrimaryButton newButton;
         private System.Windows.Forms.Label scriptLabel;
         private MyApp.Controls.BlobPanel blobPanel;
         private System.Windows.Forms.PictureBox petsPicture;

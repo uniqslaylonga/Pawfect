@@ -12,14 +12,11 @@ namespace MyApp;
 internal sealed partial class AddPetForm : Form
 {
     private readonly TextBox[] _otpBoxes;
-    private int _customerId;
-    private string _ownerName = "";
-    private string _loginEmail = "";
-    private string _profileEmail = "";
-    private string _profilePhone = "";
-
-    /// <summary>True for a signed-in customer: step 1 (contact + code) is skipped, so Back on step 2 closes the dialog.</summary>
-    private bool _startedAtSelect;
+    private readonly int _customerId;
+    private readonly string _ownerName = "";
+    private readonly string _loginEmail = "";
+    private readonly string _profileEmail = "";
+    private readonly string _profilePhone = "";
 
     private readonly List<PetCard> _petCards = new();
     private PetCard? _chosenCard;
@@ -45,9 +42,6 @@ internal sealed partial class AddPetForm : Form
         ShowContactStep();
     }
 
-    /// <summary>
-    /// Existing customer who already logged in: the contact + code step is skipped and the dialog opens on step 2 (Select a Pet).
-    /// </summary>
     public AddPetForm(int customerId, string ownerName, string loginEmail) : this()
     {
         _customerId = customerId;
@@ -58,22 +52,7 @@ internal sealed partial class AddPetForm : Form
 
         try { (_profileEmail, _profilePhone) = EmployeeData.GetCustomerContact(customerId); }
         catch (SqlException) { /* the check below falls back to the login email only */ }
-
-        _startedAtSelect = true;
-        ShowSelectStep();
     }
-
-    /// <summary>
-    /// "I'm New Here": no account yet, so the dialog opens on step 1 (Contact). Once the emailed code is verified the customer
-    /// record is found or created from the contact details, then the flow carries on at step 2.
-    /// </summary>
-    public static AddPetForm ForNewCustomer() => new();
-
-    /// <summary>The customer record this flow ended up using (the logged-in one, or the one created/found after the code check).</summary>
-    public int CustomerId => _customerId;
-
-    /// <summary>The email the customer used, for the queue ticket's "created by" lookup.</summary>
-    public string ContactEmail => _loginEmail.Length > 0 ? _loginEmail : emailField.Value.Trim();
 
     // ------------------------------------------------------------------ wiring
 
@@ -187,25 +166,6 @@ internal sealed partial class AddPetForm : Form
             ClearOtpBoxes();
             _otpBoxes[0].Focus();
             return;
-        }
-
-        // New customer: the code proves the email, so now find (or create) their customer record.
-        if (_customerId == 0)
-        {
-            try
-            {
-                var (id, name, _) = EmployeeData.FindOrCreateCustomerByContact(emailField.Value.Trim(), mobileField.Value.Trim());
-                _customerId = id;
-                _ownerName = name;
-                _loginEmail = emailField.Value.Trim();
-                (_profileEmail, _profilePhone) = EmployeeData.GetCustomerContact(id);
-                ownerLabel.Text = "Registering a new pet for " + name;
-            }
-            catch (Exception ex) when (ex is SqlException or InvalidOperationException)
-            {
-                otpErrorLabel.Text = "Couldn't set up your account. " + ex.Message;
-                return;
-            }
         }
         ShowSelectStep();
     }
@@ -464,11 +424,10 @@ internal sealed partial class AddPetForm : Form
             ShowSelectStep();   // back to the pet list (a pet saved a moment ago is in it now)
             return;
         }
-        if (selectPanel.Visible && !_startedAtSelect)
+        if (selectPanel.Visible)
         {
-            // Back to step 1 means proving it again: the old code is thrown away (and the account is looked up again).
+            // Back to step 1 means proving it again: the old code is thrown away.
             _challenge = null;
-            _customerId = 0;
             ClearOtpBoxes();
             foreach (var b in _otpBoxes) b.Enabled = false;
             resendLabel.Visible = false;
