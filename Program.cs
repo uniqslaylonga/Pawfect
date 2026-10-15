@@ -48,17 +48,27 @@ internal static class Program
         while (true)
         {
             // Landing screen first; closing it (Esc / X) quits the app.
+            bool isNewCustomer;
             using (var welcome = new WelcomeForm())
             {
                 if (welcome.ShowDialog() != DialogResult.OK)
                     break;
+                isNewCustomer = welcome.IsNewCustomer;
+            }
+
+            // "I'm New Here": no login, straight to step 1 (Contact) of the Add Pet flow.
+            // (Closing it, or finishing the queue ticket, comes back to the landing screen.)
+            if (isNewCustomer)
+            {
+                CustomerFlow.RunNewCustomer();
+                continue;
             }
 
             using var login = new LoginForm();
             if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is not { } user)
                 continue; // closed the login: back to the landing screen
 
-            // Admins land on the admin dashboard; everyone else gets the staff dashboard.
+            // Admins land on the admin dashboard; staff get the staff dashboard (customers were handled above).
             bool loggedOut;
             if (user.Role == UserRole.Admin)
             {
@@ -69,9 +79,9 @@ internal static class Program
             }
             else if (user.Role == UserRole.Customer)
             {
-                using var portal = new CustomerPortalForm(user);
-                Application.Run(portal);
-                loggedOut = portal.LoggedOut;
+                // Existing customers have no dashboard: after logging in they go straight to step 2 (Select a Pet).
+                CustomerFlow.RunExistingCustomer(user);
+                continue;
             }
             else
             {
