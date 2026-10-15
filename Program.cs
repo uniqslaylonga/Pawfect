@@ -48,17 +48,26 @@ internal static class Program
         while (true)
         {
             // Landing screen first; closing it (Esc / X) quits the app.
+            bool wantsLogin;
             using (var welcome = new WelcomeForm())
             {
                 if (welcome.ShowDialog() != DialogResult.OK)
                     break;
+                wantsLogin = welcome.WantsLogin;
+            }
+
+            // Start: a walk-in customer at the kiosk goes straight to step 1 (contact information), no login.
+            if (!wantsLogin)
+            {
+                CustomerFlow.RunKiosk();
+                continue;   // back to the landing screen for the next customer
             }
 
             using var login = new LoginForm();
             if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is not { } user)
                 continue; // closed the login: back to the landing screen
 
-            // Admins land on the admin dashboard; everyone else gets the staff dashboard.
+            // Admins land on the admin dashboard, customers go straight to step 2 (Select a Pet) of the Add Pet flow, everyone else gets the staff dashboard.
             bool loggedOut;
             if (user.Role == UserRole.Admin)
             {
@@ -69,9 +78,9 @@ internal static class Program
             }
             else if (user.Role == UserRole.Customer)
             {
-                using var portal = new CustomerPortalForm(user);
-                Application.Run(portal);
-                loggedOut = portal.LoggedOut;
+                // No customer dashboard: straight to step 2 of the Add Pet flow, then back to the landing screen.
+                CustomerFlow.Run(user);
+                loggedOut = true;
             }
             else
             {

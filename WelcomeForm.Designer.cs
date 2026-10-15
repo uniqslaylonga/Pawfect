@@ -22,7 +22,6 @@ namespace MyApp
             logoBadge = new MyApp.Controls.PawBadge();
             brandLabel = new Label();
             taglineLabel = new Label();
-            languageBox = new ComboBox();
             faintPawTop = new MyApp.Controls.PawBadge();
             faintPawBottom = new MyApp.Controls.PawBadge();
             welcomeLabel = new Label();
@@ -31,6 +30,7 @@ namespace MyApp
             namePawB = new MyApp.Controls.PawBadge();
             subtitleLabel = new Label();
             startButton = new MyApp.Controls.PrimaryButton();
+            loginButton = new MyApp.Controls.SecondaryButton();
             scriptLabel = new Label();
             blobPanel = new MyApp.Controls.BlobPanel();
             petsPicture = new PictureBox();
@@ -75,19 +75,6 @@ namespace MyApp
             taglineLabel.Text = "GROOMING • HEALTH • HAPPINESS";
             taglineLabel.TextAlign = ContentAlignment.MiddleLeft;
             taglineLabel.UseMnemonic = false;
-            // 
-            // languageBox
-            // 
-            languageBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            languageBox.FlatStyle = FlatStyle.Flat;
-            languageBox.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            languageBox.FormattingEnabled = true;
-            languageBox.Items.AddRange(new object[] { "English" });
-            languageBox.Location = new Point(852, 38);
-            languageBox.Name = "languageBox";
-            languageBox.Size = new Size(108, 23);
-            languageBox.TabIndex = 3;
             // 
             // faintPawTop
             // 
@@ -187,12 +174,23 @@ namespace MyApp
             startButton.TabIndex = 11;
             startButton.Text = "Start   →";
             // 
+            // loginButton
+            // 
+            loginButton.BackColor = Color.FromArgb(243, 247, 252);
+            loginButton.Font = new Font("Segoe UI", 11F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            loginButton.Location = new Point(94, 376);
+            loginButton.Name = "loginButton";
+            loginButton.Radius = 23;
+            loginButton.Size = new Size(222, 46);
+            loginButton.TabIndex = 14;
+            loginButton.Text = "Login";
+            // 
             // scriptLabel
             // 
             scriptLabel.BackColor = Color.Transparent;
             scriptLabel.Font = new Font("Segoe Script", 16F, FontStyle.Regular, GraphicsUnit.Point, 0);
             scriptLabel.ForeColor = Color.FromArgb(74, 126, 205);
-            scriptLabel.Location = new Point(80, 420);
+            scriptLabel.Location = new Point(80, 440);
             scriptLabel.Name = "scriptLabel";
             scriptLabel.Size = new Size(200, 140);
             scriptLabel.TabIndex = 12;
@@ -232,6 +230,7 @@ namespace MyApp
             ClientSize = new Size(1000, 620);
             Controls.Add(blobPanel);
             Controls.Add(scriptLabel);
+            Controls.Add(loginButton);
             Controls.Add(startButton);
             Controls.Add(subtitleLabel);
             Controls.Add(namePawB);
@@ -240,7 +239,6 @@ namespace MyApp
             Controls.Add(welcomeLabel);
             Controls.Add(faintPawBottom);
             Controls.Add(faintPawTop);
-            Controls.Add(languageBox);
             Controls.Add(taglineLabel);
             Controls.Add(brandLabel);
             Controls.Add(logoBadge);
@@ -262,7 +260,6 @@ namespace MyApp
         private MyApp.Controls.PawBadge logoBadge;
         private System.Windows.Forms.Label brandLabel;
         private System.Windows.Forms.Label taglineLabel;
-        private System.Windows.Forms.ComboBox languageBox;
         private MyApp.Controls.PawBadge faintPawTop;
         private MyApp.Controls.PawBadge faintPawBottom;
         private System.Windows.Forms.Label welcomeLabel;
@@ -271,6 +268,7 @@ namespace MyApp
         private MyApp.Controls.PawBadge namePawB;
         private System.Windows.Forms.Label subtitleLabel;
         private MyApp.Controls.PrimaryButton startButton;
+        private MyApp.Controls.SecondaryButton loginButton;
         private System.Windows.Forms.Label scriptLabel;
         private MyApp.Controls.BlobPanel blobPanel;
         private System.Windows.Forms.PictureBox petsPicture;

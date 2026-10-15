@@ -319,3 +319,61 @@ internal sealed class PrimaryButton : Control
             TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
 }
+
+/// <summary>Outlined rounded button: white fill, blue border and text. Used next to a PrimaryButton for the less prominent action.</summary>
+internal sealed class SecondaryButton : Control
+{
+    private bool _hover;
+    private bool _down;
+    private int _radius = 8;
+
+    [Category("Pawfect"), Description("Corner roundness.")]
+    [DefaultValue(8)]
+    public int Radius { get => _radius; set { _radius = Math.Max(0, value); Invalidate(); } }
+
+    public SecondaryButton()
+    {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        Font = Theme.Face(10f, FontStyle.Bold);
+        BackColor = Color.White;
+        Cursor = Cursors.Hand;
+        Size = new Size(316, 44);
+    }
+
+    public SecondaryButton(string text) : this()
+    {
+        Text = text;
+    }
+
+    protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
+    protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { _hover = false; _down = false; Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseDown(MouseEventArgs e) { _down = true; Invalidate(); base.OnMouseDown(e); }
+    protected override void OnMouseUp(MouseEventArgs e) { _down = false; Invalidate(); base.OnMouseUp(e); }
+    protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        var accent = Enabled ? Theme.Primary : Color.FromArgb(157, 188, 235);
+        var fillColor = !Enabled ? Color.White
+            : _down ? Color.FromArgb(214, 230, 251)
+            : _hover ? Theme.PrimarySoft
+            : Color.White;
+
+        // Inset by half the pen width so the 1.5px border is not clipped at the control edge.
+        using (var path = Ui.RoundRect(new RectangleF(0.75f, 0.75f, Width - 2.5f, Height - 2.5f), _radius))
+        {
+            using (var b = new SolidBrush(fillColor))
+                g.FillPath(b, path);
+            using var pen = new Pen(accent, 1.5f);
+            g.DrawPath(pen, path);
+        }
+
+        TextRenderer.DrawText(g, Text, Font, ClientRectangle, accent,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+    }
+}

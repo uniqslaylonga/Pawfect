@@ -12,11 +12,15 @@ namespace MyApp;
 internal sealed partial class AddPetForm : Form
 {
     private readonly TextBox[] _otpBoxes;
-    private readonly int _customerId;
-    private readonly string _ownerName = "";
+    private int _customerId;
+    private string _ownerName = "";
     private readonly string _loginEmail = "";
     private readonly string _profileEmail = "";
-    private readonly string _profilePhone = "";
+    private string _profilePhone = "";
+
+    private readonly bool _kiosk;          // walk-in at the kiosk: no login, the customer is found (or created) from the email
+    private readonly bool _skipContactStep;   // signed in with an account the clinic set up: step 1 (email code) is already done
+    private string _contactMobile = "";
 
     private readonly List<PetCard> _petCards = new();
     private PetCard? _chosenCard;
@@ -28,6 +32,12 @@ internal sealed partial class AddPetForm : Form
 
     /// <summary>Set when a new pet was saved.</summary>
     public int? CreatedPetId { get; private set; }
+
+    /// <summary>The customer this visit belongs to (kiosk: known once the code is verified).</summary>
+    public int CustomerId => _customerId;
+
+    /// <summary>The email the code was sent to and verified (kiosk).</summary>
+    public string ContactEmail { get; private set; } = "";
 
     /// <summary>Set when the customer picked an existing pet and pressed Continue: the caller opens the appointment request.</summary>
     public int? ChosenPetId { get; private set; }
@@ -42,6 +52,13 @@ internal sealed partial class AddPetForm : Form
         ShowContactStep();
     }
 
+    /// <summary>Kiosk mode: opens on step 1 with nothing filled in.</summary>
+    public AddPetForm(bool kiosk) : this()
+    {
+        _kiosk = kiosk;
+        ownerLabel.Text = "";
+    }
+
     public AddPetForm(int customerId, string ownerName, string loginEmail) : this()
     {
         _customerId = customerId;
@@ -52,6 +69,11 @@ internal sealed partial class AddPetForm : Form
 
         try { (_profileEmail, _profilePhone) = EmployeeData.GetCustomerContact(customerId); }
         catch (SqlException) { /* the check below falls back to the login email only */ }
+
+        // The account was set up (and linked to this customer) by the clinic and the password was just checked at login,
+        // so there is no email code to enter: go straight to step 2, Select a Pet.
+        _skipContactStep = true;
+        ShowSelectStep();
     }
 
     // ------------------------------------------------------------------ wiring
@@ -121,7 +143,9 @@ internal sealed partial class AddPetForm : Form
             ShowContactError("Enter a valid email address, like example@email.com.");
             return;
         }
+        if (_kiosk && !LookUpKioskCustomer(email)) return;
         string mobile = mobileField.Value.Trim();
+        _contactMobile = mobile;
         if (mobile.Length > 0 && !MobileMatches(mobile))
         {
             ShowContactError("That mobile number doesn't match the one on your account.");
@@ -132,7 +156,8 @@ internal sealed partial class AddPetForm : Form
         sendOtpButton.Text = "Sending…";
         try
         {
-            _challenge = await EmailOtp.SendAsync(email, _ownerName);
+            _challenge = await EmailOtp.SendAsync(email, _ownerName.Length > 0 ? _ownerName : "there");
+            ContactEmail = email;
             otpHint.Text = $"We've sent a 6-digit code to {MaskEmail(email)}.";
             otpErrorLabel.Text = "";
             contactErrorLabel.Text = "";
@@ -167,7 +192,56 @@ internal sealed partial class AddPetForm : Form
             _otpBoxes[0].Focus();
             return;
         }
+        if (_kiosk && !EnsureKioskCustomer()) return;
         ShowSelectStep();
+    }
+
+    // ---- kiosk: the customer is found by email (or created once the code is right)
+
+    private bool LookUpKioskCustomer(string email)
+    {
+        try
+        {
+            if (EmployeeData.FindCustomerByEmail(email) is { } found)
+            {
+                _customerId = found.Id;
+                _ownerName = found.Name;
+                _profilePhone = EmployeeData.GetCustomerContact(found.Id).Phone;
+            }
+            else
+            {
+                _customerId = 0;
+                _ownerName = "";
+                _profilePhone = "";
+            }
+            return true;
+        }
+        catch (SqlException)
+        {
+            ShowContactError("Can't reach the database.");
+            return false;
+        }
+    }
+
+    private bool EnsureKioskCustomer()
+    {
+        try
+        {
+            if (_customerId == 0)
+            {
+                // first visit: a record is made from the verified email (staff can fix the name later)
+                string name = ContactEmail.Contains('@') ? ContactEmail[..ContactEmail.IndexOf('@')] : ContactEmail;
+                _ownerName = name.Length > 100 ? name[..100] : name;
+                _customerId = EmployeeData.AddCustomer(_ownerName, _contactMobile, ContactEmail, "");
+            }
+            ownerLabel.Text = "Registering a new pet for " + _ownerName;
+            return true;
+        }
+        catch (SqlException ex)
+        {
+            otpErrorLabel.Text = "Couldn't set up your record. " + ex.Message;
+            return false;
+        }
     }
 
     private void StartCountdown()
@@ -422,6 +496,13 @@ internal sealed partial class AddPetForm : Form
         if (VaccineStepVisible)
         {
             ShowSelectStep();   // back to the pet list (a pet saved a moment ago is in it now)
+            return;
+        }
+        if (selectPanel.Visible && _skipContactStep)
+        {
+            // Signed in: there is no step 1 to go back to, so Back returns to the landing screen.
+            DialogResult = DialogResult.Cancel;
+            Close();
             return;
         }
         if (selectPanel.Visible)

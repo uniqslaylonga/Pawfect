@@ -752,6 +752,16 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
         return r.Read() ? (r.GetInt32(0), r.GetString(1)) : null;
     }
 
+    /// <summary>Kiosk: the customer record that has this email (null when there is none yet).</summary>
+    public static (int Id, string Name)? FindCustomerByEmail(string email)
+    {
+        using var conn = Open();
+        using var cmd = Cmd(conn, "SELECT TOP 1 CustomerId, FullName FROM dbo.Customers WHERE Email = @email AND IsActive = 1 ORDER BY CustomerId");
+        P(cmd, "@email", SqlDbType.NVarChar, email.Trim(), 256);
+        using var r = cmd.ExecuteReader();
+        return r.Read() ? (r.GetInt32(0), r.GetString(1)) : null;
+    }
+
     /// <summary>The email and phone saved on a customer's record (empty strings when blank).</summary>
     public static (string Email, string Phone) GetCustomerContact(int customerId)
     {
