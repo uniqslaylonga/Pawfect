@@ -6,7 +6,15 @@ namespace MyApp.Controls;
 /// <summary>Selectable pet tile: round avatar, name and "Dog • Golden Retriever" underneath, a tick when chosen.</summary>
 internal sealed class PetCard : Control
 {
-    private static readonly Font EmojiFont = new("Segoe UI Emoji", 28f, FontStyle.Regular, GraphicsUnit.Point);
+    private static readonly Dictionary<float, Font> EmojiFonts = new();
+
+    private static Font EmojiAt(float points)
+    {
+        points = FullScreen.Pt(points);
+        if (!EmojiFonts.TryGetValue(points, out var font))
+            EmojiFonts[points] = font = new Font("Segoe UI Emoji", points, FontStyle.Regular, GraphicsUnit.Point);
+        return font;
+    }
     private string _detail = "";
     private string _species = "";
     private bool _selected;
@@ -48,31 +56,35 @@ internal sealed class PetCard : Control
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
+        // Laid out for a 260 x 200 tile; everything grows with the tile when the screen is bigger.
+        float k = Math.Max(0.5f, Math.Min(Width / 260f, Height / 200f));
+        int S(float v) => (int)Math.Round(v * k);
+
         var rect = new RectangleF(1, 1, Width - 3, Height - 3);
-        using (var path = Ui.RoundRect(rect, 14))
+        using (var path = Ui.RoundRect(rect, S(14)))
         {
             using (var fill = new SolidBrush(Color.White)) g.FillPath(fill, path);
             using var pen = new Pen(_selected ? Color.FromArgb(37, 99, 235) : _hover ? Color.FromArgb(160, 196, 245) : Theme.Border, _selected ? 2f : 1f);
             g.DrawPath(pen, path);
         }
 
-        const int d = 92;
-        var avatar = new Rectangle((Width - d) / 2, 24, d, d);
+        int d = S(92);
+        var avatar = new Rectangle((Width - d) / 2, S(24), d, d);
         using (var b = new SolidBrush(Color.FromArgb(240, 246, 255))) g.FillEllipse(b, avatar);
         using (var pen = new Pen(Theme.Border)) g.DrawEllipse(pen, avatar);
-        TextRenderer.DrawText(g, Emoji(), EmojiFont, avatar, Theme.Text,
+        TextRenderer.DrawText(g, Emoji(), EmojiAt(28f * k), avatar, Theme.Text,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
 
-        TextRenderer.DrawText(g, Text, Theme.Face(10.5f, FontStyle.Bold), new Rectangle(18, 138, Width - 36, 22), Theme.Text,
+        TextRenderer.DrawText(g, Text, Theme.Face(FullScreen.Pt(10.5f * k), FontStyle.Bold), new Rectangle(S(18), S(138), Width - S(36), S(22)), Theme.Text,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-        TextRenderer.DrawText(g, _detail, Theme.Face(8f), new Rectangle(18, 162, Width - 36, 18), Theme.Muted,
+        TextRenderer.DrawText(g, _detail, Theme.Face(FullScreen.Pt(8f * k)), new Rectangle(S(18), S(162), Width - S(36), S(18)), Theme.Muted,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
 
         if (_selected)
         {
-            var tick = new Rectangle(Width - 36, 12, 22, 22);
+            var tick = new Rectangle(Width - S(36), S(12), S(22), S(22));
             using (var b = new SolidBrush(Color.FromArgb(37, 99, 235))) g.FillEllipse(b, tick);
-            TextRenderer.DrawText(g, "", Theme.GlyphFont(8f), tick, Color.White,
+            TextRenderer.DrawText(g, "", Theme.GlyphFont(FullScreen.Pt(8f * k)), tick, Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
         }
     }
@@ -124,11 +136,12 @@ internal sealed class SegmentButton : Control
 
         var fore = _active ? Color.White : blue;
         const TextFormatFlags flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter;
-        int gw = _glyph.Length > 0 ? 24 : 0;
+        float k = Math.Max(0.5f, Height / 44f);
+        int gw = _glyph.Length > 0 ? (int)Math.Round(24 * k) : 0;
         int tw = TextRenderer.MeasureText(g, Text, Font, new Size(Width, Height), flags).Width;
         int x = (Width - (gw + tw)) / 2;
         if (gw > 0)
-            TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(10f), new Rectangle(x, 0, gw, Height), fore, flags | TextFormatFlags.HorizontalCenter);
+            TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(FullScreen.Pt(10f * k)), new Rectangle(x, 0, gw, Height), fore, flags | TextFormatFlags.HorizontalCenter);
         TextRenderer.DrawText(g, Text, Font, new Rectangle(x + gw, 0, tw + 4, Height), fore, flags | TextFormatFlags.Left);
     }
 }

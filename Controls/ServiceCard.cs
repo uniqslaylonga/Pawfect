@@ -46,8 +46,12 @@ internal sealed class ServiceCard : Control
         g.SmoothingMode = SmoothingMode.AntiAlias;
         var blue = Color.FromArgb(37, 99, 235);
 
+        // Laid out for a 398 x 120 tile; everything grows with the tile when the screen is bigger.
+        float k = Math.Max(0.5f, Math.Min(Width / 398f, Height / 120f));
+        int S(float v) => (int)Math.Round(v * k);
+
         var rect = new RectangleF(1, 1, Width - 3, Height - 3);
-        using (var path = Ui.RoundRect(rect, 14))
+        using (var path = Ui.RoundRect(rect, S(14)))
         {
             using (var fill = new SolidBrush(_selected ? Color.FromArgb(239, 245, 255) : Color.White)) g.FillPath(fill, path);
             using var pen = new Pen(_selected ? blue : _hover ? Color.FromArgb(160, 196, 245) : Theme.Border, _selected ? 2f : 1f);
@@ -57,16 +61,16 @@ internal sealed class ServiceCard : Control
         const TextFormatFlags centre = TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | TextFormatFlags.NoPadding |
                                        TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis;
 
-        TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(18f), new Rectangle(0, 14, Width, 30), blue, centre);
-        TextRenderer.DrawText(g, Text, Theme.Face(10f, FontStyle.Bold), new Rectangle(8, 50, Width - 16, 20), Theme.Text, centre);
-        TextRenderer.DrawText(g, _price, Theme.Face(11f, FontStyle.Bold), new Rectangle(8, 72, Width - 16, 22), Theme.Text, centre);
-        TextRenderer.DrawText(g, _duration, Theme.Face(8f), new Rectangle(8, 98, Width - 16, 16), Theme.Muted, centre);
+        TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(FullScreen.Pt(18f * k)), new Rectangle(0, S(14), Width, S(30)), blue, centre);
+        TextRenderer.DrawText(g, Text, Theme.Face(FullScreen.Pt(10f * k), FontStyle.Bold), new Rectangle(S(8), S(50), Width - S(16), S(20)), Theme.Text, centre);
+        TextRenderer.DrawText(g, _price, Theme.Face(FullScreen.Pt(11f * k), FontStyle.Bold), new Rectangle(S(8), S(72), Width - S(16), S(22)), Theme.Text, centre);
+        TextRenderer.DrawText(g, _duration, Theme.Face(FullScreen.Pt(8f * k)), new Rectangle(S(8), S(98), Width - S(16), S(16)), Theme.Muted, centre);
 
         if (_selected)
         {
-            var dot = new Rectangle(Width - 34, 10, 22, 22);
+            var dot = new Rectangle(Width - S(34), S(10), S(22), S(22));
             using (var brush = new SolidBrush(blue)) g.FillEllipse(brush, dot);
-            TextRenderer.DrawText(g, "\uE73E", Theme.GlyphFont(8f), dot, Color.White,
+            TextRenderer.DrawText(g, "\uE73E", Theme.GlyphFont(FullScreen.Pt(8f * k)), dot, Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
         }
     }

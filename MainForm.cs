@@ -34,6 +34,7 @@ internal partial class MainForm : Form
     {
         InitializeComponent();
         DoubleBuffered = true;
+        FullScreen.Apply(this, centerContent: false);
         _ = new SidebarCollapser(sidebar, navPanel, logoutNav, brandName, brandTagline);
 
         // Appointments page lives in the same content area as the dashboard body; the sidebar switches between them.

@@ -22,7 +22,12 @@ internal static class FullScreen
     }
 
     /// <param name="centerContent">True for fixed-size layouts: wrap the existing controls in a panel that is scaled to the screen and centred.</param>
-    public static Control Apply(Form form, bool centerContent)
+    /// <summary>Font sizes for hand-painted controls are rounded to quarter points so scaled fonts are reused, not created every paint.</summary>
+    internal static float Pt(float points) => (float)Math.Round(points * 4f) / 4f;
+
+    public static Control Apply(Form form, bool centerContent) => Apply(form, centerContent, out _);
+
+    public static Control Apply(Form form, bool centerContent, out ContentScaler? contentScaler)
     {
         var designSize = form.ClientSize;               // after InitializeComponent, so already DPI-scaled
         Panel? stage = null;
@@ -110,6 +115,7 @@ internal static class FullScreen
         form.Load += (_, _) => { Fit(); Layout(); };
         form.Shown += (_, _) => { Fit(); Layout(); };
         form.Resize += (_, _) => Layout();
+        contentScaler = scaler;
         return (Control?)stage ?? form;
     }
 }
@@ -122,6 +128,9 @@ internal sealed class ContentScaler
 {
     private readonly Control _root;
     private float _scale = 1f;
+
+    /// <summary>How much bigger than the original design the content is right now (1 = original size).</summary>
+    public float Scale => _scale;
 
     public ContentScaler(Control root)
     {
