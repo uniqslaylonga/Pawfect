@@ -134,7 +134,9 @@ internal partial class AdminForm : Form
         if (employeesPage.Visible) RefreshUsers(); // the User Management table may list this account
     }
 
-    private void ShowPage(AdminPage page)
+    private void ShowPage(AdminPage page) => PageFade.Swap(contentPanel, () => ShowPageCore(page));
+
+    private void ShowPageCore(AdminPage page)
     {
         bodyPanel.Visible = page == AdminPage.Dashboard;
         employeesPage.Visible = page == AdminPage.Employees;

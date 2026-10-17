@@ -84,7 +84,9 @@ internal partial class MainForm : Form
 
     private enum Page { Dashboard, Appointments, Billing, Lookup }
 
-    private void ShowPage(Page page)
+    private void ShowPage(Page page) => PageFade.Swap(contentPanel, () => ShowPageCore(page));
+
+    private void ShowPageCore(Page page)
     {
         bodyPanel.Visible = page == Page.Dashboard;
         appointmentsPage.Visible = page == Page.Appointments;

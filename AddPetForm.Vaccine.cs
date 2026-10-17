@@ -78,6 +78,9 @@ internal sealed partial class AddPetForm
     // ------------------------------------------------------------------ step 3: show / hide
 
     private void ShowVaccineStep(int petId, string petName, bool isNew, VaccineState state = VaccineState.Missing)
+        => PageFade.Swap(ContentHost, () => ShowVaccineStepCore(petId, petName, isNew, state));
+
+    private void ShowVaccineStepCore(int petId, string petName, bool isNew, VaccineState state)
     {
         HideServiceStep();
         EnsureVaccinePanel();

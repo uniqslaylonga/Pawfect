@@ -250,7 +250,7 @@ namespace MyApp
             signUpLink.Name = "signUpLink";
             signUpLink.Size = new Size(70, 22);
             signUpLink.TabIndex = 10;
-            signUpLink.Text = "Sign Up";
+            signUpLink.Text = "Start";
             signUpLink.TextAlign = ContentAlignment.MiddleLeft;
             signUpLink.UseMnemonic = false;
             // 

@@ -19,7 +19,9 @@ internal sealed partial class AddPetForm
 
     // ------------------------------------------------------------------ show / hide
 
-    private void ShowServiceStep()
+    private void ShowServiceStep() => PageFade.Swap(ContentHost, ShowServiceStepCore);
+
+    private void ShowServiceStepCore()
     {
         List<ServiceChoice> choices;
         try { choices = EmployeeData.GetServiceChoices(); }

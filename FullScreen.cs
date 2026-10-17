@@ -112,8 +112,10 @@ internal static class FullScreen
         form.MouseDown += drag;
         if (stage is not null) stage.MouseDown += drag;
 
+        Fit(); Layout();                                // sized and laid out now, before it is first shown (no visible resize jump)
         form.Load += (_, _) => { Fit(); Layout(); };
         form.Shown += (_, _) => { Fit(); Layout(); };
+        FormFade.Attach(form);                          // fades in when shown, out when closed (registered after the layout hooks)
         form.Resize += (_, _) => Layout();
         contentScaler = scaler;
         return (Control?)stage ?? form;

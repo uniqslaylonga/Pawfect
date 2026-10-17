@@ -124,8 +124,16 @@ internal sealed class VaccinationScanForm : DialogBase
         _list.Columns.Add("Expires", 150);
         _list.SetBounds(18, 40, 852, 126);
         tableCard.Controls.Add(_list);
-        tableCard.SizeChanged += (_, _) => _list.Height = Math.Max(60, tableCard.Height - 40 - 14);
-        body.Resize += (_, _) => tableCard.Height = Math.Max(120, body.ClientSize.Height - tableCard.Top - 16);
+        // Sizes are worked out from the controls' own (possibly scaled) positions, so they hold at any screen size.
+        tableCard.SizeChanged += (_, _) => _list.Height = Math.Max(_list.Top * 3 / 2, tableCard.Height - _list.Top - _list.Top * 14 / 40);
+        body.Resize += (_, _) => tableCard.Height = Math.Max(tableCard.Left * 15 / 2, body.ClientSize.Height - tableCard.Top - tableCard.Left);
+        int[] columnWidths = { 140, 280, 100, 160, 150 };
+        _list.SizeChanged += (_, _) =>
+        {
+            double f = _list.ClientSize.Width / 852.0;
+            for (int i = 0; i < columnWidths.Length && i < _list.Columns.Count; i++)
+                _list.Columns[i].Width = (int)(columnWidths[i] * f);
+        };
 
         // The card is read by the scanner only. Customers can't type over what it found; a wrong read is fixed by scanning again.
         foreach (var box in new[] { _name, _species, _breed, _birth, _weight })
@@ -140,6 +148,8 @@ internal sealed class VaccinationScanForm : DialogBase
         _camera.Click += async (_, _) => await CameraAndScanAsync();
         _choose.Click += async (_, _) => await ChooseAndScanAsync();
         _preview.Click += async (_, _) => { if (_choose.Enabled) await ChooseAndScanAsync(); };
+
+        FullScreen.Apply(this, centerContent: true);   // full screen; the 920 x 640 layout is scaled up and centred
     }
 
     // ------------------------------------------------------------------ layout helpers
@@ -225,8 +235,10 @@ internal sealed class VaccinationScanForm : DialogBase
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var r = new Rectangle(0, 0, Width - 1, Height - 1);
+            float k = Math.Max(1f, Height / 112f);   // how much bigger than the original design this frame is
+            int K(int v) => (int)Math.Round(v * k);
 
-            using (var path = Ui.RoundRect(r, 12))
+            using (var path = Ui.RoundRect(r, K(12)))
             {
                 using var fill = new SolidBrush(Theme.PrimarySoft);
                 using var pen = new Pen(Theme.Border);
@@ -236,7 +248,7 @@ internal sealed class VaccinationScanForm : DialogBase
 
             if (_picture is { } pic)
             {
-                var area = Rectangle.Inflate(r, -14, -14);
+                var area = Rectangle.Inflate(r, -K(14), -K(14));
                 float scale = Math.Min(area.Width / (float)pic.Width, area.Height / (float)pic.Height);
                 int w = Math.Max(1, (int)(pic.Width * scale)), h = Math.Max(1, (int)(pic.Height * scale));
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
@@ -244,22 +256,22 @@ internal sealed class VaccinationScanForm : DialogBase
             }
             else
             {
-                var tile = new Rectangle(Width / 2 - 20, 22, 40, 40);
-                using (var path = Ui.RoundRect(tile, 10))
+                var tile = new Rectangle(Width / 2 - K(20), K(22), K(40), K(40));
+                using (var path = Ui.RoundRect(tile, K(10)))
                 {
                     using var white = new SolidBrush(Color.White);
                     using var pen = new Pen(Theme.Border);
                     g.FillPath(white, path);
                     g.DrawPath(pen, path);
                 }
-                TextRenderer.DrawText(g, "\uE722", Theme.GlyphFont(14f), tile, Theme.Primary,
+                TextRenderer.DrawText(g, "\uE722", Theme.GlyphFont(FullScreen.Pt(14f * k)), tile, Theme.Primary,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-                TextRenderer.DrawText(g, "Click to choose a photo", Theme.Face(8.5f), new Rectangle(0, 70, Width, 24), Theme.Muted,
+                TextRenderer.DrawText(g, "Click to choose a photo", Theme.Face(FullScreen.Pt(8.5f * k)), new Rectangle(0, K(70), Width, K(24)), Theme.Muted,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
             }
 
-            using var br = new Pen(Theme.Primary, 2.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
-            int m = 8, len = 16, rw = Width - 1, rh = Height - 1;
+            using var br = new Pen(Theme.Primary, 2.5f * k) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            int m = K(8), len = K(16), rw = Width - 1, rh = Height - 1;
             g.DrawLines(br, new[] { new Point(m, m + len), new Point(m, m), new Point(m + len, m) });
             g.DrawLines(br, new[] { new Point(rw - m - len, m), new Point(rw - m, m), new Point(rw - m, m + len) });
             g.DrawLines(br, new[] { new Point(m, rh - m - len), new Point(m, rh - m), new Point(m + len, rh - m) });

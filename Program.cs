@@ -64,7 +64,13 @@ internal static class Program
             }
 
             using var login = new LoginForm();
-            if (login.ShowDialog() != DialogResult.OK || login.SignedInUser is not { } user)
+            bool loginOk = login.ShowDialog() == DialogResult.OK;
+            if (loginOk && login.WantsKiosk)
+            {
+                CustomerFlow.RunKiosk();   // "Start" on the login screen: same as Start on the landing screen
+                continue;
+            }
+            if (!loginOk || login.SignedInUser is not { } user)
                 continue; // closed the login: back to the landing screen
 
             // Admins land on the admin dashboard, customers go straight to step 2 (Select a Pet) of the Add Pet flow, everyone else gets the staff dashboard.

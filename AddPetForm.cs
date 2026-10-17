@@ -472,7 +472,9 @@ internal sealed partial class AddPetForm : Form
 
     // ------------------------------------------------------------------ moving between steps
 
-    private void ShowContactStep()
+    private void ShowContactStep() => PageFade.Swap(ContentHost, ShowContactStepCore);
+
+    private void ShowContactStepCore()
     {
         HideVaccineStep();
         selectPanel.Visible = false;
@@ -484,7 +486,9 @@ internal sealed partial class AddPetForm : Form
         stepSelect.State = StepState.Pending;
     }
 
-    private void ShowSelectStep()
+    private void ShowSelectStep() => PageFade.Swap(ContentHost, ShowSelectStepCore);
+
+    private void ShowSelectStepCore()
     {
         resendTimer.Stop();
         HideVaccineStep();

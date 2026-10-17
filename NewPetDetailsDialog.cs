@@ -144,6 +144,8 @@ internal sealed class NewPetDetailsDialog : Form
 
         if (existing is not null) Prefill(existing);
         Shown += (_, _) => _name.Box.Focus();
+
+        FullScreen.Apply(this, centerContent: true);   // full screen; the 580 x 600 form is scaled up and centred
     }
 
     // ------------------------------------------------------------------ chrome
@@ -180,32 +182,32 @@ internal sealed class NewPetDetailsDialog : Form
             AutoSize = true,
             Location = new Point(88, 50),
         };
+        var badge = new BadgeCircle { Bounds = new Rectangle(30, 16, 48, 48), Font = Theme.GlyphFont(16f) };
+        Controls.Add(badge);
         Controls.Add(close);
         Controls.Add(title);
         Controls.Add(sub);
     }
 
-    protected override void OnPaint(PaintEventArgs e)
+    /// <summary>The round person icon in the header (a control, so it scales with the rest of the form).</summary>
+    private sealed class BadgeCircle : Control
     {
-        base.OnPaint(e);
-        var g = e.Graphics;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
+        public BadgeCircle()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = Color.White;
+            TabStop = false;
+        }
 
-        // header badge
-        var badge = new Rectangle(30, 16, 48, 48);
-        using (var b = new SolidBrush(Theme.PrimarySoft)) g.FillEllipse(b, badge);
-        TextRenderer.DrawText(g, "\uE77B", Theme.GlyphFont(16f), badge, Theme.Primary,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-
-        using var pen = new Pen(Theme.Border, 2f);
-        g.DrawPath(pen, Ui.RoundRect(new Rectangle(1, 1, Width - 3, Height - 3), 20));
-    }
-
-    protected override void OnResize(EventArgs e)
-    {
-        base.OnResize(e);
-        using var path = Ui.RoundRect(new Rectangle(0, 0, Width, Height), 20);
-        Region = new Region(path);
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var area = new Rectangle(0, 0, Width - 1, Height - 1);
+            using (var b = new SolidBrush(Theme.PrimarySoft)) g.FillEllipse(b, area);
+            TextRenderer.DrawText(g, "\uE77B", Font, area, Theme.Primary,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
     }
 
     // ------------------------------------------------------------------ behaviour

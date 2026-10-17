@@ -11,6 +11,9 @@ internal partial class LoginForm : Form
     /// <summary>Set when the sign-in succeeds.</summary>
     public UserAccount? SignedInUser { get; private set; }
 
+    /// <summary>True when "Start" was clicked instead of signing in: the caller opens the customer (kiosk) flow.</summary>
+    public bool WantsKiosk { get; private set; }
+
     public LoginForm()
     {
         InitializeComponent();
@@ -30,9 +33,12 @@ internal partial class LoginForm : Form
             }
         };
         signInButton.Click += (_, _) => SignIn();
-        signUpLink.Click += (_, _) => MessageBox.Show(this,
-            "New accounts are set up by the clinic. Please ask the front desk to create one for you.",
-            "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        signUpLink.Click += (_, _) =>
+        {
+            WantsKiosk = true;
+            DialogResult = DialogResult.OK;
+            Close();
+        };
         emailField.Box.TextChanged += (_, _) => errorLabel.Text = "";
         passwordField.Box.TextChanged += (_, _) => errorLabel.Text = "";
 
