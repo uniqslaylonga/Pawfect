@@ -28,6 +28,7 @@ internal partial class AdminForm : Form
     {
         InitializeComponent();
         DoubleBuffered = true;
+        FullScreen.Apply(this, centerContent: false);
         _ = new SidebarCollapser(sidebar, navPanel, logoutNav, brandName, brandTagline);
 
         // Pages share the area under the top bar; the sidebar switches between them.

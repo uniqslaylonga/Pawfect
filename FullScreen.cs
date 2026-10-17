@@ -1,0 +1,290 @@
+using System.Runtime.InteropServices;
+
+namespace MyApp;
+
+/// <summary>
+/// Makes a form cover the whole screen (no title bar or border, taskbar hidden) and gives it its own
+/// minimize / restore-or-full-screen / close buttons in the top-right corner.
+/// Forms whose controls were laid out at a fixed size (landing, login, customer steps) are scaled up to fill the screen
+/// (everything grows together: controls, spacing and text) and kept centred; forms that already stretch with their window
+/// (admin) just grow. The middle button switches between full screen and a normal-sized window in the middle of the screen,
+/// and that window can be moved by dragging its background or the thin strip along the top.
+/// </summary>
+internal static class FullScreen
+{
+    [DllImport("user32.dll")] private static extern bool ReleaseCapture();
+    [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
+
+    private static void DragWindow(Form form)
+    {
+        ReleaseCapture();
+        SendMessage(form.Handle, 0xA1 /* WM_NCLBUTTONDOWN */, 2 /* HTCAPTION */, 0);
+    }
+
+    /// <param name="centerContent">True for fixed-size layouts: wrap the existing controls in a panel that is scaled to the screen and centred.</param>
+    public static Control Apply(Form form, bool centerContent)
+    {
+        var designSize = form.ClientSize;               // after InitializeComponent, so already DPI-scaled
+        Panel? stage = null;
+        ContentScaler? scaler = null;
+        if (centerContent)
+        {
+            var kids = form.Controls.Cast<Control>().ToArray();
+            stage = new Panel { Size = designSize, BackColor = form.BackColor, TabStop = false };
+            form.SuspendLayout();
+            stage.Controls.AddRange(kids);              // AddRange keeps the original front-to-back order
+            form.Controls.Add(stage);
+            form.ResumeLayout(false);
+            scaler = new ContentScaler(stage);          // also scales controls the form adds later (pet cards, step panels)
+        }
+
+        form.FormBorderStyle = FormBorderStyle.None;
+        form.MaximizeBox = false;
+        form.MinimizeBox = false;
+        form.MinimumSize = Size.Empty;
+        form.StartPosition = FormStartPosition.Manual;
+        form.ShowInTaskbar = true;                      // so a minimized window can be brought back from the taskbar
+
+        bool full = true;
+        var caption = new CaptionButtons();
+        var grip = new Panel { Height = 10, BackColor = Color.Transparent, TabStop = false, Visible = false };   // drag strip, windowed mode only
+        form.Controls.Add(grip);
+        form.Controls.Add(caption);
+        caption.BringToFront();
+
+        void Fit()
+        {
+            if (form.WindowState == FormWindowState.Minimized) return;
+            var screen = Screen.FromControl(form);
+            Rectangle target;
+            if (full)
+            {
+                target = screen.Bounds;                 // the whole monitor, taskbar included
+            }
+            else
+            {
+                var area = screen.WorkingArea;
+                int w = Math.Min(designSize.Width, (int)(area.Width * 0.92));
+                int h = Math.Min(designSize.Height, (int)(area.Height * 0.92));
+                target = new Rectangle(area.X + (area.Width - w) / 2, area.Y + (area.Height - h) / 2, w, h);
+            }
+            if (form.WindowState != FormWindowState.Normal) form.WindowState = FormWindowState.Normal;
+            if (form.Bounds != target) form.Bounds = target;
+        }
+
+        void Layout()
+        {
+            if (form.WindowState == FormWindowState.Minimized) return;
+            if (stage is not null && scaler is not null)
+            {
+                // Grow everything by the same factor until the design touches the screen on one axis.
+                float s = Math.Min((float)form.ClientSize.Width / designSize.Width, (float)form.ClientSize.Height / designSize.Height);
+                s = Math.Clamp(s, 0.5f, 3f);
+                scaler.SetScale(s, new Size((int)Math.Round(designSize.Width * s), (int)Math.Round(designSize.Height * s)));
+                stage.Location = new Point(Math.Max(0, (form.ClientSize.Width - stage.Width) / 2),
+                                           Math.Max(0, (form.ClientSize.Height - stage.Height) / 2));
+            }
+            caption.Location = new Point(form.ClientSize.Width - caption.Width, 0);
+            grip.Bounds = new Rectangle(0, 0, Math.Max(0, form.ClientSize.Width - caption.Width), grip.Height);
+            grip.Visible = !full;
+            grip.BringToFront();
+            caption.BringToFront();
+        }
+
+        caption.MinimizeClicked += (_, _) => form.WindowState = FormWindowState.Minimized;
+        caption.ToggleClicked += (_, _) =>
+        {
+            full = !full;
+            caption.IsFull = full;
+            Fit();
+            Layout();
+        };
+        caption.CloseClicked += (_, _) => form.Close();
+
+        // A normal-sized window can be dragged by its top strip or by any empty background.
+        MouseEventHandler drag = (_, e) => { if (!full && e.Button == MouseButtons.Left) DragWindow(form); };
+        grip.MouseDown += drag;
+        form.MouseDown += drag;
+        if (stage is not null) stage.MouseDown += drag;
+
+        form.Load += (_, _) => { Fit(); Layout(); };
+        form.Shown += (_, _) => { Fit(); Layout(); };
+        form.Resize += (_, _) => Layout();
+        return (Control?)stage ?? form;
+    }
+}
+
+/// <summary>
+/// Scales a tree of controls that was laid out at a fixed size: position, size, spacing and font of every control grow by the
+/// same factor. Controls that get added to the tree later (they are built at the original size) are scaled as they arrive.
+/// </summary>
+internal sealed class ContentScaler
+{
+    private readonly Control _root;
+    private float _scale = 1f;
+
+    public ContentScaler(Control root)
+    {
+        _root = root;
+        Hook(root);
+    }
+
+    /// <summary>
+    /// Scales the content to <paramref name="target"/> and gives the root its new size. Everything is read before the root
+    /// changes size, because controls anchored to its right / bottom edge would otherwise be pushed by the size change on top
+    /// of being scaled; the new bounds are then set explicitly, which also resets those anchors for the new size.
+    /// </summary>
+    public void SetScale(float target, Size rootSize)
+    {
+        float ratio = target / _scale;
+        if (Math.Abs(ratio - 1f) < 0.002f && _root.Size == rootSize) return;
+
+        var items = Collect(_root, includeRoot: false);
+        _root.SuspendLayout();
+        _root.Size = rootSize;
+        Apply(items, ratio);
+        _root.ResumeLayout(true);
+        _scale = target;
+    }
+
+    private void Hook(Control c)
+    {
+        c.ControlAdded += OnAdded;
+        foreach (Control child in c.Controls) Hook(child);
+    }
+
+    private void OnAdded(object? sender, ControlEventArgs e)
+    {
+        Hook(e.Control!);
+        if (Math.Abs(_scale - 1f) < 0.002f) return;
+        Apply(Collect(e.Control!, includeRoot: true), _scale);
+    }
+
+    private static List<(Control C, Rectangle Bounds, Padding Padding, Padding Margin, Font Font)> Collect(Control root, bool includeRoot)
+    {
+        var list = new List<(Control, Rectangle, Padding, Padding, Font)>();
+        void Walk(Control c)
+        {
+            list.Add((c, c.Bounds, c.Padding, c.Margin, c.Font));
+            foreach (Control child in c.Controls) Walk(child);
+        }
+        if (includeRoot) Walk(root);
+        else foreach (Control child in root.Controls) Walk(child);
+        return list;
+    }
+
+    // Everything is read first and applied afterwards, so a parent changing size or font cannot disturb what its children report.
+    private static void Apply(List<(Control C, Rectangle Bounds, Padding Padding, Padding Margin, Font Font)> items, float r)
+    {
+        int S(int v) => (int)Math.Round(v * r);
+        Padding P(Padding p) => new(S(p.Left), S(p.Top), S(p.Right), S(p.Bottom));
+        foreach (var (c, b, pad, mar, font) in items)
+        {
+            c.Font = new Font(font.FontFamily, font.SizeInPoints * r, font.Style, GraphicsUnit.Point);
+            c.Padding = P(pad);
+            c.Margin = P(mar);
+            c.SetBounds(S(b.X), S(b.Y), S(b.Width), S(b.Height));
+        }
+    }
+}
+
+/// <summary>Three flat window buttons (minimize, restore / full screen, close), drawn by hand so they match the app.</summary>
+internal sealed class CaptionButtons : Control
+{
+    private const int CellWidth = 46, CellHeight = 32;
+    private static readonly Color Glyph = Color.FromArgb(51, 65, 85);
+    private static readonly Color Hover = Color.FromArgb(226, 232, 240);
+    private static readonly Color CloseHover = Color.FromArgb(232, 17, 35);
+
+    private int _hot = -1;          // 0 minimize, 1 restore / full screen, 2 close
+    private bool _isFull = true;
+
+    public event EventHandler? MinimizeClicked;
+    public event EventHandler? ToggleClicked;
+    public event EventHandler? CloseClicked;
+
+    public CaptionButtons()
+    {
+        SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+        BackColor = Color.Transparent;
+        TabStop = false;
+        Cursor = Cursors.Default;
+        Size = new Size(CellWidth * 3, CellHeight);
+    }
+
+    /// <summary>True while the form covers the whole screen (the middle button then shows "restore down").</summary>
+    public bool IsFull
+    {
+        get => _isFull;
+        set { _isFull = value; Invalidate(); }
+    }
+
+    private int CellAt(Point p) => p.X < 0 || p.Y < 0 || p.Y >= Height ? -1 : Math.Min(2, p.X / CellWidth);
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        int cell = CellAt(e.Location);
+        if (cell != _hot) { _hot = cell; Invalidate(); }
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_hot != -1) { _hot = -1; Invalidate(); }
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        base.OnMouseUp(e);
+        if (e.Button != MouseButtons.Left) return;
+        switch (CellAt(e.Location))
+        {
+            case 0: MinimizeClicked?.Invoke(this, EventArgs.Empty); break;
+            case 1: ToggleClicked?.Invoke(this, EventArgs.Empty); break;
+            case 2: CloseClicked?.Invoke(this, EventArgs.Empty); break;
+        }
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;   // crisp 1px lines like Windows
+        for (int i = 0; i < 3; i++)
+        {
+            var cell = new Rectangle(i * CellWidth, 0, CellWidth, CellHeight);
+            bool hot = i == _hot;
+            if (hot)
+            {
+                using var fill = new SolidBrush(i == 2 ? CloseHover : Hover);
+                g.FillRectangle(fill, cell);
+            }
+            using var pen = new Pen(hot && i == 2 ? Color.White : Glyph, 1f);
+            int cx = cell.X + CellWidth / 2, cy = CellHeight / 2;
+            switch (i)
+            {
+                case 0:   // minimize: a short horizontal line
+                    g.DrawLine(pen, cx - 5, cy, cx + 5, cy);
+                    break;
+                case 1:
+                    if (_isFull)   // "restore down": two overlapping squares
+                    {
+                        g.DrawRectangle(pen, cx - 5, cy - 2, 7, 7);
+                        g.DrawLines(pen, new[] { new Point(cx - 3, cy - 4), new Point(cx - 3, cy - 5), new Point(cx + 4, cy - 5), new Point(cx + 4, cy + 2), new Point(cx + 3, cy + 2) });
+                    }
+                    else           // "full screen": one square
+                    {
+                        g.DrawRectangle(pen, cx - 5, cy - 5, 10, 10);
+                    }
+                    break;
+                default:  // close: a cross
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    g.DrawLine(pen, cx - 5, cy - 5, cx + 5, cy + 5);
+                    g.DrawLine(pen, cx - 5, cy + 5, cx + 5, cy - 5);
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                    break;
+            }
+        }
+    }
+}

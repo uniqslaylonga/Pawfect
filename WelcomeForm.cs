@@ -30,6 +30,7 @@ internal partial class WelcomeForm : Form
                 Close();
             }
         };
+        FullScreen.Apply(this, centerContent: true);
     }
 
     private void Begin()

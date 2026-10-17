@@ -38,6 +38,7 @@ internal partial class LoginForm : Form
 
         bool restored = LoadRememberedEmail();
         Shown += (_, _) => (restored ? passwordField.Box : emailField.Box).Focus();
+        FullScreen.Apply(this, centerContent: true);
     }
 
     private bool LoadRememberedEmail()

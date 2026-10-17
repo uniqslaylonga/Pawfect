@@ -50,7 +50,11 @@ internal sealed partial class AddPetForm : Form
         foreach (var b in _otpBoxes) b.Enabled = false;   // switched on once the code has been sent
         WireUp();
         ShowContactStep();
+        _host = FullScreen.Apply(this, centerContent: true);   // full screen; the fixed-size steps stay centred
     }
+
+    private Control? _host;                       // the centred panel that holds the steps (the form itself when not wrapped)
+    private Control ContentHost => _host ?? this;
 
     /// <summary>Kiosk mode: opens on step 1 with nothing filled in.</summary>
     public AddPetForm(bool kiosk) : this()

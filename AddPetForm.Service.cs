@@ -91,7 +91,7 @@ internal sealed partial class AddPetForm
 
         _servicePanel.Controls.Add(_serviceScroll);
         _servicePanel.Controls.Add(note);
-        Controls.Add(_servicePanel);
+        ContentHost.Controls.Add(_servicePanel);
     }
 
     private void BuildServiceCards(List<ServiceChoice> choices)

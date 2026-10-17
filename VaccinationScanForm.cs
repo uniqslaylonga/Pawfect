@@ -499,13 +499,22 @@ internal sealed class VaccinationScanForm : DialogBase
     private void RefreshList()
     {
         _list.Items.Clear();
+        var today = DateTime.Today;
         foreach (var r in _rows)
-            _list.Items.Add(new ListViewItem(new[]
+        {
+            string expires = r.Expires is { } e
+                ? Fmt(e) + (e.Date < today ? "  (EXPIRED)" : "")
+                : "Not read \u2014 check";
+            var item = new ListViewItem(new[]
             {
                 r.Given is { } g ? Fmt(g) : "\u2014", r.Vaccine.Length == 0 ? "\u2014" : r.Vaccine,
                 r.WeightKg is { } w ? w.ToString("0.##", CultureInfo.InvariantCulture) + " kg" : "\u2014",
-                r.BatchNo.Length == 0 ? "\u2014" : r.BatchNo, r.Expires is { } e ? Fmt(e) : "\u2014",
-            }));
+                r.BatchNo.Length == 0 ? "\u2014" : r.BatchNo, expires,
+            });
+            if (r.Expires is null) item.ForeColor = Color.DarkOrange;
+            else if (r.Expires.Value.Date < today) item.ForeColor = Theme.Danger;
+            _list.Items.Add(item);
+        }
     }
 
     // ------------------------------------------------------------------ saving
@@ -515,6 +524,7 @@ internal sealed class VaccinationScanForm : DialogBase
         ShowError("");
         string name = _name.Text.Trim();
         if (_cardJpeg is null || _rows.Count == 0) { ShowError("Scan a vaccination card that carries the veterinarian's stamp first (use the camera or choose a photo)."); return; }
+        if (_rows.All(r => r.Expires is null)) { ShowError("No expiry dates could be read from this card. Scan it again with a clearer photo."); return; }
         if (name.Length == 0) { ShowError("The pet's name couldn't be read. Scan the card again with a clearer photo."); return; }
 
         DateTime? birth = null;

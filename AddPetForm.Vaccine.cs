@@ -169,7 +169,8 @@ internal sealed partial class AddPetForm
     }
 
     /// <summary>
-    /// The record is good while at least one saved vaccination is still in date (or has no expiry date). A card that was filed
+    /// The record is good while at least one saved vaccination has an expiry date that is still in the future. A row with no
+    /// readable expiry date does not count as in date. A card that was filed
     /// without any readable vaccination rows is taken as good: nothing on it says it has lapsed.
     /// </summary>
     private static VaccineState GetVaccineState(int petId)
@@ -177,7 +178,7 @@ internal sealed partial class AddPetForm
         var rows = PetVaccinations.GetForPet(petId);
         if (rows.Count == 0) return VaccineState.Valid;
         var today = DateTime.Today;
-        return rows.Any(r => r.Expires is null || r.Expires.Value.Date >= today) ? VaccineState.Valid : VaccineState.Expired;
+        return rows.Any(r => r.Expires is { } e && e.Date >= today) ? VaccineState.Valid : VaccineState.Expired;
     }
 
     private void ScanVaccineCard()
@@ -352,7 +353,7 @@ internal sealed partial class AddPetForm
         _vaccinePanel.Controls.Add(_vaccineBanner);
         _vaccinePanel.Controls.Add(_scanGroup);
         _vaccinePanel.Controls.Add(_validGroup);
-        Controls.Add(_vaccinePanel);
+        ContentHost.Controls.Add(_vaccinePanel);
 
         // "Skip Scanning" sits between Back and Continue on the form itself
         _skipButton = new Button
@@ -370,7 +371,7 @@ internal sealed partial class AddPetForm
         };
         _skipButton.FlatAppearance.BorderColor = Theme.Border;
         _skipButton.Click += (_, _) => SkipVaccineScan();
-        Controls.Add(_skipButton);
+        ContentHost.Controls.Add(_skipButton);
     }
 
     private static void PaintScanFrame(object? sender, PaintEventArgs e)
