@@ -311,6 +311,7 @@ internal sealed class EditAppointmentForm : DialogBase
     private const string NotAssigned = "\u2014 Not assigned \u2014";
 
     private readonly AppointmentItem _item;
+    private readonly IReadOnlyList<DayOfWeek> _preferred = Array.Empty<DayOfWeek>();   // the customer's preferred days (empty = any day)
     private readonly List<PetRecord> _pets;
     private readonly List<ServiceOffering> _services;
     private readonly List<GroomerOption> _groomers;
@@ -357,7 +358,16 @@ internal sealed class EditAppointmentForm : DialogBase
 
         // What the customer asked for, so the employee can decide the real schedule.
         bool isRequest = item.Status == AppointmentStatus.Pending;
-        if (isRequest)
+        _preferred = item.PreferredDayList;
+        if (_preferred.Count > 0)
+        {
+            AddRow("Preferred days", new Label
+            {
+                Text = PreferredDaysText.Readable(_preferred, full: true) + "  (pick a date on one of these days)",
+                TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28, ForeColor = Theme.Primary,
+            });
+        }
+        else if (isRequest)
         {
             string asked = $"Preferred: {item.Start.ToString("ddd, MMM d  h:mm tt", CultureInfo.CurrentCulture)}";
             AddRow("Request", new Label { Text = asked, TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28, ForeColor = Theme.TextSoft });
@@ -386,7 +396,10 @@ internal sealed class EditAppointmentForm : DialogBase
         // An overdue appointment keeps its own (past) date until the person picks a new one.
         var original = Trim(item.Start);
         _date.MinDate = original.Date < DateTime.Today ? original.Date : DateTime.Today;
-        _date.Value = original.Date;
+        // A request that has no real date yet starts on the next day the customer prefers.
+        _date.Value = _preferred.Count > 0 && !_preferred.Contains(original.DayOfWeek)
+            ? PreferredDaysText.NextOnOrAfter(DateTime.Today, _preferred)
+            : original.Date;
         _time.Value = new TimeSpan(original.Hour, original.Minute, 0);
         FitHeight();
 
@@ -419,6 +432,12 @@ internal sealed class EditAppointmentForm : DialogBase
         if (_service.SelectedIndex < 0) { ShowError("Choose a service."); return; }
 
         var start = _date.Value.Date + _time.Value;
+        if (_preferred.Count > 0 && !_preferred.Contains(start.DayOfWeek))
+        {
+            ShowError($"The customer can only come on {PreferredDaysText.Readable(_preferred, full: true)}. " +
+                      $"{start:dddd} isn't one of their preferred days - pick a date on one of those days.");
+            return;
+        }
         if (start != Trim(_item.Start) && start < DateTime.Now.AddMinutes(-1)) { ShowError("Pick a time that hasn't passed yet."); return; }
 
         int? groomerId = _groomer.SelectedIndex > 0 ? _groomers[_groomer.SelectedIndex - 1].Id : null;

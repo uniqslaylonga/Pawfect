@@ -6,7 +6,7 @@ namespace MyApp;
 /// <summary>A customer as shown in Customer &amp; Pet Lookup.</summary>
 internal sealed record CustomerRecord(
     int Id, string Name, string Phone, string Email, string Address,
-    DateTime CreatedAt, int PetCount, string PetNames, DateTime? LastVisit);
+    DateTime CreatedAt, int PetCount, string PetNames, DateTime? LastVisit, bool HasLogin = false);
 
 /// <summary>A pet and its owner.</summary>
 internal sealed record PetRecord(
@@ -53,7 +53,11 @@ internal static class EmployeeData
         {
             using var cmd = new SqlCommand(@"
 IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'QueueNumber') IS NULL
-    ALTER TABLE dbo.Appointments ADD QueueNumber NVARCHAR(10) NULL;", conn);
+    ALTER TABLE dbo.Appointments ADD QueueNumber NVARCHAR(10) NULL;
+IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'PreferredDays') IS NULL
+    ALTER TABLE dbo.Appointments ADD PreferredDays NVARCHAR(40) NULL;
+IF OBJECT_ID(N'dbo.Customers', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Customers', N'UserId') IS NULL
+    ALTER TABLE dbo.Customers ADD UserId INT NULL;", conn);
             cmd.ExecuteNonQuery();
             _schemaChecked = true;
         }
@@ -85,7 +89,8 @@ SELECT c.CustomerId, c.FullName, c.Phone, c.Email, c.Address, c.CreatedAt,
                      WHERE p.CustomerId = c.CustomerId AND p.IsActive = 1 ORDER BY p.Name
                      FOR XML PATH(N''), TYPE).value(N'.', N'nvarchar(max)'), 1, 2, N''), N'') AS PetNames,
        (SELECT MAX(t.CreatedAt) FROM dbo.Transactions t
-         WHERE t.CustomerId = c.CustomerId AND t.Status = N'Completed') AS LastVisit
+         WHERE t.CustomerId = c.CustomerId AND t.Status = N'Completed') AS LastVisit,
+       CAST(CASE WHEN c.UserId IS NULL THEN 0 ELSE 1 END AS BIT) AS HasLogin
 FROM dbo.Customers c
 WHERE c.IsActive = 1
 ORDER BY c.CreatedAt DESC, c.CustomerId DESC";
@@ -99,7 +104,7 @@ ORDER BY c.CreatedAt DESC, c.CustomerId DESC";
             list.Add(new CustomerRecord(
                 r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetString(4),
                 r.GetDateTime(5), r.GetInt32(6), r.GetString(7),
-                r.IsDBNull(8) ? null : r.GetDateTime(8)));
+                r.IsDBNull(8) ? null : r.GetDateTime(8), r.GetBoolean(9)));
         }
         return list;
     }
@@ -218,7 +223,7 @@ ORDER BY Price, Name";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N'')
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -238,7 +243,7 @@ ORDER BY a.StartTime";
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
                 r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12),
-                r.IsDBNull(13) ? null : (byte[])r.GetValue(13)));
+                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14)));
         }
         return list;
     }
@@ -826,6 +831,79 @@ ORDER BY t.CreatedAt DESC";
         return list;
     }
 
+    /// <summary>
+    /// Staff books an appointment for a customer (walk-in / phone). Gets the next queue number for that day, like a
+    /// customer request does. Saved as Confirmed when <paramref name="confirm"/> is true, otherwise Pending.
+    /// </summary>
+    public static int AddStaffAppointment(int customerId, int petId, int serviceId, DateTime start,
+        int? groomerId, int? roomId, string notes, bool confirm, string staffEmail)
+    {
+        using var conn = Open();
+        using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+        using var cmd = Cmd(conn, @"
+DECLARE @n INT = (SELECT COUNT(*) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
+                  WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL) + 1;
+DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
+
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, GroomerId, RoomId)
+OUTPUT INSERTED.AppointmentId
+SELECT @c, p.PetId, @s, @t, CASE WHEN @confirm = 1 THEN N'Confirmed' ELSE N'Pending' END,
+       (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, @g, @rm
+FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx);
+        P(cmd, "@c", SqlDbType.Int, customerId);
+        P(cmd, "@p", SqlDbType.Int, petId);
+        P(cmd, "@s", SqlDbType.Int, serviceId);
+        P(cmd, "@t", SqlDbType.DateTime2, start);
+        P(cmd, "@g", SqlDbType.Int, groomerId);
+        P(cmd, "@rm", SqlDbType.Int, roomId);
+        P(cmd, "@confirm", SqlDbType.Bit, confirm);
+        P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
+        P(cmd, "@email", SqlDbType.NVarChar, staffEmail, 256);
+        var id = cmd.ExecuteScalar();
+        if (id is null) throw new InvalidOperationException("That pet doesn't belong to this customer.");
+        tx.Commit();
+        return (int)id;
+    }
+
+    /// <summary>
+    /// Staff creates a sign-in (role Customer) for a customer who has none, and links it to the customer record.
+    /// Throws SqlException 2627/2601 when the email is already used, 547 when the database doesn't allow the Customer role yet.
+    /// </summary>
+    public static void CreateCustomerLogin(int customerId, string email, string password)
+    {
+        using var conn = Open();
+        using var tx = conn.BeginTransaction();
+
+        string name;
+        using (var cmd = Cmd(conn, "SELECT FullName, UserId FROM dbo.Customers WHERE CustomerId = @c AND IsActive = 1", tx))
+        {
+            P(cmd, "@c", SqlDbType.Int, customerId);
+            using var r = cmd.ExecuteReader();
+            if (!r.Read()) throw new InvalidOperationException("That customer no longer exists.");
+            if (!r.IsDBNull(1)) throw new InvalidOperationException("This customer already has a login.");
+            name = r.GetString(0);
+        }
+
+        int userId;
+        using (var cmd = Cmd(conn,
+            "INSERT INTO dbo.Users (FullName, Email, PasswordHash, Role) OUTPUT INSERTED.UserId VALUES (@n, @e, @h, N'Customer')", tx))
+        {
+            P(cmd, "@n", SqlDbType.NVarChar, name, 100);
+            P(cmd, "@e", SqlDbType.NVarChar, email.Trim(), 256);
+            P(cmd, "@h", SqlDbType.NVarChar, PasswordHasher.Hash(password), 200);
+            userId = (int)cmd.ExecuteScalar()!;
+        }
+
+        using (var cmd = Cmd(conn, "UPDATE dbo.Customers SET UserId = @u, Email = @e WHERE CustomerId = @c", tx))
+        {
+            P(cmd, "@u", SqlDbType.Int, userId);
+            P(cmd, "@e", SqlDbType.NVarChar, email.Trim(), 256);
+            P(cmd, "@c", SqlDbType.Int, customerId);
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
     /// <summary>Cancels an appointment only if it belongs to this customer and hasn't been served. Returns false if nothing changed.</summary>
     public static bool CancelOwnAppointment(int customerId, int appointmentId)
     {
@@ -842,7 +920,7 @@ WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confi
     /// A customer's appointment request: it is saved as Pending with their preferred day/time and notes, and an
     /// employee sets the real schedule (day, time, groomer, room) from Edit. The pet must belong to the customer.
     /// </summary>
-    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "")
+    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "", string preferredDays = "")
     {
         using var conn = Open();
         using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
@@ -855,9 +933,9 @@ DECLARE @n INT = (SELECT COUNT(*) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
                   WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL) + 1;
 DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
 
-INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber)
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, PreferredDays)
 OUTPUT INSERTED.AppointmentId, INSERTED.QueueNumber
-SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q
+SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, NULLIF(@days, N'')
 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx))
         {
             P(cmd, "@c", SqlDbType.Int, customerId);
@@ -866,6 +944,7 @@ FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx
             P(cmd, "@t", SqlDbType.DateTime2, start);
             P(cmd, "@email", SqlDbType.NVarChar, loginEmail, 256);
             P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
+            P(cmd, "@days", SqlDbType.NVarChar, preferredDays, 40);
             using var r = cmd.ExecuteReader();
             if (!r.Read())
                 throw new InvalidOperationException("That pet doesn't belong to this account.");

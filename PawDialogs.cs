@@ -282,8 +282,14 @@ internal sealed class AppointmentDetailsDialog : Form
         Item("", "CUSTOMER", a.CustomerName, Pad, colW);
         Item("", "PHONE", Or(a.CustomerPhone, "—"), Pad + colW, colW);
         y += 56;
-        Item("", "WHEN", a.Start.ToString("dddd, MMM d, yyyy  ·  h:mm tt", System.Globalization.CultureInfo.CurrentCulture),
-            Pad, FormWidth - Pad * 2);
+        bool hasPreferred = a.PreferredDayList.Count > 0;
+        if (a.Status == AppointmentStatus.Pending && hasPreferred)
+            Item("", "WHEN", "Not scheduled yet - staff will set it", Pad, colW);   // the stored start is only a placeholder until staff pick a date
+        else
+            Item("", "WHEN", a.Start.ToString("dddd, MMM d, yyyy  ·  h:mm tt", System.Globalization.CultureInfo.CurrentCulture),
+                Pad, hasPreferred ? colW : FormWidth - Pad * 2);
+        if (hasPreferred)
+            Item("", "PREFERRED DAYS", PreferredDaysText.Readable(a.PreferredDayList, full: true), Pad + colW, colW);
         y += 56;
         Item("", "GROOMER", Or(a.Groomer, "Not assigned"), Pad, colW);
         Item("", "ROOM", Or(a.Room, "Not assigned"), Pad + colW, colW);

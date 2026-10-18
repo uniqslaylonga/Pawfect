@@ -26,11 +26,26 @@ internal partial class AppointmentsPage : UserControl
     public event EventHandler? ManageCustomersRequested;
     public event EventHandler? ServicesCatalogRequested;
     public event EventHandler? ViewFullCalendarRequested;
+    public event EventHandler? NewAppointmentRequested;
 
     public AppointmentsPage()
     {
         InitializeComponent();
         DoubleBuffered = true;
+
+        // Quick Actions: a "New Appointment" tile next to Services Catalog (staff book walk-ins and phone calls).
+        quickGrid.SetColumnSpan(servicesCatalogTile, 1);
+        var newAppointmentTile = new MyApp.Controls.ActionTile
+        {
+            BackColor = Color.White,
+            Dock = DockStyle.Fill,
+            Font = servicesCatalogTile.Font,
+            Glyph = "\uE710",
+            Name = "newAppointmentTile",
+            Text = "New Appointment",
+        };
+        newAppointmentTile.Click += (_, _) => NewAppointmentRequested?.Invoke(this, EventArgs.Empty);
+        quickGrid.Controls.Add(newAppointmentTile, 1, 1);
 
         FitLegend();
 

@@ -29,7 +29,7 @@ internal static class CustomerFlow
         if (form.ShowDialog() != DialogResult.OK) return;            // closed or backed out: back to the landing screen
         if (form.ChosenPetId is not int petId) return;
 
-        GetQueueTicket(c.Id, petId, form.ChosenService, user.Email);
+        GetQueueTicket(c.Id, petId, form.ChosenService, user.Email, form.PreferredDays);
     }
 
     /// <summary>Kiosk (Start on the landing screen): no login. Step 1 is the contact information + emailed code.</summary>
@@ -39,11 +39,11 @@ internal static class CustomerFlow
         if (form.ShowDialog() != DialogResult.OK) return;      // closed or backed out of step 1: back to the landing screen
         if (form.ChosenPetId is not int petId) return;
 
-        GetQueueTicket(form.CustomerId, petId, form.ChosenService, form.ContactEmail);
+        GetQueueTicket(form.CustomerId, petId, form.ChosenService, form.ContactEmail, form.PreferredDays);
     }
 
-    /// <summary>After the service step: the visit is queued right away (no date or time to pick) and the ticket is shown.</summary>
-    private static void GetQueueTicket(int customerId, int petId, string? serviceName, string loginEmail)
+    /// <summary>After the service step: the visit is queued right away (the customer only picked preferred days; staff set the real date and time) and the ticket is shown.</summary>
+    private static void GetQueueTicket(int customerId, int petId, string? serviceName, string loginEmail, string preferredDays)
     {
         try
         {
@@ -54,7 +54,7 @@ internal static class CustomerFlow
                 return;
             }
 
-            var ticket = EmployeeData.AddOwnAppointment(customerId, petId, service.Id, DateTime.Now, loginEmail);   // saved as Pending, so staff see it too
+            var ticket = EmployeeData.AddOwnAppointment(customerId, petId, service.Id, DateTime.Now, loginEmail, preferredDays: preferredDays);   // saved as Pending, so staff see it too
             using var ticketForm = new QueueTicketForm(ticket);
             ticketForm.ShowDialog();
         }

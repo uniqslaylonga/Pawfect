@@ -25,7 +25,57 @@ internal sealed record AppointmentItem(
     string Room = "",
     string Notes = "",
     string QueueNumber = "",
-    byte[]? PetPhoto = null);
+    byte[]? PetPhoto = null,
+    string PreferredDays = "")   // comma list the customer picked, e.g. "Tue,Wed" (empty = no preference / older requests)
+{
+    /// <summary>The preferred days as day-of-week values (empty when the customer didn't pick any).</summary>
+    public IReadOnlyList<DayOfWeek> PreferredDayList => PreferredDaysText.Parse(PreferredDays);
+}
+
+/// <summary>Reads/writes the preferred-days list stored on an appointment ("Mon,Tue,...") and builds readable text.</summary>
+internal static class PreferredDaysText
+{
+    private static readonly string[] Short = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+    private static readonly string[] Long = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+
+    public static string ShortName(DayOfWeek d) => Short[(int)d];
+
+    public static string Join(IEnumerable<DayOfWeek> days)
+        => string.Join(",", days.Distinct().OrderBy(d => ((int)d + 6) % 7).Select(ShortName));   // Monday first
+
+    public static List<DayOfWeek> Parse(string? text)
+    {
+        var list = new List<DayOfWeek>();
+        if (string.IsNullOrWhiteSpace(text)) return list;
+        foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int i = Array.FindIndex(Short, x => string.Equals(x, part, StringComparison.OrdinalIgnoreCase));
+            if (i >= 0 && !list.Contains((DayOfWeek)i)) list.Add((DayOfWeek)i);
+        }
+        return list;
+    }
+
+    /// <summary>"Tuesday and Wednesday" / "Mon, Wed and Fri".</summary>
+    public static string Readable(IReadOnlyList<DayOfWeek> days, bool full = false)
+    {
+        var names = days.OrderBy(d => ((int)d + 6) % 7).Select(d => full ? Long[(int)d] : Short[(int)d]).ToList();
+        return names.Count switch
+        {
+            0 => "",
+            1 => names[0],
+            _ => string.Join(", ", names.Take(names.Count - 1)) + " and " + names[^1],
+        };
+    }
+
+    /// <summary>The first date on or after <paramref name="from"/> that falls on one of the days.</summary>
+    public static DateTime NextOnOrAfter(DateTime from, IReadOnlyList<DayOfWeek> days)
+    {
+        if (days.Count == 0) return from.Date;
+        for (int i = 0; i < 7; i++)
+            if (days.Contains(from.Date.AddDays(i).DayOfWeek)) return from.Date.AddDays(i);
+        return from.Date;
+    }
+}
 
 /// <summary>Label and colours for each appointment status.</summary>
 internal static class AppointmentStatusStyle

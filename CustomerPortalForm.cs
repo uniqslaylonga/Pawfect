@@ -153,7 +153,7 @@ internal sealed class CustomerPortalForm : Form
     }
 
     /// <summary>After the service step: the visit is queued right away (no date or time to pick) and the ticket is shown.</summary>
-    private void GetQueueTicket(int petId, string? serviceName)
+    private void GetQueueTicket(int petId, string? serviceName, string preferredDays)
     {
         if (_customer is not { } c) return;
         try
@@ -165,7 +165,7 @@ internal sealed class CustomerPortalForm : Form
                 return;
             }
 
-            var ticket = EmployeeData.AddOwnAppointment(c.Id, petId, service.Id, DateTime.Now, _user.Email);   // saved as Pending, so staff see it too
+            var ticket = EmployeeData.AddOwnAppointment(c.Id, petId, service.Id, DateTime.Now, _user.Email, preferredDays: preferredDays);   // saved as Pending, so staff see it too
             Reload();
             using var ticketForm = new QueueTicketForm(ticket);
             ticketForm.ShowDialog(this);
@@ -186,7 +186,7 @@ internal sealed class CustomerPortalForm : Form
             return;
         }
         Reload();
-        if (form.ChosenPetId is int petId) GetQueueTicket(petId, form.ChosenService);   // service chosen: straight to the queue ticket
+        if (form.ChosenPetId is int petId) GetQueueTicket(petId, form.ChosenService, form.PreferredDays);   // service chosen: straight to the queue ticket
     }
 
     private void ScanCard()

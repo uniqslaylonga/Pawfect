@@ -14,6 +14,10 @@ internal sealed partial class AddPetForm
     private Panel? _serviceScroll;
     private readonly List<ServiceCard> _serviceCards = new();
     private ServiceChoice? _chosenServiceChoice;
+    private readonly List<CheckBox> _dayChips = new();
+
+    /// <summary>The days the customer can come in, e.g. "Tue,Wed". Staff pick the real date and time, but only on these days.</summary>
+    public string PreferredDays { get; private set; } = "";
 
     private bool ServiceStepVisible => _servicePanel is { Visible: true };
 
@@ -36,6 +40,7 @@ internal sealed partial class AddPetForm
         }
 
         EnsureServicePanel();
+        foreach (var chip in _dayChips) chip.Checked = false;   // a fresh visit: no days picked yet
         HideVaccineStep();   // hides the vaccine panel and resets the title position; the step dots are set below
 
         BuildServiceCards(choices);
@@ -76,8 +81,52 @@ internal sealed partial class AddPetForm
 
         _servicePanel = new Panel { Location = new Point(0, 164), Size = new Size(900, 318), BackColor = Theme.Bg, Visible = false };
 
-        // two columns, as many rows as there are services; it scrolls when there are more than four
-        _serviceScroll = new Panel { Location = new Point(40, 0), Size = new Size(836, 256), BackColor = Theme.Bg, AutoScroll = true };
+        // two columns, as many rows as there are services; it scrolls when there are more than two rows
+        _serviceScroll = new Panel { Location = new Point(40, 0), Size = new Size(836, 188), BackColor = Theme.Bg, AutoScroll = true };
+
+        // Preferred days: the customer picks which days of the week suit them (no exact date or time).
+        var daysCaption = new Label
+        {
+            Text = "Preferred days  (pick at least one - our staff will set the exact date and time)",
+            Location = new Point(40, 196),
+            Size = new Size(820, 20),
+            BackColor = Theme.Bg,
+            ForeColor = Theme.Text,
+            Font = Theme.Face(9f, FontStyle.Bold),
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+        _servicePanel.Controls.Add(daysCaption);
+        DayOfWeek[] order = { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };
+        for (int i = 0; i < order.Length; i++)
+        {
+            var day = order[i];
+            var chip = new CheckBox
+            {
+                Appearance = Appearance.Button,
+                FlatStyle = FlatStyle.Flat,
+                Text = PreferredDaysText.ShortName(day),
+                Tag = day,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand,
+                Font = Theme.Face(9f, FontStyle.Bold),
+                Location = new Point(40 + i * 82, 220),
+                Size = new Size(74, 34),
+                TabStop = false,
+            };
+            chip.FlatAppearance.BorderSize = 1;
+            chip.FlatAppearance.CheckedBackColor = Theme.Primary;
+            chip.FlatAppearance.MouseOverBackColor = Theme.PrimarySoft;
+            void Restyle()
+            {
+                chip.BackColor = chip.Checked ? Theme.Primary : Color.White;
+                chip.ForeColor = chip.Checked ? Color.White : Theme.Text;
+                chip.FlatAppearance.BorderColor = chip.Checked ? Theme.Primary : Theme.Border;
+            }
+            chip.CheckedChanged += (_, _) => Restyle();
+            Restyle();
+            _dayChips.Add(chip);
+            _servicePanel.Controls.Add(chip);
+        }
 
         var note = new Label
         {
@@ -148,6 +197,15 @@ internal sealed partial class AddPetForm
     private void FinishServiceStep()
     {
         if (_chosenServiceChoice is null) return;
+
+        var days = _dayChips.Where(c => c.Checked).Select(c => (DayOfWeek)c.Tag!).ToList();
+        if (days.Count == 0)
+        {
+            Msg.Show(this, "Please pick at least one preferred day (for example Tuesday and Wednesday).\n\nYou don't choose the exact date or time - our staff will set it on one of your preferred days.",
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        PreferredDays = PreferredDaysText.Join(days);
         ChosenService = _chosenServiceChoice.Name;
         ChosenPetId = _vaccinePetId;
         DialogResult = DialogResult.OK;
@@ -171,6 +229,7 @@ internal sealed partial class AddPetForm
             _vaccineDone = true;
             _vaccineStatus!.Text = "Vaccine card scanned.";
             _vaccineStatus.ForeColor = Theme.Green;
+            HideVaccineWarning();
         }
     }
 }

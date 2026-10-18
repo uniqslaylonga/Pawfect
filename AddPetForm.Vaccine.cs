@@ -90,6 +90,7 @@ internal sealed partial class AddPetForm
         _vaccineState = state;
 
         bool valid = state == VaccineState.Valid;
+        _vaccineBanner!.Visible = true;   // a warning hidden after a verified scan comes back if this step is opened again
         _scanGroup!.Visible = !valid;
         _validGroup!.Visible = valid;
         _skipButton!.Visible = !valid;
@@ -213,6 +214,15 @@ internal sealed partial class AddPetForm
         _vaccineDone = true;
         _vaccineStatus!.Text = "\u2713  Vaccine card verified and saved. Press Continue.";
         _vaccineStatus.ForeColor = Theme.Green;
+        HideVaccineWarning();   // the card is verified, so the "no vaccine card on file" warning is gone
+    }
+
+    /// <summary>Hides the amber/red warning banner once a valid card is verified and moves the title back up where the banner was.</summary>
+    private void HideVaccineWarning()
+    {
+        _vaccineBanner!.Visible = false;
+        titleLabel.Location = Px(40, 84);
+        subtitleLabel.Location = Px(40, 122);
     }
 
     private void SkipVaccineScan()

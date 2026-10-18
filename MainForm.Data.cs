@@ -37,6 +37,7 @@ internal partial class MainForm
         appointmentsPage.MoreRequested += (_, item) => ShowStatusMenu(item);
         appointmentsPage.ManageCustomersRequested += (_, _) => ShowPage(Page.Lookup);
         appointmentsPage.ServicesCatalogRequested += (_, _) => ShowServiceList();
+        appointmentsPage.NewAppointmentRequested += (_, _) => NewAppointment();
 
         billingPage.PrintReceiptRequested += (_, sale) => CompleteSale(sale);
         billingPage.ViewTransactionRequested += (_, item) => ShowTransactionDetails(item);
@@ -453,6 +454,9 @@ internal partial class MainForm
             menu.AddAction("View pets", "\uE80F", MenuTone.Success, () => ViewPets(c));
             menu.AddAction("Edit customer", "\uE70F", MenuTone.Primary, () => EditCustomer(c));
             menu.AddAction("Add pet", "\uE710", MenuTone.Success, () => AddPetTo(c.Id, c.Name));
+            menu.AddAction("New appointment", "\uE787", MenuTone.Primary, () => NewAppointment(c.Id));
+            if (!c.HasLogin)
+                menu.AddAction("Create login", "\uE77B", MenuTone.Primary, () => CreateLogin(c));
             menu.AddDivider();
             menu.AddAction("Delete customer", "\uE74D", MenuTone.Danger, () => DeleteCustomer(c));
         }
@@ -556,6 +560,31 @@ internal partial class MainForm
     }
 
     // ------------------------------------------------------------------ appointments
+
+    /// <summary>Staff books an appointment for a customer (walk-in or phone call).</summary>
+    private void NewAppointment(int? customerId = null)
+    {
+        try
+        {
+            using var form = new NewAppointmentForm(CurrentUser?.Email ?? "", customerId);
+            if (form.ShowDialog(this) != DialogResult.OK) return;
+        }
+        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
+        {
+            ShowDbError("open the new appointment form", ex);
+            return;
+        }
+        RefreshSoon();
+    }
+
+    /// <summary>Staff creates the customer's sign-in so they can book their own grooming later.</summary>
+    private void CreateLogin(CustomerRecord c)
+    {
+        using var form = new CreateCustomerLoginForm(c);
+        if (form.ShowDialog(this) != DialogResult.OK) return;
+        Msg.Show(this, $"{c.Name} can now sign in with the email and password you set.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        RefreshSoon();
+    }
 
     private void EditAppointment(AppointmentItem item)
     {
