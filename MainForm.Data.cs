@@ -24,9 +24,10 @@ internal partial class MainForm
         _pendingList = AddListHost(pendingCard);
         _alertsList = AddListHost(alertsCard);
 
-        // A customer can send a request while staff are logged in, so look for new ones every 30 seconds.
-        _alertTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
-        _alertTimer.Tick += (_, _) => RefreshAlerts();
+        // A customer can send a request from the kiosk (another PC) while staff are logged in,
+        // so check for changes every 3 seconds and reload the screens when something is new.
+        _alertTimer = new System.Windows.Forms.Timer { Interval = 3_000 };
+        _alertTimer.Tick += (_, _) => PollForChanges();
         _alertTimer.Start();
         Disposed += (_, _) => _alertTimer.Dispose();
         _scheduleList = AddListHost(scheduleCard);
@@ -270,6 +271,33 @@ internal partial class MainForm
             .OrderBy(a => a.Start).ToList();
         notificationButton.ShowDot = _waiting.Count > 0;
         FillAlertsList(_waiting);
+    }
+
+    private string? _lastSignature;
+
+    /// <summary>
+    /// Runs every few seconds. Updates the bell, and when appointments were added or changed (by the kiosk or another PC)
+    /// reloads the screens. It never shows errors, never interrupts the Billing page, and waits while a dialog is open.
+    /// </summary>
+    private void PollForChanges()
+    {
+        if (CurrentUser is null) return;
+        if (Application.OpenForms.Cast<Form>().Any(f => f != this && f.Visible && f.Modal)) return;
+
+        try
+        {
+            var appointments = EmployeeData.GetAppointments();
+            SetWaiting(appointments);
+
+            string signature = string.Join(";", appointments.Select(a =>
+                $"{a.Id}:{a.Status}:{a.Start.Ticks}:{a.Service}:{a.QueueNumber}:{a.PetName}"));
+            if (_lastSignature is null) { _lastSignature = signature; return; }   // first look: nothing to compare with yet
+            if (signature == _lastSignature) return;
+
+            _lastSignature = signature;
+            if (!billingPage.Visible) RefreshAll();   // billing has a sale in progress; it reloads when the page is reopened
+        }
+        catch (SqlException) { }
     }
 
     /// <summary>Quiet background check for new requests; never shows an error (the next full refresh will).</summary>
