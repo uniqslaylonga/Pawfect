@@ -223,6 +223,7 @@ internal sealed class RoomPanel : CardPanel
         _empty.Dock = DockStyle.Fill;
         _empty.Visible = false;
 
+        FlowLists.NoHorizontalScroll(_list);
         _list.Resize += (_, _) => FitRows();
 
         Controls.Add(_list);     // fills what the header leaves
@@ -570,6 +571,7 @@ internal sealed class RoomScheduleDialog : DialogBase
             FontStyle.Regular, ContentAlignment.MiddleCenter);
         _empty.Dock = DockStyle.Fill;
         _empty.Visible = false;
+        FlowLists.NoHorizontalScroll(_list);
         _list.Resize += (_, _) => FitRows();
 
         var host = new Panel
@@ -904,5 +906,23 @@ WHERE a.RoomId = @id
         }
         tx.Commit();
         return 0;
+    }
+}
+
+/// <summary>Helpers for the top-down FlowLayoutPanels that hold full-width rows.</summary>
+internal static class FlowLists
+{
+    /// <summary>
+    /// Keeps the vertical scrollbar but never shows a horizontal one. Rows are sized to the panel's client width, so when the
+    /// vertical scrollbar appears (e.g. after the window is made smaller) the rows were briefly wider than the new client area
+    /// and WinForms added a horizontal scrollbar under them.
+    /// </summary>
+    public static void NoHorizontalScroll(FlowLayoutPanel panel)
+    {
+        panel.AutoScroll = false;
+        panel.HorizontalScroll.Enabled = false;
+        panel.HorizontalScroll.Visible = false;
+        panel.HorizontalScroll.Maximum = 0;
+        panel.AutoScroll = true;
     }
 }
