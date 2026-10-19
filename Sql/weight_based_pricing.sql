@@ -84,6 +84,11 @@ INSERT INTO @src VALUES
     (N'Flea/Tick Visual Check', N'Add-ons', N'Both', N'All', NULL, NULL, N'Visual check and inform owner', 0, 15),
     (N'Special Handling / Extra Time', N'Add-ons', N'Both', N'All', NULL, NULL, N'Additional handling time if approved', 200, 15);
 
+-- Older services that have the weight typed into the name, e.g. "Dog Full Groom (Large / 20.1-30 kg)", and no weight band:
+-- hide them (the weight bands below replace them). They stay in the table so old appointments and receipts still work.
+UPDATE dbo.Services SET IsActive = 0
+WHERE MinKg IS NULL AND MaxKg IS NULL AND Name LIKE N'%(%kg)%';
+
 -- Older rows with the same name and no weight band would show up next to the new ones: hide them (kept for old appointments).
 UPDATE s SET IsActive = 0
 FROM dbo.Services s
