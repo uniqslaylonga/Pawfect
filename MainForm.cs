@@ -9,7 +9,7 @@ internal partial class MainForm : Form
     private readonly AppointmentsPage appointmentsPage;
     private readonly BillingPage billingPage;
     private readonly LookupPage lookupPage;
-    private readonly RoomsGroomersPage roomsPage;
+    private readonly RoomManagementPage roomsPage;
     private readonly string _dashboardTitle;
     private readonly string _dashboardSubtitle;
 
@@ -56,8 +56,8 @@ internal partial class MainForm : Form
         contentPanel.Controls.Add(lookupPage);
         lookupPage.BringToFront();
 
-        // Rooms & Groomers is its own page too.
-        roomsPage = new RoomsGroomersPage { Dock = DockStyle.Fill, Visible = false };
+        // Room Management is its own page too.
+        roomsPage = new RoomManagementPage { Dock = DockStyle.Fill, Visible = false };
         contentPanel.Controls.Add(roomsPage);
         roomsPage.BringToFront();
         roomsPage.Changed += (_, e) => AuditLog.Record(CurrentUser, e.Action, e.Detail);
@@ -112,7 +112,7 @@ internal partial class MainForm : Form
             Page.Appointments => ("Appointments", "Manage and track customer appointments and services."),
             Page.Billing => ("Counter POS & Billing", "Process grooming services and retail sales in one transaction."),
             Page.Lookup => ("Customer & Pet Lookup", "Find customer information and their pets, view visit history, and manage records."),
-            Page.Rooms => ("Rooms & Groomers", "See who and what is available, and add or edit groomers and rooms."),
+            Page.Rooms => ("Room Management", "See which rooms are vacant, in use or being sanitized, and add or remove rooms."),
             _ => (_dashboardTitle, _dashboardSubtitle),
         };
 

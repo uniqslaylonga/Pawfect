@@ -2299,7 +2299,7 @@ namespace MyApp
             roomsNav.Name = "roomsNav";
             roomsNav.Size = new Size(219, 42);
             roomsNav.TabIndex = 4;
-            roomsNav.Text = "Rooms & Groomers";
+            roomsNav.Text = "Room Management";
             // 
             // sidebarFooter
             // 
