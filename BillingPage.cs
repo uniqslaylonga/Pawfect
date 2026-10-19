@@ -61,6 +61,7 @@ internal partial class BillingPage : UserControl
 
         customerSearch.Box.TextChanged += (_, _) => UpdateCustomerPanel();
         catalogSearch.Box.TextChanged += (_, _) => RebuildCatalog();
+        chipsFlow.SizeChanged += (_, _) => FitChips();
         customerCard.ClearClicked += (_, _) => ClearAppointment();
         customerCard.ViewProfileClicked += (_, _) =>
         {
@@ -338,6 +339,37 @@ internal partial class BillingPage : UserControl
         chipsFlow.Visible = !ServicesTab && categories.Count > 0;
         SyncChips();
         chipsFlow.ResumeLayout(true);
+        FitChips();
+    }
+
+    /// <summary>
+    /// Sizes the chips row to its chips (up to 3 rows, then it scrolls) so no chip is cut off and the product list
+    /// keeps the rest of the space, at any screen size or display scale.
+    /// </summary>
+    private void FitChips()
+    {
+        var style = itemsGrid.RowStyles[3];
+        float height = 0;
+
+        if (chipsFlow.Visible)
+        {
+            int avail = Math.Max(1, chipsFlow.Width);
+            int rows = 1, x = 0, rowH = 0;
+            foreach (Control chip in chipsFlow.Controls)
+            {
+                int w = chip.Width + chip.Margin.Horizontal;
+                rowH = Math.Max(rowH, chip.Height + chip.Margin.Vertical);
+                if (x > 0 && x + w > avail) { rows++; x = 0; }
+                x += w;
+            }
+            height = Math.Min(rows, 3) * rowH + (rows > 3 ? 2 : 0);
+        }
+
+        if (style.SizeType != SizeType.Absolute || Math.Abs(style.Height - height) > 0.5f)
+        {
+            style.SizeType = SizeType.Absolute;
+            style.Height = height;
+        }
     }
 
     private void SyncChips()
@@ -407,6 +439,7 @@ internal partial class BillingPage : UserControl
         catalogEmpty.Visible = rows.Count == 0;
 
         chipsFlow.Visible = !ServicesTab && _products.Any(p => !string.IsNullOrWhiteSpace(p.Category));
+        FitChips();
 
         catalogList.AutoScrollPosition = Point.Empty;
         catalogList.ResumeLayout(true);

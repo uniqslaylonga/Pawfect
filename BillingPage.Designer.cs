@@ -164,7 +164,7 @@ namespace MyApp
             // 
             mainGrid.BackColor = Color.FromArgb(243, 247, 252);
             mainGrid.ColumnCount = 3;
-            mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 296F));
+            mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 336F));
             mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             mainGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 296F));
             mainGrid.Controls.Add(leftColumn, 0, 0);
@@ -361,7 +361,7 @@ namespace MyApp
             itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
             itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
             itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 48F));
-            itemsGrid.RowStyles.Add(new RowStyle());
+            itemsGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));   // chips row: height is fitted in FitChips()
             itemsGrid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             itemsGrid.Size = new Size(248, 490);
             itemsGrid.TabIndex = 0;

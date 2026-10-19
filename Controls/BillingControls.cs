@@ -288,7 +288,10 @@ internal sealed class HintTextBox : TextBox
 /// </summary>
 internal sealed class CatalogRowView : Control
 {
-    public const int RowHeight = 48;
+    // Tall enough for two text lines plus the Add button underneath the name when a price is shown.
+    public const int RowHeight = 58;
+
+    private static readonly ToolTip FullNameTip = new();
 
     private readonly string _glyph;
     private readonly string _title;
@@ -320,17 +323,51 @@ internal sealed class CatalogRowView : Control
     // S() applies the display scale (100% at 1920 x 1080, 125% at 1536 x 864) so text and buttons keep fitting.
     private int S(int px) => LogicalToDeviceUnits(px);
 
+    // With a price AND a second line, the name gets the whole row width on line 1 and the weight band, price
+    // and Add button share line 2. Otherwise the button is centred on the right and the text sits to its left.
+    private bool TwoLineLayout => _subtitle.Length > 0 && _price.Length > 0;
+
     private Rectangle ButtonRect
     {
         get
         {
             int w = Math.Max(S(44), TextRenderer.MeasureText(_button, Theme.Face(8.5f, FontStyle.Bold)).Width + S(22));
             int h = S(24);
-            return new Rectangle(Width - S(4) - w, (Height - h) / 2, w, h);
+            int y = TwoLineLayout ? S(29) : (Height - h) / 2;
+            return new Rectangle(Width - S(4) - w, y, w, h);
         }
     }
 
-    protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+    private const int TextX = 46;
+
+    private Rectangle TitleRect
+    {
+        get
+        {
+            int textX = S(TextX);
+            if (TwoLineLayout)
+                return new Rectangle(textX, S(6), Math.Max(10, Width - S(4) - textX), S(20));
+            if (_subtitle.Length > 0)
+                return new Rectangle(textX, S(9), Math.Max(10, ButtonRect.X - S(8) - textX), S(20));
+            return Rectangle.Empty;
+        }
+    }
+
+    private bool TitleTruncated()
+    {
+        var r = TitleRect;
+        if (r.IsEmpty) return false;
+        return TextRenderer.MeasureText(_title, Theme.Face(8.5f, FontStyle.Bold)).Width > r.Width;
+    }
+
+    protected override void OnMouseEnter(EventArgs e)
+    {
+        _hover = true;
+        // Full name on hover when it had to be shortened with "...".
+        FullNameTip.SetToolTip(this, TitleTruncated() ? _title : "");
+        Invalidate();
+        base.OnMouseEnter(e);
+    }
 
     protected override void OnMouseLeave(EventArgs e)
     {
@@ -377,27 +414,30 @@ internal sealed class CatalogRowView : Control
         TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(10f), Rectangle.Round(tile), Theme.Primary, Tf.Center);
 
         var button = ButtonRect;
-        int right = button.X - S(8);
-        int textX = S(46);
+        int textX = S(TextX);
         var titleFont = Theme.Face(8.5f, FontStyle.Bold);
 
-        if (_subtitle.Length > 0)
+        if (TwoLineLayout)
         {
-            // Two lines so a long name isn't squeezed by the price: the name gets the full width up to the button,
-            // the weight band sits under it on the left and the price on the right.
-            TextRenderer.DrawText(g, _title, titleFont, new Rectangle(textX, S(6), Math.Max(10, right - textX), S(19)), Theme.Text, Tf.Left);
+            // line 1: the name across the full width
+            TextRenderer.DrawText(g, _title, titleFont, TitleRect, Theme.Text, Tf.Left);
 
-            int priceW = 0;
-            if (_price.Length > 0)
-            {
-                priceW = TextRenderer.MeasureText(_price, titleFont).Width + S(4);
-                TextRenderer.DrawText(g, _price, titleFont, new Rectangle(button.Right - priceW, S(25), priceW, S(17)), Theme.Text, Tf.Right);
-            }
-            int subW = Math.Max(10, (priceW > 0 ? button.Right - priceW - S(6) : right) - textX);
-            TextRenderer.DrawText(g, _subtitle, Theme.Face(7.5f), new Rectangle(textX, S(25), subW, S(17)), Theme.Muted, Tf.Left);
+            // line 2: weight band / code on the left, price, then the Add button (all on the button's row)
+            int priceW = TextRenderer.MeasureText(_price, titleFont).Width + S(4);
+            var priceRect = new Rectangle(button.X - S(8) - priceW, button.Y, priceW, button.Height);
+            TextRenderer.DrawText(g, _price, titleFont, priceRect, Theme.Text, Tf.Right);
+            TextRenderer.DrawText(g, _subtitle, Theme.Face(7.5f),
+                new Rectangle(textX, button.Y, Math.Max(10, priceRect.X - S(6) - textX), button.Height), Theme.Muted, Tf.Left);
+        }
+        else if (_subtitle.Length > 0)
+        {
+            int right = button.X - S(8);
+            TextRenderer.DrawText(g, _title, titleFont, new Rectangle(textX, S(9), Math.Max(10, right - textX), S(20)), Theme.Text, Tf.Left);
+            TextRenderer.DrawText(g, _subtitle, Theme.Face(7.5f), new Rectangle(textX, S(29), Math.Max(10, right - textX), S(18)), Theme.Muted, Tf.Left);
         }
         else
         {
+            int right = button.X - S(8);
             if (_price.Length > 0)
             {
                 int priceW = TextRenderer.MeasureText(_price, titleFont).Width + S(4);
