@@ -80,8 +80,8 @@ INSERT INTO @src VALUES
     (N'Paw Pad Trim', N'Add-ons', N'Both', N'All', NULL, NULL, N'Trim excess hair around paw pads', 150, 15),
     (N'Face Trim', N'Add-ons', N'Both', N'All', NULL, NULL, N'Face/eye-area coat trim', 200, 15),
     (N'Teeth Brushing', N'Add-ons', N'Both', N'All', NULL, NULL, N'Pet toothpaste and brush', 150, 15),
-    (N'De-matting Assessment', N'Add-ons', N'Both', N'All', NULL, NULL, N'Assess coat condition and safe options', 0, 15),
-    (N'Flea/Tick Visual Check', N'Add-ons', N'Both', N'All', NULL, NULL, N'Visual check and inform owner', 0, 15),
+    (N'De-matting Assessment', N'Add-ons', N'Both', N'All', NULL, NULL, N'Assess coat condition and safe options', 350, 15),
+    (N'Flea/Tick Visual Check', N'Add-ons', N'Both', N'All', NULL, NULL, N'Visual check and inform owner', 350, 15),
     (N'Special Handling / Extra Time', N'Add-ons', N'Both', N'All', NULL, NULL, N'Additional handling time if approved', 200, 15);
 
 -- Older services that have the weight typed into the name, e.g. "Dog Full Groom (Large / 20.1-30 kg)", and no weight band:
@@ -104,6 +104,10 @@ INSERT INTO dbo.Services (Name, Category, Species, Size, MinKg, MaxKg, Descripti
 SELECT x.Name, x.Category, x.Species, x.Size, x.MinKg, x.MaxKg, x.Description, x.Price, x.Minutes
 FROM @src x
 WHERE NOT EXISTS (SELECT 1 FROM dbo.Services s WHERE s.Name = x.Name AND s.Species = x.Species AND s.Size = x.Size);
+GO
+
+-- any other service still priced 0 becomes 350
+UPDATE dbo.Services SET Price = 350 WHERE Price = 0 AND IsActive = 1;
 GO
 
 SELECT Name, Species, Size, MinKg, MaxKg, Price, DurationMinutes

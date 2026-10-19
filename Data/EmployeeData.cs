@@ -785,6 +785,15 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>True when this customer record already has a sign-in (so no password needs to be created).</summary>
+    public static bool CustomerHasLogin(int customerId)
+    {
+        using var conn = Open();
+        using var cmd = Cmd(conn, "SELECT CASE WHEN UserId IS NULL THEN 0 ELSE 1 END FROM dbo.Customers WHERE CustomerId = @id");
+        P(cmd, "@id", SqlDbType.Int, customerId);
+        return cmd.ExecuteScalar() is int i && i == 1;
+    }
+
     /// <summary>Kiosk: the customer record that has this email (null when there is none yet).</summary>
     public static (int Id, string Name)? FindCustomerByEmail(string email)
     {

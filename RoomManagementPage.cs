@@ -9,7 +9,7 @@ namespace MyApp;
 /// Room Management: its own page next to Dashboard, Appointments, Billing and Lookup. Staff can see every room and whether it is
 /// vacant, in use (and by which groomer) or being sanitized, open a room's schedule, add a room, rename it, switch it off or delete it.
 /// A room is "in use" from the start of a booking until the service ends, then "sanitizing" for
-/// <see cref="RoomRepository.SanitizeMinutes"/> minutes (the same 30-minute gap the appointment form enforces).
+/// <see cref="RoomScheduleRepository.SanitizeMinutes"/> minutes (the same 30-minute gap the appointment form enforces).
 /// Built from the same pieces as the other pages: Theme colours, CardPanel, PrimaryButton, IconBadge and DialogBase.
 /// </summary>
 internal sealed class RoomManagementPage : UserControl
@@ -52,7 +52,7 @@ internal sealed class RoomManagementPage : UserControl
     {
         try
         {
-            _rooms.SetData(RoomRepository.GetRooms(DateTime.Now));
+            _rooms.SetData(RoomScheduleRepository.GetRooms(DateTime.Now));
         }
         catch (SqlException ex)
         {
@@ -70,7 +70,7 @@ internal sealed class RoomManagementPage : UserControl
 
     private void Add()
     {
-        using var dlg = new RoomDialog();
+        using var dlg = new RoomEditDialog();
         if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
         Reload();
         Changed?.Invoke(this, ("Room Added", $"Added room {dlg.SavedName}"));
@@ -78,7 +78,7 @@ internal sealed class RoomManagementPage : UserControl
 
     private void Edit(RoomRow row)
     {
-        using var dlg = new RoomDialog(row);
+        using var dlg = new RoomEditDialog(row);
         if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
         Reload();
         Changed?.Invoke(this, ("Room Updated", $"Room \"{row.Name}\" is now \"{dlg.SavedName}\""));
@@ -97,7 +97,7 @@ internal sealed class RoomManagementPage : UserControl
                 return;
         }
 
-        try { RoomRepository.SetActive(row.Id, activate); }
+        try { RoomScheduleRepository.SetActive(row.Id, activate); }
         catch (SqlException ex)
         {
             Msg.Show(FindForm(), "Couldn't save.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -126,7 +126,7 @@ internal sealed class RoomManagementPage : UserControl
             return;
 
         int blocking;
-        try { blocking = RoomRepository.TryDelete(row.Id); }
+        try { blocking = RoomScheduleRepository.TryDelete(row.Id); }
         catch (SqlException ex)
         {
             Msg.Show(FindForm(), "Couldn't delete the room.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -458,7 +458,7 @@ internal sealed class RoomRowView : Control
 
 // ====================================================================== add / rename dialog
 
-internal sealed class RoomDialog : DialogBase
+internal sealed class RoomEditDialog : DialogBase
 {
     private readonly RoomRow? _existing;
     private readonly TextBox nameBox = new();
@@ -466,7 +466,7 @@ internal sealed class RoomDialog : DialogBase
     /// <summary>The name as saved, for the audit log.</summary>
     public string? SavedName { get; private set; }
 
-    public RoomDialog(RoomRow? existing = null)
+    public RoomEditDialog(RoomRow? existing = null)
         : base(existing is null ? "Add Room" : "Edit Room", "Save", "",
                existing is null ? "Add a room appointments can use" : existing.Name)
     {
@@ -491,14 +491,14 @@ internal sealed class RoomDialog : DialogBase
 
         try
         {
-            if (RoomRepository.NameTaken(name, _existing?.Id))
+            if (RoomScheduleRepository.NameTaken(name, _existing?.Id))
             {
                 ShowError($"There is already a room called \"{name}\".");
                 return;
             }
 
-            if (_existing is null) RoomRepository.Add(name);
-            else RoomRepository.Rename(_existing.Id, name);
+            if (_existing is null) RoomScheduleRepository.Add(name);
+            else RoomScheduleRepository.Rename(_existing.Id, name);
 
             SavedName = name;
             DialogResult = DialogResult.OK;
@@ -614,7 +614,7 @@ internal sealed class RoomScheduleDialog : DialogBase
         _dayLabel.Text = (_day == DateTime.Today ? "Today  ·  " : "") + _day.ToString("dddd, MMM d, yyyy", CultureInfo.CurrentCulture);
 
         List<RoomBooking> bookings;
-        try { bookings = RoomRepository.GetBookings(_day, _day.AddDays(1), _room.Id); }
+        try { bookings = RoomScheduleRepository.GetBookings(_day, _day.AddDays(1), _room.Id); }
         catch (SqlException ex)
         {
             ShowError("Couldn't load the schedule: " + ex.Message);
@@ -636,7 +636,7 @@ internal sealed class RoomScheduleDialog : DialogBase
                 $"{b.Pet}  ·  {b.Service}", $"Groomer: {who}", inUse ? "In use now" : StatusText(b.Status), inUse))
             { Margin = Padding.Empty });
 
-            var cleanEnd = b.End.AddMinutes(RoomRepository.SanitizeMinutes);
+            var cleanEnd = b.End.AddMinutes(RoomScheduleRepository.SanitizeMinutes);
             bool cleaning = !roomBusy && now >= (done ? b.Start : b.End) && now < cleanEnd;
             _list.Controls.Add(new ScheduleBlockView(new ScheduleBlock(BlockKind.Sanitize, b.End, cleanEnd,
                 "Sanitizing", "", cleaning ? "Sanitizing now" : "", cleaning))
@@ -747,7 +747,7 @@ internal sealed record RoomRow(int Id, string Name, bool Active, RoomState State
 internal sealed record RoomBooking(int AppointmentId, int RoomId, DateTime Start, DateTime End, string? Groomer, string Pet, string Service, string Status);
 
 /// <summary>Reads and writes dbo.Rooms and works out each room's status from the appointments.</summary>
-internal static class RoomRepository
+internal static class RoomScheduleRepository
 {
     /// <summary>Minutes a room stays "sanitizing" after a booking ends. Same 30 minutes as the booking gap on the appointment form.</summary>
     public const int SanitizeMinutes = EmployeeData.BookingGapMinutes;

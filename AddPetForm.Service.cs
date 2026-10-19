@@ -66,9 +66,8 @@ internal sealed partial class AddPetForm
         stepVaccine.State = StepState.Done;
         stepGrooming.State = StepState.Active;
 
-        // preselect the service picked in Pet Details when it is on offer, otherwise the first card (as in the design)
-        var preselect = _serviceCards.FirstOrDefault(c => string.Equals(((ServiceChoice)c.Tag!).Name, ChosenService, StringComparison.OrdinalIgnoreCase))
-                        ?? _serviceCards[0];
+        // nothing was picked yet (Pet Details no longer asks for a service): start on the first card
+        var preselect = _serviceCards[0];
         ChooseService(preselect);
 
         continueButton.Text = "Continue  \u2192";

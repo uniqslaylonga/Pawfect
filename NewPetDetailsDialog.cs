@@ -22,8 +22,6 @@ internal sealed class NewPetDetailsDialog : Form
         "Puspin (Mixed)", "Persian", "Siamese", "Maine Coon", "British Shorthair", "Ragdoll", "Bengal", "Other",
     };
 
-    private static readonly string[] Services = { "Bath Only", "Full Groom", "Nail Trim", "Ear Cleaning" };
-
     private readonly int _customerId;
     private readonly PetProfile? _existing;
 
@@ -36,12 +34,10 @@ internal sealed class NewPetDetailsDialog : Form
     private readonly ChoiceTile _cat = new("Cat", radio: true);
     private readonly ChoiceTile _male = new("Male", radio: false);
     private readonly ChoiceTile _female = new("Female", radio: false);
-    private readonly List<ChoiceTile> _serviceTiles = new();
     private readonly Label _error = new();
 
     public int PetId { get; private set; }
     public string PetName { get; private set; } = "";
-    public string Service { get; private set; } = Services[0];
 
     /// <param name="existing">The picked pet to show and update, or null to register a new one.</param>
     public NewPetDetailsDialog(int customerId, PetProfile? existing = null)
@@ -56,7 +52,7 @@ internal sealed class NewPetDetailsDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         KeyPreview = true;
-        ClientSize = new Size(580, 600);
+        ClientSize = new Size(580, 510);
 
         BuildHeader();
 
@@ -102,31 +98,19 @@ internal sealed class NewPetDetailsDialog : Form
         _male.SetBounds(x2, 286, 120, 40);
         _female.SetBounds(x2 + 130, 286, 120, 40);
 
-        // row 4: service
-        Caption("Type of Service *", null, x1, 346);
-        for (int i = 0; i < Services.Length; i++)
-        {
-            var tile = new ChoiceTile(Services[i], radio: true);
-            tile.SetBounds(x1 + i * 132, 368, 122, 48);
-            tile.Click += (_, _) => PickService(tile);
-            _serviceTiles.Add(tile);
-            Controls.Add(tile);
-        }
-        PickService(_serviceTiles[0]);
-
-        // row 5: notes
-        Caption("Additional Notes", "(optional)", x1, 430);
-        _notes.Location = new Point(x1, 452);
+        // row 4: notes
+        Caption("Additional Notes", "(optional)", x1, 346);
+        _notes.Location = new Point(x1, 368);
         _notes.Box.MaxLength = 500;
         _notes.Box.PlaceholderText = "e.g. allergies, special instructions, or health concerns...";
 
-        _error.SetBounds(x1, 524, 520, 20);
+        _error.SetBounds(x1, 440, 520, 20);
         _error.ForeColor = Theme.Danger;
         _error.BackColor = Color.White;
         _error.Font = Theme.Face(8.5f, FontStyle.Bold);
 
-        var cancel = new PawButton { Text = "Cancel", Kind = PawButtonKind.Outline, Size = new Size(120, 40), Location = new Point(x1, 548) };
-        var save = new PawButton { Text = "Save Pet", Kind = PawButtonKind.Primary, Size = new Size(140, 40), Location = new Point(410, 548) };
+        var cancel = new PawButton { Text = "Cancel", Kind = PawButtonKind.Outline, Size = new Size(120, 40), Location = new Point(x1, 464) };
+        var save = new PawButton { Text = "Save Pet", Kind = PawButtonKind.Primary, Size = new Size(140, 40), Location = new Point(410, 464) };
         cancel.Click += (_, _) => DialogResult = DialogResult.Cancel;
         save.Click += (_, _) => SavePet();
         CancelButton = cancel;
@@ -145,7 +129,7 @@ internal sealed class NewPetDetailsDialog : Form
         if (existing is not null) Prefill(existing);
         Shown += (_, _) => _name.Box.Focus();
 
-        FullScreen.Apply(this, centerContent: true);   // full screen; the 580 x 600 form is scaled up and centred
+        FullScreen.Apply(this, centerContent: true);   // full screen; the 580 x 510 form is scaled up and centred
     }
 
     // ------------------------------------------------------------------ chrome
@@ -232,12 +216,6 @@ internal sealed class NewPetDetailsDialog : Form
             _breed.SelectedIndex = i;
         }
         else _breed.SelectedIndex = -1;
-    }
-
-    private void PickService(ChoiceTile tile)
-    {
-        foreach (var t in _serviceTiles) t.Selected = t == tile;
-        Service = tile.Text;
     }
 
     private void Prefill(PetProfile pet)

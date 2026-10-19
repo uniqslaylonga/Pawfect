@@ -137,7 +137,8 @@ internal sealed partial class AddPetForm : Form
             else if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
+                if (PasswordStepVisible) SavePassword();
+                else if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
                 else if (selectPanel.Visible) { if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
                 else if (_otpBoxes.Any(b => b.Focused) || verifyButton.Enabled) VerifyCode();
                 else SendOtp();
@@ -178,6 +179,18 @@ internal sealed partial class AddPetForm : Form
         }
         string mobile = mobileField.Value.Trim();
         _contactMobile = mobile;
+        if (mobile.Length == 0 && _customerId == 0)
+        {
+            ShowContactError("Please enter your mobile number.");
+            mobileField.Box.Focus();
+            return;
+        }
+        if (mobile.Length > 0 && !PhoneRules.IsValid(mobile))
+        {
+            ShowContactError(PhoneRules.Hint);
+            mobileField.Box.Focus();
+            return;
+        }
         if (mobile.Length > 0 && !MobileMatches(mobile))
         {
             ShowContactError("That mobile number doesn't match the one on your account.");
@@ -225,6 +238,7 @@ internal sealed partial class AddPetForm : Form
             return;
         }
         if (_kiosk && !EnsureKioskCustomer()) return;
+        if (_kiosk && NeedsPassword()) { ShowPasswordStep(); return; }   // still step 1 (Contact): now the password page
         ShowSelectStep();
     }
 
@@ -314,9 +328,9 @@ internal sealed partial class AddPetForm : Form
 
     private void ShowContactError(string message) => contactErrorLabel.Text = message;
 
-    // ---- mobile number: digits (and + - ( ) space) only
+    // ---- mobile number: digits only, 11 of them, starting with 09 (checked on Send OTP)
 
-    private static bool IsPhoneChar(char c) => char.IsAsciiDigit(c) || c is ' ' or '+' or '-' or '(' or ')';
+    private static bool IsPhoneChar(char c) => char.IsAsciiDigit(c);
 
     private void MobileBox_KeyPress(object? sender, KeyPressEventArgs e)
     {
@@ -326,11 +340,11 @@ internal sealed partial class AddPetForm : Form
     private void MobileBox_TextChanged(object? sender, EventArgs e)
     {
         var box = mobileField.Box;
-        string clean = new(box.Text.Where(IsPhoneChar).ToArray());
+        string clean = PhoneRules.Clean(box.Text);
         if (clean == box.Text) return;
 
-        // Pasted letters are dropped; keep the cursor where the person expects it.
-        int caret = box.SelectionStart - box.Text.Take(box.SelectionStart).Count(c => !IsPhoneChar(c));
+        // Pasted letters, spaces and digits past the 11th are dropped; keep the cursor where the person expects it.
+        int caret = box.Text.Take(box.SelectionStart).Count(IsPhoneChar);
         box.Text = clean;
         box.SelectionStart = Math.Clamp(caret, 0, clean.Length);
     }
@@ -507,6 +521,7 @@ internal sealed partial class AddPetForm : Form
         selectPanel.Visible = false;
         continueButton.Visible = false;
         contactPanel.Visible = true;
+        if (_passwordPanel is not null) _passwordPanel.Visible = false;
         titleLabel.Text = "Enter Your Contact Information";
         subtitleLabel.Text = "We'll email you a 6-digit code to confirm it's you.";
         stepContact.State = StepState.Active;
@@ -519,10 +534,18 @@ internal sealed partial class AddPetForm : Form
     {
         resendTimer.Stop();
         HideVaccineStep();
+        if (_passwordPanel is not null) _passwordPanel.Visible = false;
         contactPanel.Visible = false;
         selectPanel.Visible = true;
         titleLabel.Text = "Select a Pet";
-        subtitleLabel.Text = "Choose an existing pet or register a new one.";
+        if (_welcomeNewAccount)
+        {
+            // just came from Create Your Password: say the account exists, then move on to the pet
+            string first = _ownerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            subtitleLabel.Text = (first.Length > 0 ? $"Welcome, {first}! " : "Welcome! ") + "Your account is ready. Choose a pet or register a new one.";
+            _welcomeNewAccount = false;
+        }
+        else subtitleLabel.Text = "Choose an existing pet or register a new one.";
         stepContact.State = StepState.Done;
         stepSelect.State = StepState.Active;
         LoadPets();
@@ -531,6 +554,12 @@ internal sealed partial class AddPetForm : Form
 
     private void GoBack()
     {
+        if (PasswordStepVisible)
+        {
+            ResetContactPage();   // back to the contact page: the code has to be entered again
+            ShowContactStep();
+            return;
+        }
         if (ServiceStepVisible)
         {
             BackToVaccineStep();
@@ -551,17 +580,23 @@ internal sealed partial class AddPetForm : Form
         if (selectPanel.Visible)
         {
             // Back to step 1 means proving it again: the old code is thrown away.
-            _challenge = null;
-            ClearOtpBoxes();
-            foreach (var b in _otpBoxes) b.Enabled = false;
-            resendLabel.Visible = false;
-            otpHint.Text = "We'll send a 6-digit code to your email.";
-            sendOtpButton.Text = "Send OTP  \u2192";
+            ResetContactPage();
             ShowContactStep();
             return;
         }
         DialogResult = DialogResult.Cancel;
         Close();
+    }
+
+    /// <summary>Throws the emailed code away and puts the contact page back to "send a code".</summary>
+    private void ResetContactPage()
+    {
+        _challenge = null;
+        ClearOtpBoxes();
+        foreach (var b in _otpBoxes) b.Enabled = false;
+        resendLabel.Visible = false;
+        otpHint.Text = "We'll send a 6-digit code to your email.";
+        sendOtpButton.Text = "Send OTP  \u2192";
     }
 
     // ------------------------------------------------------------------ checks
@@ -586,4 +621,4 @@ internal sealed partial class AddPetForm : Form
         if (at <= 1) return email;
         return email[0] + new string('*', Math.Min(at - 2, 6)) + email[at - 1] + email[at..];
     }
-}
+}

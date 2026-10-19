@@ -201,6 +201,9 @@ internal sealed class CustomerForm : DialogBase
 
         AddRow("Full name *", _name);
         AddRow("Phone", _phone);
+        _phone.MaxLength = PhoneRules.Length;
+        _phone.PlaceholderText = "09XXXXXXXXX";
+        _phone.KeyPress += (_, e) => { if (!char.IsControl(e.KeyChar) && !char.IsAsciiDigit(e.KeyChar)) e.Handled = true; };
         AddRow("Email", _email);
         AddRow("Address", _address);
 
@@ -226,6 +229,15 @@ internal sealed class CustomerForm : DialogBase
     {
         if (string.IsNullOrWhiteSpace(_name.Text)) { ShowError("Enter the customer's name."); return; }
         if (!string.IsNullOrWhiteSpace(_email.Text) && !_email.Text.Contains('@')) { ShowError("That email doesn't look right."); return; }
+
+        // 11 digits starting with 09; an older number saved before this rule is left alone unless it is changed
+        string phone = _phone.Text.Trim();
+        if (phone.Length > 0 && !PhoneRules.IsValid(phone) && phone != (_existing?.Phone ?? "").Trim())
+        {
+            ShowError(PhoneRules.Hint);
+            _phone.Focus();
+            return;
+        }
 
         try
         {
@@ -316,8 +328,8 @@ internal sealed class EditAppointmentForm : DialogBase
     private readonly List<ServiceOffering> _services;
     private readonly List<GroomerOption> _groomers;
     private readonly List<RoomOption> _rooms;
-    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet" };
-    private readonly PawSelect _service = new() { Placeholder = "Choose a service" };
+    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet", Searchable = true, SearchPlaceholder = "Search pets\u2026", EmptyText = "No pets to choose from" };
+    private readonly PawSelect _service = new() { Placeholder = "Choose a service", Searchable = true, SearchPlaceholder = "Search services\u2026", EmptyText = "No services for this pet" };
     private readonly PawSelect _groomer = new();
     private readonly PawSelect _room = new();
     private readonly PawDatePicker _date = new();

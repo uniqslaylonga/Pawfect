@@ -310,7 +310,7 @@ namespace MyApp
             mobileField.Margin = new Padding(0);
             mobileField.Name = "mobileField";
             mobileField.Padding = new Padding(10, 3, 10, 3);
-            mobileField.Placeholder = "09XX XXX XXXX";
+            mobileField.Placeholder = "09XXXXXXXXX";
             mobileField.Radius = 12;
             mobileField.Size = new Size(380, 46);
             mobileField.TabIndex = 5;
@@ -354,7 +354,7 @@ namespace MyApp
             orLabel.Font = new Font("Segoe UI", 7F, FontStyle.Bold, GraphicsUnit.Point, 0);
             orLabel.ForeColor = Color.FromArgb(122, 136, 156);
             orLabel.Name = "orLabel";
-            orLabel.Text = "OR";
+            orLabel.Text = "AND";
             orLabel.TextAlign = ContentAlignment.MiddleCenter;
             orLabel.UseMnemonic = false;
             // 
@@ -365,11 +365,11 @@ namespace MyApp
             orBadge.BorderColor = Color.FromArgb(227, 233, 242);
             orBadge.CornerColor = Color.FromArgb(243, 247, 252);
             orBadge.FillColor = Color.White;
-            orBadge.Location = new Point(435, 136);
+            orBadge.Location = new Point(428, 136);
             orBadge.Margin = new Padding(0);
             orBadge.Name = "orBadge";
             orBadge.Radius = 14;
-            orBadge.Size = new Size(30, 30);
+            orBadge.Size = new Size(44, 30);
             orBadge.TabIndex = 9;
             // 
             // otpIcon

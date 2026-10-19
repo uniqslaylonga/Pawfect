@@ -21,8 +21,8 @@ internal sealed class NewAppointmentForm : DialogBase
     private List<PetRecord> _pets = new();
 
     private readonly PawSelect _customer = new() { Placeholder = "Choose a customer" };
-    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet" };
-    private readonly PawSelect _service = new() { Placeholder = "Choose a service" };
+    private readonly PawSelect _pet = new() { Placeholder = "Choose a pet", Searchable = true, SearchPlaceholder = "Search pets\u2026", EmptyText = "No pets to choose from" };
+    private readonly PawSelect _service = new() { Placeholder = "Choose a service", Searchable = true, SearchPlaceholder = "Search services\u2026", EmptyText = "No services for this pet" };
     private readonly PawSelect _groomer = new();
     private readonly PawSelect _room = new();
     private readonly PawDatePicker _date = new();

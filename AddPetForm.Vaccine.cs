@@ -62,7 +62,6 @@ internal sealed partial class AddPetForm
         using var dialog = new NewPetDetailsDialog(_customerId, pet);
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
-        ChosenService = dialog.Service;
         if (pet is null) CreatedPetId = dialog.PetId;
 
         // A pet with a card on file is either fine ("No need to scan!") or its vaccinations have lapsed (scan a new card).

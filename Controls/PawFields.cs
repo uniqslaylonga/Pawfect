@@ -234,6 +234,31 @@ internal abstract class PawDropField : Control
     /// <summary>Arrow keys while the popup is closed (-1 = up, +1 = down).</summary>
     protected virtual void Step(int direction) { }
 
+    /// <summary>True when typing a letter on the focused (closed) field should open the popup with that letter typed in.</summary>
+    protected virtual bool OpensOnTyping => false;
+
+    private string _seed = "";
+
+    /// <summary>The letter that opened the popup (empty when it was opened another way). Reading it clears it.</summary>
+    protected string TakeSeed()
+    {
+        var s = _seed;
+        _seed = "";
+        return s;
+    }
+
+    /// <summary>Called once the popup is on screen; the default puts the keyboard focus on its content.</summary>
+    protected virtual void OnPopupOpened(Control content) => content.Focus();
+
+    protected override void OnKeyPress(KeyPressEventArgs e)
+    {
+        base.OnKeyPress(e);
+        if (e.Handled || _open || !Enabled || !OpensOnTyping || char.IsControl(e.KeyChar) || e.KeyChar == ' ') return;
+        _seed = e.KeyChar.ToString();
+        e.Handled = true;
+        Open();
+    }
+
     protected override bool IsInputKey(Keys keyData)
         => (keyData & ~Keys.Shift) is Keys.Up or Keys.Down || base.IsInputKey(keyData);
 
@@ -304,7 +329,14 @@ internal abstract class PawDropField : Control
             if (drop.Width > 0 && drop.Height > 0)
                 drop.Region = new Region(Ui.RoundRect(new RectangleF(0, 0, drop.Width, drop.Height), 12));
         }
-        drop.Opened += (_, _) => { Round(); content.Focus(); };
+        drop.Opened += (_, _) => { Round(); OnPopupOpened(content); };
+        // The content may change height while open (a searchable list shrinks as it is filtered).
+        content.SizeChanged += (_, _) =>
+        {
+            card.Height = content.Height + 12;
+            host.Size = card.Size;
+            drop.PerformLayout();
+        };
         drop.SizeChanged += (_, _) => Round();
         drop.Closed += (_, _) =>
         {
@@ -423,76 +455,28 @@ internal class PawSelect : PawDropField
 
     protected virtual int VisibleRows => 8;
 
+    [Category("Pawfect"), DefaultValue(false)]
+    [Description("Shows a search box in the list: typing narrows the choices. Only an item from the list can be picked, never typed text.")]
+    public bool Searchable { get; set; }
+
+    [Category("Pawfect"), DefaultValue("Search\u2026")]
+    [Description("Hint inside the search box.")]
+    public string SearchPlaceholder { get; set; } = "Search\u2026";
+
+    [Category("Pawfect"), DefaultValue("Nothing to choose from")]
+    [Description("Shown in the list when it has no items at all.")]
+    public string EmptyText { get; set; } = "Nothing to choose from";
+
+    protected override bool OpensOnTyping => Searchable;
+
     protected override Control BuildPopup(int width, Action close)
+        => new PawSelectPopup(Items.All, _index, width, VisibleRows, Searchable, SearchPlaceholder, EmptyText,
+            TakeSeed(), i => SelectedIndex = i, close);
+
+    protected override void OnPopupOpened(Control content)
     {
-        const int rowH = 30;
-        int rows = Math.Clamp(Items.Count, 1, VisibleRows);
-        var list = new ListBox
-        {
-            BorderStyle = BorderStyle.None,
-            DrawMode = DrawMode.OwnerDrawFixed,
-            ItemHeight = rowH,
-            IntegralHeight = false,
-            BackColor = Color.White,
-            Font = Font,
-            Size = new Size(width, rows * rowH),
-            Cursor = Cursors.Hand,
-        };
-        list.Items.AddRange(Items.All.Cast<object>().ToArray());
-        if (_index >= 0) list.SelectedIndex = _index;
-
-        int hot = -1;
-        list.HandleCreated += (_, _) =>
-        {
-            if (_index >= 0) list.TopIndex = Math.Max(0, _index - rows / 2);
-        };
-        list.MouseMove += (_, e) =>
-        {
-            int i = list.IndexFromPoint(e.Location);
-            if (i != hot) { hot = i; list.Invalidate(); }
-        };
-        list.MouseLeave += (_, _) => { hot = -1; list.Invalidate(); };
-        list.MouseUp += (_, e) =>
-        {
-            if (e.Button != MouseButtons.Left) return;
-            int i = list.IndexFromPoint(e.Location);
-            if (i < 0) return;
-            SelectedIndex = i;
-            close();
-        };
-        list.KeyDown += (_, e) =>
-        {
-            if (e.KeyCode == Keys.Enter && list.SelectedIndex >= 0) { SelectedIndex = list.SelectedIndex; close(); e.Handled = true; }
-            else if (e.KeyCode == Keys.Escape) { close(); e.Handled = true; }
-        };
-        list.DrawItem += (_, e) =>
-        {
-            if (e.Index < 0 || e.Index >= list.Items.Count) return;
-            var g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            using (var bg = new SolidBrush(Color.White))
-                g.FillRectangle(bg, e.Bounds);
-
-            bool chosen = e.Index == _index;
-            bool hover = e.Index == hot || (hot < 0 && (e.State & DrawItemState.Selected) != 0 && !chosen);
-            var r = Rectangle.Inflate(e.Bounds, -2, -2);
-            if (chosen || hover)
-            {
-                using var path = Ui.RoundRect(r, 6);
-                using var b = new SolidBrush(chosen ? Theme.PrimarySoft : Theme.Subtle);
-                g.FillPath(b, path);
-            }
-
-            TextRenderer.DrawText(g, list.Items[e.Index]?.ToString() ?? "", Font,
-                new Rectangle(r.X + 8, r.Y, r.Width - 36, r.Height), chosen ? Theme.Primary : Theme.Text,
-                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
-                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-            if (chosen)
-                TextRenderer.DrawText(g, "", Theme.GlyphFont(8f), new Rectangle(r.Right - 26, r.Y, 22, r.Height), Theme.Primary,
-                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
-                    TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-        };
-        return list;
+        if (content is PawSelectPopup popup) popup.FocusInput();
+        else base.OnPopupOpened(content);
     }
 }
 

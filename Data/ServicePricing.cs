@@ -102,7 +102,7 @@ END",
     }
 
     /// <summary>
-    /// The cards on step 4 (Choose a Grooming Service): every active Grooming / Add-ons service once, priced for this pet's
+    /// The cards on step 4 (Choose a Grooming Service): every active service that fits the pet once (a service priced 0 shows 350), priced for this pet's
     /// weight. A service that has no band for the pet's weight or species is left out.
     /// </summary>
     public static List<ServiceChoice> GetChoices(int petId)
@@ -113,10 +113,10 @@ END",
         string sql = $@"
 SELECT ServiceId, Name, Price, DurationMinutes
 FROM (
-    SELECT s.ServiceId, s.Name, s.Price, s.DurationMinutes,
+    SELECT s.ServiceId, s.Name, CASE WHEN s.Price = 0 THEN CAST(350 AS DECIMAL(10,2)) ELSE s.Price END AS Price, s.DurationMinutes,
            ROW_NUMBER() OVER (PARTITION BY s.Name ORDER BY {PreferSpecies}) AS rn
     FROM dbo.Services s
-    WHERE s.IsActive = 1 AND s.Category IN (N'Grooming', N'Add-ons') AND {FitsPet}
+    WHERE s.IsActive = 1 AND {FitsPet}
 ) x
 WHERE rn = 1
 ORDER BY Price, Name";
