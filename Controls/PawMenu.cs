@@ -306,5 +306,5 @@ internal sealed class PawMenuItem : ToolStripMenuItem
             TextRenderer.DrawText(g, SubText, Theme.Face(8f), new Rectangle(0, 82, r.Width, 18), Theme.Muted, CenterFlags);
     }
 
-    public static string Time(DateTime t) => t.ToString("h:mm tt", CultureInfo.CurrentCulture);
+    //public static string Time(DateTime t) => t.ToString("h:mm tt", CultureInfo.CurrentCulture);
 }

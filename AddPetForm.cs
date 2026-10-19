@@ -60,7 +60,7 @@ internal sealed partial class AddPetForm : Form
     /// <summary>A point written in the original 900 x 540 design, moved to where it belongs at the current size.</summary>
     private Point Px(int x, int y)
     {
-        float k = _scaler?.Scale ?? 1f;
+        float k = _scaler?.LayoutScale ?? 1f;   // design pixels x screen DPI x content scale
         return new Point((int)Math.Round(x * k), (int)Math.Round(y * k));
     }
 

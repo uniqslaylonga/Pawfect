@@ -164,6 +164,7 @@ namespace MyApp
             appointmentsNav = new MyApp.Controls.NavItem();
             billingNav = new MyApp.Controls.NavItem();
             lookupNav = new MyApp.Controls.NavItem();
+            roomsNav = new MyApp.Controls.NavItem();
             sidebarFooter = new MyApp.Controls.EdgePanel();
             logoutNav = new MyApp.Controls.NavItem();
             sidebarBrand = new MyApp.Controls.EdgePanel();
@@ -2229,6 +2230,7 @@ namespace MyApp
             navPanel.Controls.Add(appointmentsNav);
             navPanel.Controls.Add(billingNav);
             navPanel.Controls.Add(lookupNav);
+            navPanel.Controls.Add(roomsNav);
             navPanel.Dock = DockStyle.Fill;
             navPanel.FlowDirection = FlowDirection.TopDown;
             navPanel.Location = new Point(0, 78);
@@ -2286,6 +2288,18 @@ namespace MyApp
             lookupNav.Size = new Size(219, 42);
             lookupNav.TabIndex = 3;
             lookupNav.Text = "Customer & Pet Look Up";
+            // 
+            // roomsNav
+            // 
+            roomsNav.BackColor = Color.White;
+            roomsNav.Font = new Font("Segoe UI", 9F);
+            roomsNav.Glyph = "\uE80F";
+            roomsNav.Location = new Point(12, 214);
+            roomsNav.Margin = new Padding(0, 0, 0, 4);
+            roomsNav.Name = "roomsNav";
+            roomsNav.Size = new Size(219, 42);
+            roomsNav.TabIndex = 4;
+            roomsNav.Text = "Rooms & Groomers";
             // 
             // sidebarFooter
             // 
@@ -2588,6 +2602,7 @@ namespace MyApp
         private MyApp.Controls.NavItem appointmentsNav;
         private MyApp.Controls.NavItem billingNav;
         private MyApp.Controls.NavItem lookupNav;
+        private MyApp.Controls.NavItem roomsNav;
         private MyApp.Controls.EdgePanel sidebarFooter;
         private MyApp.Controls.NavItem logoutNav;
         private MyApp.Controls.EdgePanel sidebarBrand;

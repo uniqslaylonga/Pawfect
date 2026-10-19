@@ -405,9 +405,12 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
         return list;
     }
 
+    /// <summary>Minimum gap, in minutes, between two bookings that use the same groomer or the same room (1:00 pm booked, next at 1:30 pm).</summary>
+    public const int BookingGapMinutes = 30;
+
     /// <summary>
-    /// Looks for another open appointment that uses the same groomer or room within an hour of <paramref name="start"/>
-    /// (services have no length yet, so one hour is the slot size). Returns null when it is free, otherwise a message.
+    /// Looks for another open appointment that uses the same groomer or room less than <see cref="BookingGapMinutes"/> minutes
+    /// away from <paramref name="start"/>. Returns null when it is free, otherwise a message.
     /// </summary>
     public static string? FindScheduleConflict(int appointmentId, DateTime start, int? groomerId, int? roomId)
     {
@@ -418,7 +421,7 @@ SELECT TOP 1 a.GroomerId, a.RoomId, a.StartTime
 FROM dbo.Appointments a
 WHERE a.AppointmentId <> @id
   AND a.Status NOT IN (N'Cancelled', N'Completed')
-  AND DATEDIFF(MINUTE, a.StartTime, @t) > -60 AND DATEDIFF(MINUTE, a.StartTime, @t) < 60
+  AND DATEDIFF(MINUTE, a.StartTime, @t) > -@gap AND DATEDIFF(MINUTE, a.StartTime, @t) < @gap
   AND ((@g IS NOT NULL AND a.GroomerId = @g) OR (@rm IS NOT NULL AND a.RoomId = @rm))
 ORDER BY a.StartTime";
 
@@ -428,14 +431,16 @@ ORDER BY a.StartTime";
         P(cmd, "@t", SqlDbType.DateTime2, start);
         P(cmd, "@g", SqlDbType.Int, groomerId);
         P(cmd, "@rm", SqlDbType.Int, roomId);
+        P(cmd, "@gap", SqlDbType.Int, BookingGapMinutes);
         using var r = cmd.ExecuteReader();
         if (!r.Read()) return null;
 
         string at = r.GetDateTime(2).ToString("MMM d, h:mm tt", System.Globalization.CultureInfo.CurrentCulture);
+        string next = r.GetDateTime(2).AddMinutes(BookingGapMinutes).ToString("h:mm tt", System.Globalization.CultureInfo.CurrentCulture);
         bool groomerBusy = groomerId is not null && !r.IsDBNull(0) && r.GetInt32(0) == groomerId;
         return groomerBusy
-            ? $"That groomer already has an appointment at {at}. Pick another groomer or time."
-            : $"That room is already booked at {at}. Pick another room or time.";
+            ? $"That groomer already has an appointment at {at}. Bookings need to be {BookingGapMinutes} minutes apart (the next one can start at {next}), or pick another groomer."
+            : $"That room is already booked at {at}. Bookings need to be {BookingGapMinutes} minutes apart (the next one can start at {next}), or pick another room.";
     }
 
     /// <summary>

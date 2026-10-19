@@ -29,7 +29,12 @@ internal static class FullScreen
 
     public static Control Apply(Form form, bool centerContent, out ContentScaler? contentScaler)
     {
-        var designSize = form.ClientSize;               // after InitializeComponent, so already DPI-scaled
+        var designSize = form.ClientSize;               // designer forms (AutoScaleMode.Dpi): already DPI-scaled after InitializeComponent
+        // Forms built in code (queue ticket, scan card, pet details ...) lay out in raw pixels but use point-sized fonts, so on a
+        // 125 % screen (1536 x 864) their text is 25 % bigger than the layout it sits in. They get the DPI factor applied to the
+        // layout (not the fonts) so text and boxes grow together.
+        float dpi = Math.Max(1f, form.DeviceDpi / 96f);
+        bool rawPixels = form.AutoScaleMode != AutoScaleMode.Dpi;
         Panel? stage = null;
         ContentScaler? scaler = null;
         if (centerContent)
@@ -40,7 +45,9 @@ internal static class FullScreen
             stage.Controls.AddRange(kids);              // AddRange keeps the original front-to-back order
             form.Controls.Add(stage);
             form.ResumeLayout(false);
-            scaler = new ContentScaler(stage);          // also scales controls the form adds later (pet cards, step panels)
+            scaler = new ContentScaler(stage, rawPixels, dpi);   // also scales controls the form adds later (pet cards, step panels)
+            if (rawPixels && dpi > 1.001f)
+                designSize = new Size((int)Math.Round(designSize.Width * dpi), (int)Math.Round(designSize.Height * dpi));
         }
 
         form.FormBorderStyle = FormBorderStyle.None;
@@ -96,7 +103,14 @@ internal static class FullScreen
             caption.BringToFront();
         }
 
-        caption.MinimizeClicked += (_, _) => form.WindowState = FormWindowState.Minimized;
+        caption.MinimizeClicked += (_, _) =>
+        {
+            // A dialog opened from another full-screen form would otherwise minimise alone and leave its (disabled) owner covering the
+            // screen. Minimising the root owner takes every owned window with it, and one taskbar click brings them all back.
+            Form root = form;
+            while (root.Owner is { } owner) root = owner;
+            root.WindowState = FormWindowState.Minimized;
+        };
         caption.ToggleClicked += (_, _) =>
         {
             full = !full;
@@ -129,15 +143,36 @@ internal static class FullScreen
 internal sealed class ContentScaler
 {
     private readonly Control _root;
+    private readonly float _dpi;        // screen scaling: 1.25 for 1920 x 1080 shown as 1536 x 864
     private float _scale = 1f;
 
     /// <summary>How much bigger than the original design the content is right now (1 = original size).</summary>
     public float Scale => _scale;
 
-    public ContentScaler(Control root)
+    /// <summary>
+    /// The factor for positions and sizes written as 96-dpi design pixels (the number typed in code): the content scale times the
+    /// screen's DPI scaling. Use this, not <see cref="Scale"/>, to place a control by a design coordinate.
+    /// </summary>
+    public float LayoutScale => _scale * _dpi;
+
+    /// <param name="builtAtRawPixels">True when the controls under <paramref name="root"/> were laid out in plain pixels (a form built in code),
+    /// so they still need the DPI factor on their layout. Designer forms (AutoScaleMode.Dpi) are already scaled by WinForms.</param>
+    public ContentScaler(Control root, bool builtAtRawPixels = false, float dpi = 1f)
     {
         _root = root;
+        _dpi = Math.Max(1f, dpi);
         Hook(root);
+
+        if (builtAtRawPixels && _dpi > 1.001f)
+        {
+            // Layout only: fonts are in points, so Windows has already made them the right size for this screen.
+            var items = Collect(_root, includeRoot: false);
+            var size = new Size((int)Math.Round(_root.Width * _dpi), (int)Math.Round(_root.Height * _dpi));
+            _root.SuspendLayout();
+            _root.Size = size;
+            Apply(items, _dpi, 1f);
+            _root.ResumeLayout(true);
+        }
     }
 
     /// <summary>
@@ -153,7 +188,7 @@ internal sealed class ContentScaler
         var items = Collect(_root, includeRoot: false);
         _root.SuspendLayout();
         _root.Size = rootSize;
-        Apply(items, ratio);
+        Apply(items, ratio, ratio);
         _root.ResumeLayout(true);
         _scale = target;
     }
@@ -167,8 +202,10 @@ internal sealed class ContentScaler
     private void OnAdded(object? sender, ControlEventArgs e)
     {
         Hook(e.Control!);
-        if (Math.Abs(_scale - 1f) < 0.002f) return;
-        Apply(Collect(e.Control!, includeRoot: true), _scale);
+        // Controls added later are built in plain pixels at the original size: layout needs DPI * scale, fonts (points) only the scale.
+        float layout = _scale * _dpi;
+        if (Math.Abs(layout - 1f) < 0.002f && Math.Abs(_scale - 1f) < 0.002f) return;
+        Apply(Collect(e.Control!, includeRoot: true), layout, _scale);
     }
 
     private static List<(Control C, Rectangle Bounds, Padding Padding, Padding Margin, Font Font)> Collect(Control root, bool includeRoot)
@@ -185,13 +222,14 @@ internal sealed class ContentScaler
     }
 
     // Everything is read first and applied afterwards, so a parent changing size or font cannot disturb what its children report.
-    private static void Apply(List<(Control C, Rectangle Bounds, Padding Padding, Padding Margin, Font Font)> items, float r)
+    private static void Apply(List<(Control C, Rectangle Bounds, Padding Padding, Padding Margin, Font Font)> items, float layoutRatio, float fontRatio)
     {
-        int S(int v) => (int)Math.Round(v * r);
+        int S(int v) => (int)Math.Round(v * layoutRatio);
         Padding P(Padding p) => new(S(p.Left), S(p.Top), S(p.Right), S(p.Bottom));
+        bool scaleFont = Math.Abs(fontRatio - 1f) > 0.002f;
         foreach (var (c, b, pad, mar, font) in items)
         {
-            c.Font = new Font(font.FontFamily, font.SizeInPoints * r, font.Style, GraphicsUnit.Point);
+            if (scaleFont) c.Font = new Font(font.FontFamily, font.SizeInPoints * fontRatio, font.Style, GraphicsUnit.Point);
             c.Padding = P(pad);
             c.Margin = P(mar);
             c.SetBounds(S(b.X), S(b.Y), S(b.Width), S(b.Height));

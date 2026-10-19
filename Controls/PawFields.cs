@@ -549,6 +549,7 @@ internal sealed class PawDatePicker : PawDropField
     private DateTime _max = new(2100, 12, 31);
     private bool _checked = true;
     private bool _allowEmpty;
+    private HashSet<DayOfWeek>? _allowedDays;
 
     public PawDatePicker()
     {
@@ -564,7 +565,7 @@ internal sealed class PawDatePicker : PawDropField
         get => _value;
         set
         {
-            var v = Clamp(value.Date);
+            var v = Snap(Clamp(value.Date));
             if (v == _value && _checked) return;
             _value = v;
             _checked = true;
@@ -597,45 +598,68 @@ internal sealed class PawDatePicker : PawDropField
     public DateTime MinDate
     {
         get => _min;
-        set { _min = value.Date; _value = Clamp(_value); Invalidate(); }
+        set { _min = value.Date; _value = Snap(Clamp(_value)); Invalidate(); }
     }
 
     public DateTime MaxDate
     {
         get => _max;
-        set { _max = value.Date; _value = Clamp(_value); Invalidate(); }
+        set { _max = value.Date; _value = Snap(Clamp(_value)); Invalidate(); }
     }
 
+    /// <summary>
+    /// When set, only dates that fall on these weekdays can be picked (the others are greyed out in the calendar).
+    /// Null, empty or all seven days = any day.
+    /// </summary>
+    [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public IReadOnlyCollection<DayOfWeek>? AllowedDays
+    {
+        get => _allowedDays;
+        set
+        {
+            _allowedDays = value is { Count: > 0 and < 7 } ? new HashSet<DayOfWeek>(value) : null;
+            _value = Snap(Clamp(_value));
+            Invalidate();
+        }
+    }
+
+    /// <summary>True when <paramref name="d"/> is inside the date range and on an allowed weekday.</summary>
+    public bool IsSelectable(DateTime d)
+        => d.Date >= _min && d.Date <= _max && (_allowedDays is null || _allowedDays.Contains(d.DayOfWeek));
+
     private DateTime Clamp(DateTime d) => d < _min ? _min : d > _max ? _max : d;
+
+    /// <summary>The nearest selectable date on or after <paramref name="d"/> (or before it when nothing later fits).</summary>
+    private DateTime Snap(DateTime d)
+    {
+        if (_allowedDays is null || IsSelectable(d)) return d;
+        for (int i = 1; i <= 14; i++)
+            if (IsSelectable(d.AddDays(i))) return d.AddDays(i);
+        for (int i = 1; i <= 14; i++)
+            if (IsSelectable(d.AddDays(-i))) return d.AddDays(-i);
+        return d;
+    }
 
     protected override string DisplayText
         => Checked ? _value.ToString("ddd, MMM d, yyyy", CultureInfo.CurrentCulture) : "";
 
     protected override void Step(int direction)
     {
-        Value = _value.AddDays(direction);
+        for (int i = 1; i <= 400; i++)
+        {
+            var d = _value.AddDays(direction * i);
+            if (d < _min || d > _max) return;
+            if (IsSelectable(d)) { Value = d; return; }
+        }
     }
 
     protected override Control BuildPopup(int width, Action close)
     {
-        var cal = new MonthCalendar
-        {
-            MaxSelectionCount = 1,
-            ShowToday = false,
-            ShowTodayCircle = true,
-            MinDate = _min,
-            MaxDate = _max,
-            BackColor = Color.White,
-            ForeColor = Theme.Text,
-            TitleBackColor = Theme.Primary,
-            TitleForeColor = Color.White,
-            TrailingForeColor = Theme.Muted,
-            Font = Theme.Face(9f),
-            Location = new Point(0, 0),
-        };
-        cal.SetDate(Clamp(_value));
-        cal.DateSelected += (_, e) => { Value = e.Start; close(); };
-
+        // Drawn by hand (not the system MonthCalendar): that control sized itself before it had a window, so at high DPI the
+        // popup cut it off after "Thu"; this one is sized from the field's own width and can grey out days that aren't allowed.
+        int cell = Math.Max(38, width / 7);
+        var cal = new PawCalendar(cell, Clamp(_value), _min, _max, IsSelectable, highlightSelectable: _allowedDays is not null);
+        cal.DateChosen += (_, d) => { Value = d; close(); };
         var panel = new Panel { BackColor = Color.White, Size = new Size(cal.Width, cal.Height + 34) };
         panel.Controls.Add(cal);
 
@@ -648,10 +672,154 @@ internal sealed class PawDatePicker : PawDropField
             return l;
         }
 
-        if (DateTime.Today >= _min && DateTime.Today <= _max)
+        if (IsSelectable(DateTime.Today))
             panel.Controls.Add(Link("Today", 4, () => Value = DateTime.Today));
         if (_allowEmpty)
             panel.Controls.Add(Link("Clear", panel.Width - 74, () => Checked = false));
         return panel;
+    }
+}
+
+/// <summary>
+/// Month grid for <see cref="PawDatePicker"/>, drawn by hand. Days outside the allowed range (or not on an allowed weekday)
+/// are greyed out and can't be clicked; when only some weekdays are allowed, those days are tinted so they stand out.
+/// </summary>
+internal sealed class PawCalendar : Control
+{
+    private const int HeaderH = 44, WeekH = 28, RowH = 36;
+    private const TextFormatFlags Center = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
+        TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+
+    private static readonly Color Disabled = Color.FromArgb(200, 210, 224);
+
+    private readonly int _cell;
+    private readonly DateTime _min, _max, _selected;
+    private readonly Func<DateTime, bool> _selectable;
+    private readonly bool _tint;
+    private DateTime _month;
+    private DateTime? _hotDay;
+    private int _hotNav;            // -1 previous month, +1 next month, 0 none
+
+    public event EventHandler<DateTime>? DateChosen;
+
+    public PawCalendar(int cellWidth, DateTime selected, DateTime min, DateTime max, Func<DateTime, bool> selectable, bool highlightSelectable)
+    {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint |
+                 ControlStyles.ResizeRedraw, true);
+        BackColor = Color.White;
+        Font = Theme.Face(9f);
+        Cursor = Cursors.Hand;
+        _cell = cellWidth;
+        _selected = selected.Date;
+        _min = min.Date;
+        _max = max.Date;
+        _selectable = selectable;
+        _tint = highlightSelectable;
+        _month = new DateTime(_selected.Year, _selected.Month, 1);
+        Size = new Size(cellWidth * 7, HeaderH + WeekH + RowH * 6 + 4);
+    }
+
+    private static DateTime MonthOf(DateTime d) => new(d.Year, d.Month, 1);
+    private bool CanPrev => _month > MonthOf(_min);
+    private bool CanNext => _month < MonthOf(_max);
+    private Rectangle PrevRect => new(6, 6, 32, 32);
+    private Rectangle NextRect => new(Width - 38, 6, 32, 32);
+    private int Offset => (int)_month.DayOfWeek;
+
+    private Rectangle CellRect(int index)
+        => new((index % 7) * _cell, HeaderH + WeekH + (index / 7) * RowH, _cell, RowH);
+
+    private DateTime? DayAt(Point p)
+    {
+        if (p.Y < HeaderH + WeekH || p.X < 0 || p.X >= _cell * 7) return null;
+        int col = p.X / _cell, row = (p.Y - HeaderH - WeekH) / RowH;
+        int day = row * 7 + col - Offset + 1;
+        return row < 6 && day >= 1 && day <= DateTime.DaysInMonth(_month.Year, _month.Month)
+            ? new DateTime(_month.Year, _month.Month, day) : null;
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        var day = DayAt(e.Location);
+        int nav = PrevRect.Contains(e.Location) && CanPrev ? -1 : NextRect.Contains(e.Location) && CanNext ? 1 : 0;
+        if (day is { } d && !_selectable(d)) day = null;
+        if (day != _hotDay || nav != _hotNav)
+        {
+            _hotDay = day;
+            _hotNav = nav;
+            Cursor = day is not null || nav != 0 ? Cursors.Hand : Cursors.Default;
+            Invalidate();
+        }
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_hotDay is not null || _hotNav != 0) { _hotDay = null; _hotNav = 0; Invalidate(); }
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        base.OnMouseUp(e);
+        if (e.Button != MouseButtons.Left) return;
+        if (PrevRect.Contains(e.Location)) { if (CanPrev) { _month = _month.AddMonths(-1); Invalidate(); } return; }
+        if (NextRect.Contains(e.Location)) { if (CanNext) { _month = _month.AddMonths(1); Invalidate(); } return; }
+        if (DayAt(e.Location) is { } d && _selectable(d)) DateChosen?.Invoke(this, d);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        var culture = CultureInfo.CurrentCulture;
+
+        TextRenderer.DrawText(g, _month.ToString("MMMM yyyy", culture), Theme.Face(10f, FontStyle.Bold),
+            new Rectangle(40, 0, Width - 80, HeaderH), Theme.Text, Center);
+        DrawArrow(g, PrevRect, "\uE76B", CanPrev, _hotNav == -1);
+        DrawArrow(g, NextRect, "\uE76C", CanNext, _hotNav == 1);
+
+        var names = culture.DateTimeFormat.ShortestDayNames;
+        for (int c = 0; c < 7; c++)
+            TextRenderer.DrawText(g, names[c], Theme.Face(8.5f, FontStyle.Bold),
+                new Rectangle(c * _cell, HeaderH, _cell, WeekH), Theme.Muted, Center);
+
+        int days = DateTime.DaysInMonth(_month.Year, _month.Month);
+        for (int day = 1; day <= days; day++)
+        {
+            var date = new DateTime(_month.Year, _month.Month, day);
+            var cell = Rectangle.Inflate(CellRect(Offset + day - 1), -3, -2);
+            bool ok = _selectable(date);
+            bool chosen = date == _selected;
+            bool hot = _hotDay == date;
+
+            Color text = !ok ? Disabled : chosen ? Color.White : _tint ? Theme.Primary : Theme.Text;
+            var weight = chosen || (ok && _tint) ? FontStyle.Bold : FontStyle.Regular;
+
+            if (chosen || (ok && (hot || _tint)))
+            {
+                using var path = Ui.RoundRect(cell, 8);
+                using var fill = new SolidBrush(chosen ? Theme.Primary : hot ? Color.FromArgb(214, 229, 249) : Theme.PrimarySoft);
+                g.FillPath(fill, path);
+            }
+            if (date == DateTime.Today && !chosen)
+            {
+                using var path = Ui.RoundRect(cell, 8);
+                using var pen = new Pen(ok ? Theme.Primary : Disabled);
+                g.DrawPath(pen, path);
+            }
+            TextRenderer.DrawText(g, day.ToString(culture), Theme.Face(9f, weight), cell, text, Center);
+        }
+    }
+
+    private static void DrawArrow(Graphics g, Rectangle r, string glyph, bool enabled, bool hot)
+    {
+        if (hot)
+        {
+            using var path = Ui.RoundRect(r, 8);
+            using var fill = new SolidBrush(Theme.Subtle);
+            g.FillPath(fill, path);
+        }
+        TextRenderer.DrawText(g, glyph, Theme.GlyphFont(9f), r, enabled ? Theme.Text : Disabled, Center);
     }
 }

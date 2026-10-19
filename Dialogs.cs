@@ -361,10 +361,14 @@ internal sealed class EditAppointmentForm : DialogBase
         _preferred = item.PreferredDayList;
         if (_preferred.Count > 0)
         {
+            string days = PreferredDaysText.Readable(_preferred, full: true);
             AddRow("Preferred days", new Label
             {
-                Text = PreferredDaysText.Readable(_preferred, full: true) + "  (pick a date on one of these days)",
-                TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28, ForeColor = Theme.Primary,
+                Text = days,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = false,
+                Height = days.Length > 34 ? 46 : 28,
+                ForeColor = Theme.Primary,
             });
         }
         else if (isRequest)
@@ -375,16 +379,16 @@ internal sealed class EditAppointmentForm : DialogBase
         if (!string.IsNullOrWhiteSpace(item.Notes))
             AddRow("Notes", new Label { Text = item.Notes, TextAlign = ContentAlignment.TopLeft, AutoSize = false, Height = 46, ForeColor = Theme.TextSoft });
 
-        AddRow("Pet *", _pet);
+        // The employee only sets the schedule: the pet and service are what the customer asked for, shown but not editable.
+        AddRow("Pet", new Label { Text = _pet.SelectedItem ?? "\u2014", TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28 });
         var pics = new FlowLayoutPanel { Height = 128, AutoSize = false, BackColor = Color.White, WrapContents = false };
         _petPhoto.Margin = new Padding(0, 4, 12, 4);
         _petCard.Margin = new Padding(0, 4, 0, 4);
         pics.Controls.Add(_petPhoto);
         pics.Controls.Add(_petCard);
         AddRow("Photo & card", pics);
-        _pet.SelectedIndexChanged += (_, _) => LoadPetPictures();
         LoadPetPictures();
-        AddRow("Service *", _service);
+        AddRow("Service", new Label { Text = _service.SelectedItem ?? "\u2014", TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28 });
         AddRow("Date *", _date);
         AddRow("Time *", _time);
         AddRow("Groomer", _groomer);
@@ -393,11 +397,14 @@ internal sealed class EditAppointmentForm : DialogBase
         bool canConfirm = item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled;
         if (canConfirm) AddRow("", _confirm);
 
-        // An overdue appointment keeps its own (past) date until the person picks a new one.
         var original = Trim(item.Start);
-        _date.MinDate = original.Date < DateTime.Today ? original.Date : DateTime.Today;
+        bool restricted = _preferred.Count > 0;
+        // An overdue appointment keeps its own (past) date until a new one is picked, unless the customer's preferred days limit the choice.
+        _date.MinDate = !restricted && original.Date < DateTime.Today ? original.Date : DateTime.Today;
+        // Only the customer's preferred weekdays can be picked; the others are greyed out in the calendar.
+        _date.AllowedDays = restricted ? _preferred.ToList() : null;
         // A request that has no real date yet starts on the next day the customer prefers.
-        _date.Value = _preferred.Count > 0 && !_preferred.Contains(original.DayOfWeek)
+        _date.Value = restricted && (original.Date < DateTime.Today || !_preferred.Contains(original.DayOfWeek))
             ? PreferredDaysText.NextOnOrAfter(DateTime.Today, _preferred)
             : original.Date;
         _time.Value = new TimeSpan(original.Hour, original.Minute, 0);
@@ -406,7 +413,7 @@ internal sealed class EditAppointmentForm : DialogBase
         Shown += (_, _) =>
         {
             if (_pet.SelectedIndex < 0 || _service.SelectedIndex < 0)
-                ShowError("The old pet or service is no longer available. Please choose again.");
+                ShowError("The pet or service on this request is no longer available. Ask the customer to book again.");
             else if (_groomers.Count == 0 || _rooms.Count == 0)
                 ShowError("No groomers or rooms exist yet. Run Sql/appointment_scheduling.sql.");
         };
@@ -428,8 +435,11 @@ internal sealed class EditAppointmentForm : DialogBase
 
     protected override void OnSaveClicked()
     {
-        if (_pet.SelectedIndex < 0) { ShowError("Choose a pet."); return; }
-        if (_service.SelectedIndex < 0) { ShowError("Choose a service."); return; }
+        if (_pet.SelectedIndex < 0 || _service.SelectedIndex < 0)
+        {
+            ShowError("The pet or service on this request is no longer available. Ask the customer to book again.");
+            return;
+        }
 
         var start = _date.Value.Date + _time.Value;
         if (_preferred.Count > 0 && !_preferred.Contains(start.DayOfWeek))
@@ -673,8 +683,13 @@ internal sealed class FullCalendarForm : Form
         {
             var b = new Button
             {
-                Text = text, Size = new Size(width, 32), FlatStyle = FlatStyle.Flat, BackColor = Color.White,
-                ForeColor = Theme.Text, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 6, 0),
+                Text = text,
+                Size = new Size(width, 32),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                ForeColor = Theme.Text,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 0, 6, 0),
             };
             b.FlatAppearance.BorderColor = Theme.Border;
             return b;
@@ -706,21 +721,33 @@ internal sealed class FullCalendarForm : Form
 
         var close = new Button
         {
-            Text = "Close", Size = new Size(90, 32), FlatStyle = FlatStyle.Flat, BackColor = Color.White,
-            ForeColor = Theme.TextSoft, DialogResult = DialogResult.Cancel, Cursor = Cursors.Hand,
+            Text = "Close",
+            Size = new Size(90, 32),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = Color.White,
+            ForeColor = Theme.TextSoft,
+            DialogResult = DialogResult.Cancel,
+            Cursor = Cursors.Hand,
         };
         close.FlatAppearance.BorderColor = Theme.Border;
 
         var hint = new Label
         {
             Text = "Click a day to select it. Double-click to show it in the Appointments list.",
-            AutoSize = false, Width = 480, Height = 32, TextAlign = ContentAlignment.MiddleLeft, ForeColor = Theme.TextSoft,
+            AutoSize = false,
+            Width = 480,
+            Height = 32,
+            TextAlign = ContentAlignment.MiddleLeft,
+            ForeColor = Theme.TextSoft,
         };
 
         var bottom = new FlowLayoutPanel
         {
-            Dock = DockStyle.Bottom, Height = 52, FlowDirection = FlowDirection.RightToLeft,
-            Padding = new Padding(12, 10, 12, 6), BackColor = Theme.Subtle,
+            Dock = DockStyle.Bottom,
+            Height = 52,
+            FlowDirection = FlowDirection.RightToLeft,
+            Padding = new Padding(12, 10, 12, 6),
+            BackColor = Theme.Subtle,
         };
         bottom.Controls.Add(close);
         bottom.Controls.Add(_show);

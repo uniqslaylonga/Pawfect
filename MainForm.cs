@@ -9,6 +9,7 @@ internal partial class MainForm : Form
     private readonly AppointmentsPage appointmentsPage;
     private readonly BillingPage billingPage;
     private readonly LookupPage lookupPage;
+    private readonly RoomsGroomersPage roomsPage;
     private readonly string _dashboardTitle;
     private readonly string _dashboardSubtitle;
 
@@ -55,12 +56,19 @@ internal partial class MainForm : Form
         contentPanel.Controls.Add(lookupPage);
         lookupPage.BringToFront();
 
+        // Rooms & Groomers is its own page too.
+        roomsPage = new RoomsGroomersPage { Dock = DockStyle.Fill, Visible = false };
+        contentPanel.Controls.Add(roomsPage);
+        roomsPage.BringToFront();
+        roomsPage.Changed += (_, e) => AuditLog.Record(CurrentUser, e.Action, e.Detail);
+
         WireData();
 
         dashboardNav.Click += (_, _) => ShowPage(Page.Dashboard);
         appointmentsNav.Click += (_, _) => ShowPage(Page.Appointments);
         billingNav.Click += (_, _) => ShowPage(Page.Billing);
         lookupNav.Click += (_, _) => ShowPage(Page.Lookup);
+        roomsNav.Click += (_, _) => ShowPage(Page.Rooms);
         viewAppointmentsTile.Click += (_, _) => ShowPage(Page.Appointments);
 
         // Clicking the name chip (avatar, name, role or arrow) opens "My Profile".
@@ -82,7 +90,7 @@ internal partial class MainForm : Form
         }
     }
 
-    private enum Page { Dashboard, Appointments, Billing, Lookup }
+    private enum Page { Dashboard, Appointments, Billing, Lookup, Rooms }
 
     private void ShowPage(Page page) => PageFade.Swap(contentPanel, () => ShowPageCore(page));
 
@@ -92,18 +100,23 @@ internal partial class MainForm : Form
         appointmentsPage.Visible = page == Page.Appointments;
         billingPage.Visible = page == Page.Billing;
         lookupPage.Visible = page == Page.Lookup;
+        roomsPage.Visible = page == Page.Rooms;
         dashboardNav.Active = page == Page.Dashboard;
         appointmentsNav.Active = page == Page.Appointments;
         billingNav.Active = page == Page.Billing;
         lookupNav.Active = page == Page.Lookup;
+        roomsNav.Active = page == Page.Rooms;
 
         (pageTitle.Text, pageSubtitle.Text) = page switch
         {
             Page.Appointments => ("Appointments", "Manage and track customer appointments and services."),
             Page.Billing => ("Counter POS & Billing", "Process grooming services and retail sales in one transaction."),
             Page.Lookup => ("Customer & Pet Lookup", "Find customer information and their pets, view visit history, and manage records."),
+            Page.Rooms => ("Rooms & Groomers", "See who and what is available, and add or edit groomers and rooms."),
             _ => (_dashboardTitle, _dashboardSubtitle),
         };
+
+        if (page == Page.Rooms) roomsPage.Reload();
 
         // The receipt shows whoever is signed in.
         if (page == Page.Billing) billingPage.CashierName = userNameLabel.Text;
