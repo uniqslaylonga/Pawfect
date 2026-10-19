@@ -42,6 +42,7 @@ internal static class EmployeeData
         var conn = new SqlConnection(Database.ConnectionString);
         conn.Open();
         EnsureQueueColumn(conn);
+        ServicePricing.EnsureSchema(conn);   // Services.Species / MinKg / MaxKg for weight-based prices
         return conn;
     }
 
@@ -176,36 +177,17 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     public static List<ServiceOffering> GetServices()
     {
         using var conn = Open();
-        using var cmd = Cmd(conn, "SELECT ServiceId, Name, Price FROM dbo.Services WHERE IsActive = 1 ORDER BY Name");
+        using var cmd = Cmd(conn, "SELECT ServiceId, Name, Price, Species, MinKg, MaxKg FROM dbo.Services WHERE IsActive = 1 ORDER BY Name, Species, ISNULL(MinKg, 0)");
         using var r = cmd.ExecuteReader();
         var list = new List<ServiceOffering>();
-        while (r.Read()) list.Add(new ServiceOffering(r.GetInt32(0), r.GetString(1), r.GetDecimal(2)));
+        while (r.Read())
+            list.Add(new ServiceOffering(r.GetInt32(0), r.GetString(1), r.GetDecimal(2),
+                ServicePricing.BandText(r.GetString(3), r.IsDBNull(4) ? null : r.GetDecimal(4), r.IsDBNull(5) ? null : r.GetDecimal(5))));
         return list;
     }
 
-    /// <summary>
-    /// The cards on step 4 (Choose a Grooming Service): every active Grooming / Add-ons service once. A service that has
-    /// several sizes shows its "All" size row when there is one, otherwise its lowest price ("prices may vary" note).
-    /// </summary>
-    public static List<ServiceChoice> GetServiceChoices()
-    {
-        const string sql = @"
-SELECT ServiceId, Name, Price, DurationMinutes
-FROM (
-    SELECT ServiceId, Name, Price, DurationMinutes,
-           ROW_NUMBER() OVER (PARTITION BY Name ORDER BY CASE WHEN Size = N'All' THEN 0 ELSE 1 END, Price, ServiceId) AS rn
-    FROM dbo.Services
-    WHERE IsActive = 1 AND Category IN (N'Grooming', N'Add-ons')
-) x
-WHERE rn = 1
-ORDER BY Price, Name";
-        using var conn = Open();
-        using var cmd = Cmd(conn, sql);
-        using var r = cmd.ExecuteReader();
-        var list = new List<ServiceChoice>();
-        while (r.Read()) list.Add(new ServiceChoice(r.GetInt32(0), r.GetString(1), r.GetDecimal(2), r.GetInt32(3)));
-        return list;
-    }
+    /// <summary>Services priced for one pet's species and weight (see <see cref="ServicePricing"/>).</summary>
+    public static List<ServiceOffering> GetServicesForPet(int petId) => ServicePricing.GetForPet(petId);
 
     public static List<ProductItem> GetProducts()
     {
@@ -223,7 +205,7 @@ ORDER BY Price, Name";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N'')
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -243,7 +225,7 @@ ORDER BY a.StartTime";
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
                 r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12),
-                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14)));
+                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15)));
         }
         return list;
     }

@@ -495,7 +495,11 @@ internal sealed class ServiceListForm : DialogBase
         var services = EmployeeData.GetServices();
         box.Text = services.Count == 0
             ? "No services exist yet. An admin needs to add them."
-            : string.Join(Environment.NewLine, services.Select(s => $"{s.Name}  -  {Money.Format(s.Price)}"));
+            : string.Join(Environment.NewLine, services.GroupBy(s => s.Name).SelectMany(g =>
+                g.Count() == 1 && g.First().Detail.Length == 0
+                    ? new[] { $"{g.Key}  -  {Money.Format(g.First().Price)}" }
+                    // one price per weight band: the service name once, then a line per band
+                    : new[] { g.Key }.Concat(g.Select(s => $"      {(s.Detail.Length > 0 ? s.Detail : "All sizes")}  -  {Money.Format(s.Price)}"))));
         AddRow("Services", box);
         SaveButton.Visible = false;
         CancelButtonControl.Text = "Close";

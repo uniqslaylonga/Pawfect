@@ -47,7 +47,7 @@ internal static class CustomerFlow
     {
         try
         {
-            var service = EmployeeData.GetServices().FirstOrDefault(x => string.Equals(x.Name, serviceName, StringComparison.OrdinalIgnoreCase));
+            var service = ServicePricing.Find(serviceName, petId);   // the service priced for this pet's weight
             if (service is null)
             {
                 Msg.Show(null, "That service isn't available right now. Please pick another one.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);

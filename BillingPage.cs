@@ -248,8 +248,9 @@ internal partial class BillingPage : UserControl
         _selected = appointment;
         customerSearch.Box.Text = "";
 
-        var service = _services.FirstOrDefault(s =>
-            string.Equals(s.Name, appointment.Service, StringComparison.OrdinalIgnoreCase));
+        // The appointment already points at the exact priced row (weight band); older bookings are matched by name.
+        var service = _services.FirstOrDefault(s => appointment.ServiceId != 0 && s.Id == appointment.ServiceId)
+                      ?? _services.FirstOrDefault(s => string.Equals(s.Name, appointment.Service, StringComparison.OrdinalIgnoreCase));
         if (service is not null)
             _cart.Add(new CartLine(CartLineKind.Service, service.Id, service.Name, appointment.PetName, service.Price, 1, true));
 
@@ -340,7 +341,7 @@ internal partial class BillingPage : UserControl
             foreach (var s in _services.Where(s => query.Length == 0 || Has(s.Name, query)).OrderBy(s => s.Name))
             {
                 var service = s;
-                var row = new CatalogRowView(service, "\uE734", service.Name, "", Money.Format(service.Price), "Add");
+                var row = new CatalogRowView(service, "\uE734", service.Name, service.Detail, Money.Format(service.Price), "Add");
                 row.ActionClicked += (_, _) => AddService(service);
                 rows.Add(row);
             }

@@ -51,6 +51,16 @@ internal sealed class OtpBox : CardPanel
         LayoutBox();
     }
 
+    // When the form is scaled for the screen's DPI (125%, 150%, 200%...), WinForms resizes this box and THEN scales its
+    // child TextBox by the same factor on top of the bounds LayoutBox just set. The TextBox ends up too wide and shifted
+    // right: it paints white over the right border and rounded corners and pushes the digit off-centre. Re-centring it
+    // once the scaling pass has finished layout puts it back inside the border.
+    protected override void OnLayout(LayoutEventArgs levent)
+    {
+        base.OnLayout(levent);
+        LayoutBox();
+    }
+
     // Keeps the digit centred inside the rounded border, whatever the box size is.
     private void LayoutBox()
     {

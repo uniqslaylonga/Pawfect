@@ -12,6 +12,7 @@ internal sealed partial class AddPetForm
 {
     private Panel? _servicePanel;
     private Panel? _serviceScroll;
+    private Label? _serviceNote;
     private readonly List<ServiceCard> _serviceCards = new();
     private ServiceChoice? _chosenServiceChoice;
     private readonly List<CheckBox> _dayChips = new();
@@ -28,7 +29,12 @@ internal sealed partial class AddPetForm
     private void ShowServiceStepCore()
     {
         List<ServiceChoice> choices;
-        try { choices = EmployeeData.GetServiceChoices(); }
+        decimal? weightKg = null;
+        try
+        {
+            choices = ServicePricing.GetChoices(_vaccinePetId);   // priced for this pet's weight and species
+            weightKg = ServicePricing.GetPet(_vaccinePetId)?.WeightKg;
+        }
         catch (SqlException) { choices = new List<ServiceChoice>(); }
 
         if (choices.Count == 0)
@@ -40,6 +46,9 @@ internal sealed partial class AddPetForm
         }
 
         EnsureServicePanel();
+        _serviceNote!.Text = weightKg is decimal kg && kg > 0
+            ? $"Prices are based on your pet's weight ({kg:0.##} kg). The final price may change with coat condition or matting."
+            : "Prices depend on your pet's weight and condition.";
         foreach (var chip in _dayChips) chip.Checked = false;   // a fresh visit: no days picked yet
         HideVaccineStep();   // hides the vaccine panel and resets the title position; the step dots are set below
 
@@ -130,7 +139,7 @@ internal sealed partial class AddPetForm
 
         var note = new Label
         {
-            Text = "Prices may vary depending on your pet's size and condition.",
+            Text = "Prices depend on your pet's weight and condition.",
             Location = new Point(40, 268),
             Size = new Size(820, 38),
             BackColor = Color.FromArgb(222, 235, 254),
@@ -140,6 +149,7 @@ internal sealed partial class AddPetForm
             Padding = new Padding(14, 0, 0, 0),
         };
 
+        _serviceNote = note;
         _servicePanel.Controls.Add(_serviceScroll);
         _servicePanel.Controls.Add(note);
         ContentHost.Controls.Add(_servicePanel);

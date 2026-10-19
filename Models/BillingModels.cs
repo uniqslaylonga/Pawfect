@@ -6,7 +6,8 @@ namespace MyApp;
 internal sealed record ProductItem(int Id, string Code, string Name, string Category, decimal Price);
 
 /// <summary>A grooming / care service that can be billed. Pass these to <c>BillingPage.SetServices</c>.</summary>
-internal sealed record ServiceOffering(int Id, string Name, decimal Price);
+/// <param name="Detail">Small grey text under the name, e.g. "Dog \u00b7 up to 5 kg" when the same service has one price per weight band.</param>
+internal sealed record ServiceOffering(int Id, string Name, decimal Price, string Detail = "");
 
 internal enum CartLineKind
 {

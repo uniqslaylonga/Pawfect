@@ -14,7 +14,8 @@ internal sealed class NewAppointmentForm : DialogBase
     private readonly string _staffEmail;
     private readonly List<CustomerRecord> _customers;
     private readonly List<PetRecord> _allPets;
-    private readonly List<ServiceOffering> _services;
+    private List<ServiceOffering> _services = new();   // the services that fit the chosen pet (its weight band)
+    private bool _noServicesAtAll;
     private readonly List<GroomerOption> _groomers;
     private readonly List<RoomOption> _rooms;
     private List<PetRecord> _pets = new();
@@ -37,12 +38,11 @@ internal sealed class NewAppointmentForm : DialogBase
         _staffEmail = staffEmail;
         _customers = EmployeeData.GetCustomers().OrderBy(c => c.Name).ToList();
         _allPets = EmployeeData.GetPets();
-        _services = EmployeeData.GetServices();
+        _noServicesAtAll = EmployeeData.GetServices().Count == 0;
         _groomers = EmployeeData.GetGroomers();
         _rooms = EmployeeData.GetRooms();
 
         _customer.Items.AddRange(_customers.Select(c => (object)(string.IsNullOrWhiteSpace(c.Phone) ? c.Name : $"{c.Name}  \u00b7  {c.Phone}")).ToArray());
-        _service.Items.AddRange(_services.Select(s => (object)$"{s.Name}  \u00b7  {Money.Format(s.Price)}").ToArray());
         _groomer.Items.Add(NotAssigned);
         _groomer.Items.AddRange(_groomers.Select(g => (object)g.Name).ToArray());
         _groomer.SelectedIndex = 0;
@@ -66,6 +66,7 @@ internal sealed class NewAppointmentForm : DialogBase
         _time.Value = new TimeSpan(Math.Clamp(next.Hour, 6, 22), 0, 0);
 
         _customer.SelectedIndexChanged += (_, _) => LoadPets();
+        _pet.SelectedIndexChanged += (_, _) => LoadServices();   // the price depends on the pet's weight
         if (customerId is int id)
             _customer.SelectedIndex = _customers.FindIndex(c => c.Id == id);
 
@@ -74,7 +75,7 @@ internal sealed class NewAppointmentForm : DialogBase
         Shown += (_, _) =>
         {
             if (_customers.Count == 0) ShowError("There are no customers yet. Add a customer first.");
-            else if (_services.Count == 0) ShowError("There are no services yet. Ask an admin to add them to the catalog.");
+            else if (_noServicesAtAll) ShowError("There are no services yet. Ask an admin to add them to the catalog.");
             else if (_groomers.Count == 0 || _rooms.Count == 0) ShowError("No groomers or rooms exist yet. Run Sql/appointment_scheduling.sql.");
         };
     }
@@ -87,10 +88,32 @@ internal sealed class NewAppointmentForm : DialogBase
             : _allPets.Where(p => p.CustomerId == _customers[_customer.SelectedIndex].Id).ToList();
         _pet.Items.AddRange(_pets.Select(p => (object)(string.IsNullOrWhiteSpace(p.Breed) ? p.Name : $"{p.Name}  \u00b7  {p.Breed}")).ToArray());
         _pet.SelectedIndex = _pets.Count > 0 ? 0 : -1;
+        LoadServices();   // also when no pet is left to pick (the pet drop-down raises no change then)
         if (_customer.SelectedIndex >= 0 && _pets.Count == 0)
             ShowError("This customer has no pets yet. Add a pet first (Customer & Pet Look Up \u2192 ... \u2192 Add pet).");
         else
             ShowError("");
+    }
+
+    /// <summary>Lists the services priced for the chosen pet's species and weight (the name is the same for every weight).</summary>
+    private void LoadServices()
+    {
+        _service.Items.Clear();
+        try
+        {
+            _services = _pet.SelectedIndex >= 0 && _pet.SelectedIndex < _pets.Count
+                ? EmployeeData.GetServicesForPet(_pets[_pet.SelectedIndex].Id)
+                : new List<ServiceOffering>();
+        }
+        catch (SqlException ex)
+        {
+            _services = new List<ServiceOffering>();
+            ShowDatabaseError(this, ex);
+        }
+        _service.Items.AddRange(_services.Select(s => (object)(s.Detail.Length > 0
+            ? $"{s.Name} ({s.Detail})  \u00b7  {Money.Format(s.Price)}"
+            : $"{s.Name}  \u00b7  {Money.Format(s.Price)}")).ToArray());
+        _service.SelectedIndex = -1;
     }
 
     protected override void OnSaveClicked()

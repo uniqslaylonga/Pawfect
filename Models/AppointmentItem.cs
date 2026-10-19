@@ -26,7 +26,8 @@ internal sealed record AppointmentItem(
     string Notes = "",
     string QueueNumber = "",
     byte[]? PetPhoto = null,
-    string PreferredDays = "")   // comma list the customer picked, e.g. "Tue,Wed" (empty = no preference / older requests)
+    string PreferredDays = "",   // comma list the customer picked, e.g. "Tue,Wed" (empty = no preference / older requests)
+    int ServiceId = 0)           // the exact dbo.Services row booked (the weight band, so billing uses the same price)
 {
     /// <summary>The preferred days as day-of-week values (empty when the customer didn't pick any).</summary>
     public IReadOnlyList<DayOfWeek> PreferredDayList => PreferredDaysText.Parse(PreferredDays);
