@@ -133,6 +133,11 @@ internal sealed class PawMenuItem : ToolStripMenuItem
     private const TextFormatFlags CenterFlags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
 
+    private const TextFormatFlags MeasureFlags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+    private const int ActionTrailing = 30;   // room kept free on the right of an action row for the check / arrow
+
+    private int ActionTextX => Glyph.Length > 0 ? 44 : 12;
+
     public PawMenuItem(MenuKind kind, string text) : base(text)
     {
         Kind = kind;
@@ -163,7 +168,11 @@ internal sealed class PawMenuItem : ToolStripMenuItem
             case MenuKind.Button: return new Size(PreferredWidth, 38);
             case MenuKind.Empty: return new Size(PreferredWidth, 110);
             default:
-                int w = TextRenderer.MeasureText(Text, Theme.Face(9f, FontStyle.Bold)).Width + (Glyph.Length > 0 ? 62 : 32);
+                // Mirror PaintAction exactly: text starts at ActionTextX, and PaintAction keeps ActionTrailing px free on the
+                // right for the check / arrow. Measure with the same NoPadding flags the text is drawn with, otherwise the
+                // row comes out a few pixels too narrow and long labels ("New appointment") get an ellipsis.
+                int textW = TextRenderer.MeasureText(Text, Theme.Face(9f, FontStyle.Bold), Size.Empty, MeasureFlags).Width;
+                int w = ActionTextX + textW + ActionTrailing + 8;
                 return new Size(Math.Max(PreferredWidth, w), 38);
         }
     }
@@ -202,18 +211,17 @@ internal sealed class PawMenuItem : ToolStripMenuItem
 
         if (hot) FillRound(g, new Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1), 8, Tone == MenuTone.Neutral ? Theme.SubtleHover : soft);
 
-        int textX = 12;
+        int textX = ActionTextX;
         if (Glyph.Length > 0)
         {
             // Icon chip: soft tint normally, solid colour with a white icon on hover.
             var chip = new Rectangle(8, (r.Height - 26) / 2, 26, 26);
             FillRound(g, chip, 8, hot ? fore : soft);
             TextRenderer.DrawText(g, Glyph, Theme.GlyphFont(10f), chip, hot ? Color.White : fore, CenterFlags);
-            textX = 44;
         }
 
         TextRenderer.DrawText(g, Text, Theme.Face(9f, FontStyle.Bold),
-            new Rectangle(textX, 0, r.Width - textX - 30, r.Height),
+            new Rectangle(textX, 0, r.Width - textX - ActionTrailing, r.Height),
             Tone == MenuTone.Neutral ? Theme.Text : fore, LineFlags);
 
         if (Checked)

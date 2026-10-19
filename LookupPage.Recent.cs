@@ -175,9 +175,12 @@ internal sealed class RecentLookupRowView : Control
         TextRenderer.DrawText(g, Initials(_name), Theme.Face(9f, FontStyle.Bold), avatar, Theme.Primary,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
 
-        int whenW = 64;
+        // Measure the timestamp instead of using a fixed 64px: "10:45 AM" / "12 min ago" outgrow that at higher DPI.
+        var whenFont = Theme.Face(8f);
+        int whenW = TextRenderer.MeasureText(_when, whenFont, Size.Empty,
+            TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Width + 4;
         int tx = avatar.Right + 10;
-        TextRenderer.DrawText(g, _when, Theme.Face(8f), new Rectangle(Width - whenW - 8, 8, whenW, 20), Theme.Muted,
+        TextRenderer.DrawText(g, _when, whenFont, new Rectangle(Width - whenW - 8, 8, whenW, 20), Theme.Muted,
             TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
         TextRenderer.DrawText(g, _name, Theme.Face(9.5f, FontStyle.Bold), new Rectangle(tx, 8, Math.Max(10, Width - tx - whenW - 14), 20), Theme.Text, LineFlags);
         TextRenderer.DrawText(g, _sub, Theme.Face(8.5f), new Rectangle(tx, 28, Math.Max(10, Width - tx - 8), 18), Theme.Muted, LineFlags);
