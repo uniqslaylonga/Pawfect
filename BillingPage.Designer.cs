@@ -446,15 +446,15 @@ namespace MyApp
             // 
             // chipsFlow
             // 
-            chipsFlow.AutoSize = true;
-            chipsFlow.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            chipsFlow.AutoScroll = true;
+            chipsFlow.AutoSize = false;
             chipsFlow.BackColor = Color.White;
             chipsFlow.Controls.Add(allChip);
             chipsFlow.Dock = DockStyle.Fill;
             chipsFlow.Location = new Point(0, 122);
             chipsFlow.Margin = new Padding(0, 0, 0, 4);
             chipsFlow.Name = "chipsFlow";
-            chipsFlow.Size = new Size(248, 32);
+            chipsFlow.Size = new Size(248, 70);   // two rows of chips, then it scrolls, so the product list below always keeps its room
             chipsFlow.TabIndex = 3;
             // 
             // allChip
