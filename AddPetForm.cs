@@ -12,16 +12,11 @@ namespace MyApp;
 internal sealed partial class AddPetForm : Form
 {
     private readonly TextBox[] _otpBoxes;
-    private int _customerId;
-    private string _ownerName = "";
+    private readonly int _customerId;
+    private readonly string _ownerName = "";
     private readonly string _loginEmail = "";
     private readonly string _profileEmail = "";
-    private string _profilePhone = "";
-
-    private readonly bool _kiosk;          // walk-in at the kiosk: no login, the customer is found (or created) from the email
-    private readonly bool _skipContactStep;   // signed in with an account the clinic set up: step 1 (email code) is already done
-    private string _contactMobile = "";
-    private string _typedName = "";        // kiosk: the name typed in step 1 (saved on the customer record once the code is right)
+    private readonly string _profilePhone = "";
 
     private readonly List<PetCard> _petCards = new();
     private PetCard? _chosenCard;
@@ -34,12 +29,6 @@ internal sealed partial class AddPetForm : Form
     /// <summary>Set when a new pet was saved.</summary>
     public int? CreatedPetId { get; private set; }
 
-    /// <summary>The customer this visit belongs to (kiosk: known once the code is verified).</summary>
-    public int CustomerId => _customerId;
-
-    /// <summary>The email the code was sent to and verified (kiosk).</summary>
-    public string ContactEmail { get; private set; } = "";
-
     /// <summary>Set when the customer picked an existing pet and pressed Continue: the caller opens the appointment request.</summary>
     public int? ChosenPetId { get; private set; }
 
@@ -47,29 +36,9 @@ internal sealed partial class AddPetForm : Form
     public AddPetForm()
     {
         InitializeComponent();
-        _otpBoxes = new[] { otpBox1.Box, otpBox2.Box, otpBox3.Box, otpBox4.Box, otpBox5.Box, otpBox6.Box };
-        foreach (var b in _otpBoxes) b.Enabled = false;   // switched on once the code has been sent
+        _otpBoxes = new[] { otpBox1, otpBox2, otpBox3, otpBox4, otpBox5, otpBox6 };
         WireUp();
         ShowContactStep();
-        _host = FullScreen.Apply(this, centerContent: true, out _scaler);   // full screen; the fixed-size steps are scaled up and centred
-    }
-
-    private Control? _host;                       // the centred panel that holds the steps (the form itself when not wrapped)
-    private ContentScaler? _scaler;
-    private Control ContentHost => _host ?? this;
-
-    /// <summary>A point written in the original 900 x 540 design, moved to where it belongs at the current size.</summary>
-    private Point Px(int x, int y)
-    {
-        float k = _scaler?.LayoutScale ?? 1f;   // design pixels x screen DPI x content scale
-        return new Point((int)Math.Round(x * k), (int)Math.Round(y * k));
-    }
-
-    /// <summary>Kiosk mode: opens on step 1 with nothing filled in.</summary>
-    public AddPetForm(bool kiosk) : this()
-    {
-        _kiosk = kiosk;
-        ownerLabel.Text = "";
     }
 
     public AddPetForm(int customerId, string ownerName, string loginEmail) : this()
@@ -82,11 +51,6 @@ internal sealed partial class AddPetForm : Form
 
         try { (_profileEmail, _profilePhone) = EmployeeData.GetCustomerContact(customerId); }
         catch (SqlException) { /* the check below falls back to the login email only */ }
-
-        // The account was set up (and linked to this customer) by the clinic and the password was just checked at login,
-        // so there is no email code to enter: go straight to step 2, Select a Pet.
-        _skipContactStep = true;
-        ShowSelectStep();
     }
 
     // ------------------------------------------------------------------ wiring
@@ -108,12 +72,8 @@ internal sealed partial class AddPetForm : Form
         backButton.Click += (_, _) => GoBack();
         resendTimer.Tick += (_, _) => TickResend();
 
-        nameField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         emailField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         mobileField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
-        mobileField.Box.MaxLength = 20;
-        mobileField.Box.KeyPress += MobileBox_KeyPress;      // no letters while typing
-        mobileField.Box.TextChanged += MobileBox_TextChanged; // ...or when pasting
         petNameField.Box.TextChanged += (_, _) => petErrorLabel.Text = "";
         petNameField.Box.MaxLength = 60;
         speciesField.Box.MaxLength = 30;
@@ -137,7 +97,7 @@ internal sealed partial class AddPetForm : Form
             else if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
+                if (VaccineStepVisible) ContinueWithPet();
                 else if (selectPanel.Visible) { if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
                 else if (_otpBoxes.Any(b => b.Focused) || verifyButton.Enabled) VerifyCode();
                 else SendOtp();
@@ -157,27 +117,7 @@ internal sealed partial class AddPetForm : Form
             ShowContactError("Enter a valid email address, like example@email.com.");
             return;
         }
-        string typedName = nameField.Value.Trim();
-        if (_kiosk && !LookUpKioskCustomer(email)) return;
-        if (_kiosk)
-        {
-            // a returning customer can leave the name blank (the one on file is used); a new customer must give one
-            if (typedName.Length == 0 && _customerId == 0)
-            {
-                ShowContactError("Please enter your full name.");
-                return;
-            }
-            if (typedName.Length > 100)
-            {
-                ShowContactError("That name is too long (100 characters at most).");
-                return;
-            }
-            if (typedName.Length == 0) nameField.Box.Text = typedName = _ownerName;   // show the name on file
-            _typedName = typedName;
-            if (_customerId == 0) _ownerName = typedName;                              // the email greets them by name
-        }
         string mobile = mobileField.Value.Trim();
-        _contactMobile = mobile;
         if (mobile.Length > 0 && !MobileMatches(mobile))
         {
             ShowContactError("That mobile number doesn't match the one on your account.");
@@ -188,8 +128,7 @@ internal sealed partial class AddPetForm : Form
         sendOtpButton.Text = "Sending…";
         try
         {
-            _challenge = await EmailOtp.SendAsync(email, _ownerName.Length > 0 ? _ownerName : "there");
-            ContactEmail = email;
+            _challenge = await EmailOtp.SendAsync(email, _ownerName);
             otpHint.Text = $"We've sent a 6-digit code to {MaskEmail(email)}.";
             otpErrorLabel.Text = "";
             contactErrorLabel.Text = "";
@@ -224,63 +163,7 @@ internal sealed partial class AddPetForm : Form
             _otpBoxes[0].Focus();
             return;
         }
-        if (_kiosk && !EnsureKioskCustomer()) return;
         ShowSelectStep();
-    }
-
-    // ---- kiosk: the customer is found by email (or created once the code is right)
-
-    private bool LookUpKioskCustomer(string email)
-    {
-        try
-        {
-            if (EmployeeData.FindCustomerByEmail(email) is { } found)
-            {
-                _customerId = found.Id;
-                _ownerName = found.Name;
-                _profilePhone = EmployeeData.GetCustomerContact(found.Id).Phone;
-            }
-            else
-            {
-                _customerId = 0;
-                _ownerName = "";
-                _profilePhone = "";
-            }
-            return true;
-        }
-        catch (SqlException)
-        {
-            ShowContactError("Can't reach the database.");
-            return false;
-        }
-    }
-
-    private bool EnsureKioskCustomer()
-    {
-        try
-        {
-            if (_customerId == 0)
-            {
-                // first visit: a record is made with the name typed in step 1 (the email's first part only if it was somehow left empty)
-                string name = _typedName.Length > 0 ? _typedName
-                    : ContactEmail.Contains('@') ? ContactEmail[..ContactEmail.IndexOf('@')] : ContactEmail;
-                _ownerName = name.Length > 100 ? name[..100] : name;
-                _customerId = EmployeeData.AddCustomer(_ownerName, _contactMobile, ContactEmail, "");
-            }
-            else if (_typedName.Length > 0 && !string.Equals(_typedName, _ownerName, StringComparison.Ordinal))
-            {
-                // returning customer corrected their name: the employee side shows the new one
-                EmployeeData.UpdateCustomerName(_customerId, _typedName);
-                _ownerName = _typedName;
-            }
-            ownerLabel.Text = "Registering a new pet for " + _ownerName;
-            return true;
-        }
-        catch (SqlException ex)
-        {
-            otpErrorLabel.Text = "Couldn't set up your record. " + ex.Message;
-            return false;
-        }
     }
 
     private void StartCountdown()
@@ -313,27 +196,6 @@ internal sealed partial class AddPetForm : Form
     }
 
     private void ShowContactError(string message) => contactErrorLabel.Text = message;
-
-    // ---- mobile number: digits (and + - ( ) space) only
-
-    private static bool IsPhoneChar(char c) => char.IsAsciiDigit(c) || c is ' ' or '+' or '-' or '(' or ')';
-
-    private void MobileBox_KeyPress(object? sender, KeyPressEventArgs e)
-    {
-        if (!char.IsControl(e.KeyChar) && !IsPhoneChar(e.KeyChar)) e.Handled = true;
-    }
-
-    private void MobileBox_TextChanged(object? sender, EventArgs e)
-    {
-        var box = mobileField.Box;
-        string clean = new(box.Text.Where(IsPhoneChar).ToArray());
-        if (clean == box.Text) return;
-
-        // Pasted letters are dropped; keep the cursor where the person expects it.
-        int caret = box.SelectionStart - box.Text.Take(box.SelectionStart).Count(c => !IsPhoneChar(c));
-        box.Text = clean;
-        box.SelectionStart = Math.Clamp(caret, 0, clean.Length);
-    }
 
     // ---- the six boxes
 
@@ -449,12 +311,6 @@ internal sealed partial class AddPetForm : Form
 
     private void ContinueWithPet()
     {
-        if (ServiceStepVisible)
-        {
-            FinishServiceStep();   // step 4: on to the appointment request with this service
-            return;
-        }
-
         // on the vaccine step Continue scans the card first, then moves on (a card that is already on file and valid just moves on)
         if (VaccineStepVisible)
         {
@@ -480,12 +336,6 @@ internal sealed partial class AddPetForm : Form
             petNameField.Box.Focus();
             return;
         }
-        if (!PetNameRules.IsValid(petNameField.Value))
-        {
-            petErrorLabel.Text = PetNameRules.Hint;
-            petNameField.Box.Focus();
-            return;
-        }
         try
         {
             CreatedPetId = EmployeeData.AddPet(_customerId, petNameField.Value, speciesField.Value, breedField.Value);
@@ -499,9 +349,7 @@ internal sealed partial class AddPetForm : Form
 
     // ------------------------------------------------------------------ moving between steps
 
-    private void ShowContactStep() => PageFade.Swap(ContentHost, ShowContactStepCore);
-
-    private void ShowContactStepCore()
+    private void ShowContactStep()
     {
         HideVaccineStep();
         selectPanel.Visible = false;
@@ -513,9 +361,7 @@ internal sealed partial class AddPetForm : Form
         stepSelect.State = StepState.Pending;
     }
 
-    private void ShowSelectStep() => PageFade.Swap(ContentHost, ShowSelectStepCore);
-
-    private void ShowSelectStepCore()
+    private void ShowSelectStep()
     {
         resendTimer.Stop();
         HideVaccineStep();
@@ -531,21 +377,9 @@ internal sealed partial class AddPetForm : Form
 
     private void GoBack()
     {
-        if (ServiceStepVisible)
-        {
-            BackToVaccineStep();
-            return;
-        }
         if (VaccineStepVisible)
         {
             ShowSelectStep();   // back to the pet list (a pet saved a moment ago is in it now)
-            return;
-        }
-        if (selectPanel.Visible && _skipContactStep)
-        {
-            // Signed in: there is no step 1 to go back to, so Back returns to the landing screen.
-            DialogResult = DialogResult.Cancel;
-            Close();
             return;
         }
         if (selectPanel.Visible)

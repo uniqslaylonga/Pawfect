@@ -11,6 +11,15 @@ namespace MyApp;
 /// </summary>
 internal partial class ServiceCatalogPage : UserControl
 {
+    public event Action<RoomRepository.RoomRow>? RoomEditRequested;
+    public event Action<int, string>? RoomStatusRequested;
+
+    private readonly Panel roomFeed = new() { Dock = DockStyle.Fill, BackColor = Color.White, AutoScroll = true, Visible = false };
+    public event Action<ServiceRepository.ServiceRow>? EditRequested;
+    public event Action<int, bool>? ToggleActiveRequested;
+
+    private List<ServiceRepository.ServiceRow> _allServices = new();
+
     /// <summary>"+ Add Service" or the "Add New Service" quick action was clicked.</summary>
     public event EventHandler? AddServiceRequested;
 
@@ -36,8 +45,225 @@ internal partial class ServiceCatalogPage : UserControl
 
         listViewToggle.Click += (_, _) => SetView(list: true);
         gridViewToggle.Click += (_, _) => SetView(list: false);
+        serviceSearch.Box.TextChanged += (_, _) => ApplyServiceFilter();
     }
 
+    public void LoadServices(List<ServiceRepository.ServiceRow> services)
+    {
+        _allServices = services;
+        ApplyServiceFilter();
+    }
+
+    private void ApplyServiceFilter()
+    {
+        string q = serviceSearch.Value.Trim();
+        var shown = _allServices.Where(s =>
+            q.Length == 0 ||
+            s.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+            s.Category.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        serviceRows.SuspendLayout();
+
+        foreach (var old in serviceRows.Controls.Cast<Control>().Where(c => c != serviceEmpty).ToList())
+        {
+            serviceRows.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        serviceEmpty.Visible = shown.Count == 0;
+
+        for (int i = shown.Count - 1; i >= 0; i--)
+            serviceRows.Controls.Add(BuildServiceRow(shown[i]));
+
+        // Tiles and category counts always cover every service, not just the search result.
+        var active = _allServices.Where(s => s.Active).ToList();
+        svcTotalValue.Text = _allServices.Count.ToString();
+        svcPriceValue.Text = active.Count == 0 ? "₱0" : "₱" + active.Average(s => s.Price).ToString("N2");
+        svcDurationValue.Text = active.Count == 0 ? "0 min" : $"{active.Average(s => s.DurationMinutes):0} min";
+
+        catGroomingCount.Text = _allServices.Count(s => s.Category == "Grooming").ToString();
+        catHealthCount.Text = _allServices.Count(s => s.Category == "Health & Wellness").ToString();
+        catAddOnsCount.Text = _allServices.Count(s => s.Category == "Add-ons").ToString();
+        catOthersCount.Text = _allServices.Count(s => s.Category == "Others").ToString();
+
+        serviceShowing.Text = shown.Count == 0
+            ? "No services"
+            : $"Showing 1 to {shown.Count} of {_allServices.Count} services";
+
+        serviceRows.ResumeLayout(true);
+        popularCard.Controls.Add(roomFeed);
+        roomFeed.BringToFront();
+        popularTitle.Text = "Grooming Rooms";
+        popularEmpty.Title = "No rooms yet";
+        popularEmpty.Hint = "Use Manage Rooms to add your grooming rooms.";
+        timeSlotsTitle.Text = "Manage Rooms";
+        timeSlotsDesc.Text = "Add or edit grooming rooms";
+    }
+
+    public void LoadRooms(List<RoomRepository.RoomRow> rooms)
+    {
+        var active = rooms.Where(r => r.Active).ToList();
+        popularTitle.Text = active.Count == 0
+            ? "Grooming Rooms"
+            : $"Grooming Rooms ({active.Count(r => r.Status == "Available")}/{active.Count} free)";
+
+        roomFeed.SuspendLayout();
+        foreach (var old in roomFeed.Controls.Cast<Control>().ToList())
+        {
+            roomFeed.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        for (int i = active.Count - 1; i >= 0; i--)
+            roomFeed.Controls.Add(BuildRoomRow(active[i]));
+
+        popularEmpty.Visible = active.Count == 0;
+        roomFeed.Visible = active.Count > 0;
+        roomFeed.ResumeLayout(true);
+    }
+
+    private Control BuildRoomRow(RoomRepository.RoomRow room)
+    {
+        Color statusColor = room.Status switch
+        {
+            "Available" => Color.FromArgb(46, 158, 91),
+            "Occupied" => Color.FromArgb(220, 53, 69),
+            _ => Color.FromArgb(217, 119, 6),   // Cleaning
+        };
+
+        var host = new Panel { Dock = DockStyle.Fill, BackColor = Color.White, Padding = new Padding(2, 8, 0, 0) };
+        host.Controls.Add(new Label
+        {
+            Text = room.Type,
+            Dock = DockStyle.Top,
+            Height = 16,
+            AutoEllipsis = true,
+            UseMnemonic = false,
+            Font = new Font("Segoe UI", 8F),
+            ForeColor = Color.FromArgb(122, 136, 156),
+            BackColor = Color.White,
+        });
+        host.Controls.Add(new Label
+        {
+            Text = room.Name,
+            Dock = DockStyle.Top,
+            Height = 20,
+            AutoEllipsis = true,
+            UseMnemonic = false,
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(31, 42, 60),
+            BackColor = Color.White,
+        });
+
+        // Click the status to move it: Available -> Occupied -> Cleaning -> Available.
+        var status = new Label
+        {
+            Text = room.Status,
+            Dock = DockStyle.Right,
+            Width = 74,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+            ForeColor = statusColor,
+            BackColor = Color.White,
+            Cursor = Cursors.Hand,
+            UseMnemonic = false,
+        };
+        status.Click += (_, _) =>
+        {
+            int next = (Array.IndexOf(RoomRepository.Statuses, room.Status) + 1) % RoomRepository.Statuses.Length;
+            RoomStatusRequested?.Invoke(room.Id, RoomRepository.Statuses[next]);
+        };
+
+        var edit = new Label
+        {
+            Text = "Edit",
+            Dock = DockStyle.Right,
+            Width = 38,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Color.FromArgb(58, 123, 213),
+            BackColor = Color.White,
+            Cursor = Cursors.Hand,
+            UseMnemonic = false,
+        };
+        edit.Click += (_, _) => RoomEditRequested?.Invoke(room);
+
+        var row = new Panel { Dock = DockStyle.Top, Height = 50, BackColor = Color.White };
+        row.Controls.Add(host);    // Fill first, then the right-hand pieces
+        row.Controls.Add(status);
+        row.Controls.Add(edit);
+        return row;
+    }
+    private Control BuildServiceRow(ServiceRepository.ServiceRow s)
+    {
+        var grid = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.White,
+            Margin = Padding.Empty,
+            ColumnCount = serviceColumnsGrid.ColumnCount,
+            RowCount = 1,
+        };
+        foreach (ColumnStyle cs in serviceColumnsGrid.ColumnStyles)
+            grid.ColumnStyles.Add(new ColumnStyle(cs.SizeType, cs.Width));
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+        void Put(Control header, string text, Color? color = null)
+        {
+            grid.Controls.Add(new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                UseMnemonic = false,
+                BackColor = Color.White,
+                ForeColor = color ?? Color.FromArgb(31, 42, 60),
+                Font = new Font("Segoe UI", 9F),
+            }, serviceColumnsGrid.GetColumn(header), 0);
+        }
+
+        Put(serviceColService, s.Name);
+        Put(serviceColCategory, s.Category);
+        Put(serviceColSize, s.Size);
+        Put(serviceColDuration, s.DurationMinutes + " min");
+        Put(serviceColPrice, "₱" + s.Price.ToString("N2"));
+        Put(serviceColStatus, s.Active ? "Active" : "Inactive",
+            s.Active ? Color.FromArgb(46, 158, 91) : Color.FromArgb(122, 136, 156));
+
+        var actions = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = Color.White,
+            WrapContents = false,
+            Margin = Padding.Empty,
+            Padding = new Padding(0, 14, 0, 0),
+        };
+        Label Link(string text, Action onClick)
+        {
+            var l = new Label
+            {
+                Text = text,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 14, 0),
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(58, 123, 213),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                UseMnemonic = false,
+            };
+            l.Click += (_, _) => onClick();
+            return l;
+        }
+        actions.Controls.Add(Link("Edit", () => EditRequested?.Invoke(s)));
+        actions.Controls.Add(Link(s.Active ? "Deactivate" : "Activate",
+            () => ToggleActiveRequested?.Invoke(s.Id, !s.Active)));
+        grid.Controls.Add(actions, serviceColumnsGrid.GetColumn(serviceColActions), 0);
+
+        var row = new Panel { Dock = DockStyle.Top, Height = 44, BackColor = Color.White };
+        row.Controls.Add(grid);
+        return row;
+    }
     /// <summary>True while the table is in list view, false in grid view.</summary>
     public bool IsListView { get; private set; } = true;
 
@@ -64,99 +290,3 @@ internal partial class ServiceCatalogPage : UserControl
 }
 
 
-/// <summary>Everything the Service Catalog page needs from dbo.Services.</summary>
-internal static class ServiceRepository
-{
-
-    public sealed record ServiceRow(
-        int Id, string Name, string Category, string Size, string? Description,
-        decimal Price, int DurationMinutes, bool Active,
-        string Species = "Both", decimal? MinKg = null, decimal? MaxKg = null);   // weight band: price applies when MinKg < weight <= MaxKg
-
-    public static List<ServiceRow> GetAll()
-    {
-        var list = new List<ServiceRow>();
-
-        using var conn = new SqlConnection(Database.ConnectionString);
-        conn.Open();
-        ServicePricing.EnsureSchema(conn);
-
-        using var cmd = new SqlCommand(
-            "SELECT ServiceId, Name, Category, Size, Description, Price, DurationMinutes, IsActive, Species, MinKg, MaxKg " +
-            "FROM dbo.Services ORDER BY Name, Species, ISNULL(MinKg, 0), Size", conn);
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
-            list.Add(new ServiceRow(
-                reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                reader.IsDBNull(4) ? null : reader.GetString(4),
-                reader.GetDecimal(5), reader.GetInt32(6), reader.GetBoolean(7),
-                reader.GetString(8), reader.IsDBNull(9) ? null : reader.GetDecimal(9), reader.IsDBNull(10) ? null : reader.GetDecimal(10)));
-        return list;
-    }
-
-    /// <summary>Throws SqlException 2627/2601 if this name and size already exist.</summary>
-    public static void Add(string name, string category, string size, string? description, decimal price, int minutes,
-        string species = "Both", decimal? minKg = null, decimal? maxKg = null)
-    {
-        using var conn = new SqlConnection(Database.ConnectionString);
-        conn.Open();
-        ServicePricing.EnsureSchema(conn);
-
-        using var cmd = new SqlCommand(
-            "INSERT INTO dbo.Services (Name, Category, Size, Description, Price, DurationMinutes, Species, MinKg, MaxKg) " +
-            "VALUES (@n, @c, @s, @d, @p, @m, @sp, @min, @max)", conn);
-        Fill(cmd, name, category, size, description, price, minutes, species, minKg, maxKg);
-        cmd.ExecuteNonQuery();
-    }
-
-    /// <summary>Throws SqlException 2627/2601 if this name and size are taken.</summary>
-    public static void Update(int id, string name, string category, string size, string? description, decimal price, int minutes,
-        string species = "Both", decimal? minKg = null, decimal? maxKg = null)
-    {
-        using var conn = new SqlConnection(Database.ConnectionString);
-        conn.Open();
-        ServicePricing.EnsureSchema(conn);
-
-        using var cmd = new SqlCommand(
-            "UPDATE dbo.Services SET Name = @n, Category = @c, Size = @s, Description = @d, " +
-            "Price = @p, DurationMinutes = @m, Species = @sp, MinKg = @min, MaxKg = @max WHERE ServiceId = @id", conn);
-        Fill(cmd, name, category, size, description, price, minutes, species, minKg, maxKg);
-        cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
-        cmd.ExecuteNonQuery();
-    }
-
-    /// <summary>Soft delete: hides the service from new bookings but keeps old records valid.</summary>
-    public static void SetActive(int id, bool active)
-    {
-        using var conn = new SqlConnection(Database.ConnectionString);
-        conn.Open();
-
-        using var cmd = new SqlCommand("UPDATE dbo.Services SET IsActive = @a WHERE ServiceId = @id", conn);
-        cmd.Parameters.Add("@a", SqlDbType.Bit).Value = active;
-        cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
-        cmd.ExecuteNonQuery();
-    }
-
-    private static void Fill(SqlCommand cmd, string name, string category, string size, string? description, decimal price, int minutes,
-        string species, decimal? minKg, decimal? maxKg)
-    {
-        cmd.Parameters.Add("@sp", SqlDbType.NVarChar, 10).Value = species;
-        foreach (var (pname, kg) in new[] { ("@min", minKg), ("@max", maxKg) })
-        {
-            var w = cmd.Parameters.Add(pname, SqlDbType.Decimal);
-            w.Precision = 6;
-            w.Scale = 2;
-            w.Value = kg is decimal v && v > 0 ? (object)v : DBNull.Value;   // 0 / empty = no limit
-        }
-        cmd.Parameters.Add("@n", SqlDbType.NVarChar, 100).Value = name.Trim();
-        cmd.Parameters.Add("@c", SqlDbType.NVarChar, 50).Value = category;
-        cmd.Parameters.Add("@s", SqlDbType.NVarChar, 10).Value = size;
-        cmd.Parameters.Add("@d", SqlDbType.NVarChar, 300).Value =
-            string.IsNullOrWhiteSpace(description) ? DBNull.Value : description.Trim();
-        var p = cmd.Parameters.Add("@p", SqlDbType.Decimal);
-        p.Precision = 10;
-        p.Scale = 2;
-        p.Value = price;
-        cmd.Parameters.Add("@m", SqlDbType.Int).Value = minutes;
-    }
-}

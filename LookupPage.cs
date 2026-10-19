@@ -72,19 +72,8 @@ internal partial class LookupPage : UserControl
         sortFilter.SelectedIndexChanged += (_, _) => ApplyFilters(resetPage: true);
         searchField.Box.TextChanged += (_, _) => ApplyFilters(resetPage: true);
 
-        // The round icons sit under the (opaque) name label in the designer, so bring them forward.
-        filterNewIcon.BringToFront();
-        filterAllIcon.BringToFront();
-
-        HookClick(filterNewRow, (_, _) => ChooseQuickFilter(onlyNew: true));
-        HookClick(filterAllRow, (_, _) => ChooseQuickFilter(onlyNew: false));
-        UpdateQuickFilterLook();
-
-        // "View All" on Quick Filters clears every filter; on Recent Lookups it shows the whole list.
-        quickFiltersLink.Cursor = Cursors.Hand;
-        quickFiltersLink.Click += (_, _) => ClearFilters();
-        recentLink.Cursor = Cursors.Hand;
-        recentLink.Click += (_, _) => ToggleRecentAll();
+        HookClick(filterNewRow, (_, _) => { _onlyNew = true; ApplyFilters(resetPage: true); });
+        HookClick(filterAllRow, (_, _) => { _onlyNew = false; ApplyFilters(resetPage: true); });
 
         prevPageButton.Click += (_, _) =>
         {
@@ -100,7 +89,6 @@ internal partial class LookupPage : UserControl
         };
 
         ApplyFilters(resetPage: true);
-        RefreshRecent();
     }
 
     // ------------------------------------------------------------------ public API
@@ -122,7 +110,6 @@ internal partial class LookupPage : UserControl
         filterAllCount.Text = _customers.Count.ToString(CultureInfo.CurrentCulture);
         filterNewCount.Text = _customers.Count(IsNew).ToString(CultureInfo.CurrentCulture);
         ApplyFilters(resetPage: false);
-        RefreshRecent();
     }
 
     public IReadOnlyList<CustomerRecord> Customers => _customers;
@@ -170,8 +157,8 @@ internal partial class LookupPage : UserControl
                 var pet = p;
                 var row = new LookupRowView(pet,
                     new[] { pet.Name, pet.OwnerName, pet.Breed, pet.OwnerPhone, pet.Species }, "View Pet");
-                row.ActionClicked += (_, _) => { RecordLookup(pet.CustomerId); ViewPetsRequested?.Invoke(this, pet); };
-                row.MoreClicked += (_, _) => { RecordLookup(pet.CustomerId); MoreRequested?.Invoke(this, pet); };
+                row.ActionClicked += (_, _) => ViewPetsRequested?.Invoke(this, pet);
+                row.MoreClicked += (_, _) => MoreRequested?.Invoke(this, pet);
                 rows.Add(row);
             }
         }
@@ -200,8 +187,8 @@ internal partial class LookupPage : UserControl
                 var row = new LookupRowView(customer,
                     new[] { customer.Name, customer.PetNames.Length == 0 ? "No pets" : customer.PetNames, customer.Phone, customer.Email, lastVisit },
                     "View Pets");
-                row.ActionClicked += (_, _) => { RecordLookup(customer.Id); ViewPetsRequested?.Invoke(this, customer); };
-                row.MoreClicked += (_, _) => { RecordLookup(customer.Id); MoreRequested?.Invoke(this, customer); };
+                row.ActionClicked += (_, _) => ViewPetsRequested?.Invoke(this, customer);
+                row.MoreClicked += (_, _) => MoreRequested?.Invoke(this, customer);
                 rows.Add(row);
             }
         }

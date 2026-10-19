@@ -648,7 +648,7 @@ namespace MyApp
             grossDailyTab.Location = new Point(0, 3);
             grossDailyTab.Margin = new Padding(0, 3, 8, 3);
             grossDailyTab.Name = "grossDailyTab";
-            grossDailyTab.Size = new Size(57, 26);
+            grossDailyTab.Size = new Size(67, 26);
             grossDailyTab.TabIndex = 0;
             grossDailyTab.Text = "Daily";
             // 
@@ -656,10 +656,10 @@ namespace MyApp
             // 
             grossWeeklyTab.BackColor = Color.White;
             grossWeeklyTab.Font = new Font("Segoe UI", 8.5F);
-            grossWeeklyTab.Location = new Point(65, 3);
+            grossWeeklyTab.Location = new Point(75, 3);
             grossWeeklyTab.Margin = new Padding(0, 3, 8, 3);
             grossWeeklyTab.Name = "grossWeeklyTab";
-            grossWeeklyTab.Size = new Size(69, 26);
+            grossWeeklyTab.Size = new Size(80, 26);
             grossWeeklyTab.TabIndex = 1;
             grossWeeklyTab.Text = "Weekly";
             // 
@@ -667,10 +667,10 @@ namespace MyApp
             // 
             grossMonthlyTab.BackColor = Color.White;
             grossMonthlyTab.Font = new Font("Segoe UI", 8.5F);
-            grossMonthlyTab.Location = new Point(142, 3);
+            grossMonthlyTab.Location = new Point(163, 3);
             grossMonthlyTab.Margin = new Padding(0, 3, 8, 3);
             grossMonthlyTab.Name = "grossMonthlyTab";
-            grossMonthlyTab.Size = new Size(76, 26);
+            grossMonthlyTab.Size = new Size(87, 26);
             grossMonthlyTab.TabIndex = 2;
             grossMonthlyTab.Text = "Monthly";
             // 
@@ -1726,7 +1726,7 @@ namespace MyApp
             searchTextBox.Location = new Point(0, 8);
             searchTextBox.Name = "searchTextBox";
             searchTextBox.PlaceholderText = "Search here...";
-            searchTextBox.Size = new Size(252, 17);
+            searchTextBox.Size = new Size(252, 22);
             searchTextBox.TabIndex = 0;
             // 
             // searchIcon
@@ -2007,7 +2007,7 @@ namespace MyApp
             // 
             // AdminForm
             // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleDimensions = new SizeF(120F, 120F);
             AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.FromArgb(243, 247, 252);
             ClientSize = new Size(1280, 800);

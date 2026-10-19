@@ -78,11 +78,7 @@ internal sealed partial class AddPetForm
     // ------------------------------------------------------------------ step 3: show / hide
 
     private void ShowVaccineStep(int petId, string petName, bool isNew, VaccineState state = VaccineState.Missing)
-        => PageFade.Swap(ContentHost, () => ShowVaccineStepCore(petId, petName, isNew, state));
-
-    private void ShowVaccineStepCore(int petId, string petName, bool isNew, VaccineState state)
     {
-        HideServiceStep();
         EnsureVaccinePanel();
         _vaccinePetId = petId;
         _vaccinePetName = petName;
@@ -90,7 +86,6 @@ internal sealed partial class AddPetForm
         _vaccineState = state;
 
         bool valid = state == VaccineState.Valid;
-        _vaccineBanner!.Visible = true;   // a warning hidden after a verified scan comes back if this step is opened again
         _scanGroup!.Visible = !valid;
         _validGroup!.Visible = valid;
         _skipButton!.Visible = !valid;
@@ -113,7 +108,7 @@ internal sealed partial class AddPetForm
             default:
                 SetBanner(BannerKind.Warning, isNew
                     ? "This pet is new to our system. A valid vaccine card is required before proceeding to grooming."
-                    : $"{PetNameRules.Short(petName)} has no vaccine card on file. A valid vaccine card is required before proceeding to grooming.");
+                    : $"{petName} has no vaccine card on file. A valid vaccine card is required before proceeding to grooming.");
                 titleLabel.Text = "Scan Your Pet's Vaccine Card";
                 subtitleLabel.Text = "Please scan the vaccine card for verification.";
                 _vaccineInfoText!.Text = "Place the vaccine card in the frame and make sure it's clear and readable.";
@@ -123,8 +118,8 @@ internal sealed partial class AddPetForm
         if (!valid)
         {
             // the banner comes first, so the title moves down under it
-            titleLabel.Location = Px(40, 134);
-            subtitleLabel.Location = Px(40, 172);
+            titleLabel.Location = new Point(40, 134);
+            subtitleLabel.Location = new Point(40, 172);
             _vaccineStatus!.Text = "Click the frame to scan the vaccine card.";
             _vaccineStatus.ForeColor = Theme.Muted;
         }
@@ -144,14 +139,13 @@ internal sealed partial class AddPetForm
 
     private void HideVaccineStep()
     {
-        HideServiceStep();
         if (_vaccinePanel is not null) _vaccinePanel.Visible = false;
         if (_skipButton is not null) _skipButton.Visible = false;
         stepVaccine.State = StepState.Pending;
 
         // the other steps use the title where the designer put it
-        titleLabel.Location = Px(40, 84);
-        subtitleLabel.Location = Px(40, 122);
+        titleLabel.Location = new Point(40, 84);
+        subtitleLabel.Location = new Point(40, 122);
         titleLabel.Visible = true;
         subtitleLabel.Visible = true;
     }
@@ -173,8 +167,7 @@ internal sealed partial class AddPetForm
     }
 
     /// <summary>
-    /// The record is good while at least one saved vaccination has an expiry date that is still in the future. A row with no
-    /// readable expiry date does not count as in date. A card that was filed
+    /// The record is good while at least one saved vaccination is still in date (or has no expiry date). A card that was filed
     /// without any readable vaccination rows is taken as good: nothing on it says it has lapsed.
     /// </summary>
     private static VaccineState GetVaccineState(int petId)
@@ -182,7 +175,7 @@ internal sealed partial class AddPetForm
         var rows = PetVaccinations.GetForPet(petId);
         if (rows.Count == 0) return VaccineState.Valid;
         var today = DateTime.Today;
-        return rows.Any(r => r.Expires is { } e && e.Date >= today) ? VaccineState.Valid : VaccineState.Expired;
+        return rows.Any(r => r.Expires is null || r.Expires.Value.Date >= today) ? VaccineState.Valid : VaccineState.Expired;
     }
 
     private void ScanVaccineCard()
@@ -214,15 +207,6 @@ internal sealed partial class AddPetForm
         _vaccineDone = true;
         _vaccineStatus!.Text = "\u2713  Vaccine card verified and saved. Press Continue.";
         _vaccineStatus.ForeColor = Theme.Green;
-        HideVaccineWarning();   // the card is verified, so the "no vaccine card on file" warning is gone
-    }
-
-    /// <summary>Hides the amber/red warning banner once a valid card is verified and moves the title back up where the banner was.</summary>
-    private void HideVaccineWarning()
-    {
-        _vaccineBanner!.Visible = false;
-        titleLabel.Location = Px(40, 84);
-        subtitleLabel.Location = Px(40, 122);
     }
 
     private void SkipVaccineScan()
@@ -234,7 +218,11 @@ internal sealed partial class AddPetForm
     }
 
     /// <summary>Done with the vaccine step: the caller opens the appointment request for this pet.</summary>
-    private void FinishVaccineStep() => ShowServiceStep();   // step 4: choose the grooming service
+    private void FinishVaccineStep()
+    {
+        ChosenPetId = _vaccinePetId;
+        DialogResult = DialogResult.OK;
+    }
 
     // ------------------------------------------------------------------ the panel
 
@@ -257,10 +245,8 @@ internal sealed partial class AddPetForm
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            float bk = Math.Max(0.1f, _vaccineBanner.Width / 820f);
-            g.ScaleTransform(bk, bk);                       // drawn in the original 820 x 44 design, then enlarged
             var style = BannerStyle(_bannerKind);
-            var r = new Rectangle(0, 0, 819, 43);
+            var r = new Rectangle(0, 0, _vaccineBanner.Width - 1, _vaccineBanner.Height - 1);
             using (var path = RoundedRect(r, 10))
             {
                 using var fill = new SolidBrush(style.Fill);
@@ -271,8 +257,8 @@ internal sealed partial class AddPetForm
             var dot = new Rectangle(14, 8, 28, 28);
             using (var brush = new SolidBrush(style.Dot)) g.FillEllipse(brush, dot);
             var glyphFont = style.Glyph == "!" ? Theme.Face(11f, FontStyle.Bold) : Theme.GlyphFont(10f);
-            using var centre = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(style.Glyph, glyphFont, Brushes.White, new RectangleF(dot.X, dot.Y, dot.Width, dot.Height), centre);
+            TextRenderer.DrawText(g, style.Glyph, glyphFont, dot, Color.White,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         };
         _vaccineBannerText = new Label
         {
@@ -341,14 +327,7 @@ internal sealed partial class AddPetForm
 
         // ---- "No need to scan!" look
         _validGroup = new Panel { Location = new Point(0, 80), Size = new Size(900, 290), BackColor = Theme.Bg, Visible = false };
-        _validGroup.Paint += (_, e) =>
-        {
-            float vk = Math.Max(0.1f, _validGroup.Width / 900f);
-            var saved = e.Graphics.Save();
-            e.Graphics.ScaleTransform(vk, vk);           // drawn in the original 900-wide design, then enlarged
-            PaintNoScanIllustration(e.Graphics, 450, 86);
-            e.Graphics.Restore(saved);
-        };
+        _validGroup.Paint += (_, e) => PaintNoScanIllustration(e.Graphics, 450, 86);
         var heading = new Label
         {
             Location = new Point(0, 196),
@@ -375,7 +354,7 @@ internal sealed partial class AddPetForm
         _vaccinePanel.Controls.Add(_vaccineBanner);
         _vaccinePanel.Controls.Add(_scanGroup);
         _vaccinePanel.Controls.Add(_validGroup);
-        ContentHost.Controls.Add(_vaccinePanel);
+        Controls.Add(_vaccinePanel);
 
         // "Skip Scanning" sits between Back and Continue on the form itself
         _skipButton = new Button
@@ -393,7 +372,7 @@ internal sealed partial class AddPetForm
         };
         _skipButton.FlatAppearance.BorderColor = Theme.Border;
         _skipButton.Click += (_, _) => SkipVaccineScan();
-        ContentHost.Controls.Add(_skipButton);
+        Controls.Add(_skipButton);
     }
 
     private static void PaintScanFrame(object? sender, PaintEventArgs e)
@@ -402,12 +381,7 @@ internal sealed partial class AddPetForm
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        // Drawn in the original 820-wide design, then enlarged to the size the frame has now.
-        float k = Math.Max(0.1f, p.Width / 820f);
-        g.ScaleTransform(k, k);
-        int pw = 820, ph = (int)Math.Round(p.Height / k);
-
-        using (var path = RoundedRect(new Rectangle(0, 0, pw - 1, ph - 1), 18))
+        using (var path = RoundedRect(new Rectangle(0, 0, p.Width - 1, p.Height - 1), 18))
         {
             using var fill = new SolidBrush(Theme.PrimarySoft);
             using var pen = new Pen(Theme.Border);
@@ -418,26 +392,25 @@ internal sealed partial class AddPetForm
         // corner brackets
         using (var br = new Pen(Theme.Primary, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
         {
-            int m = 16, len = 26, w = pw - 1, h = ph - 1;
+            int m = 16, len = 26, w = p.Width - 1, h = p.Height - 1;
             g.DrawLines(br, new[] { new Point(m, m + len), new Point(m, m), new Point(m + len, m) });
             g.DrawLines(br, new[] { new Point(w - m - len, m), new Point(w - m, m), new Point(w - m, m + len) });
             g.DrawLines(br, new[] { new Point(m, h - m - len), new Point(m, h - m), new Point(m + len, h - m) });
             g.DrawLines(br, new[] { new Point(w - m - len, h - m), new Point(w - m, h - m), new Point(w - m, h - m - len) });
         }
 
-        using var centre = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-
         // camera tile
-        var tile = new Rectangle(pw / 2 - 28, 20, 56, 56);
+        var tile = new Rectangle(p.Width / 2 - 28, 20, 56, 56);
         using (var path = RoundedRect(tile, 14))
         {
             using var fill = new SolidBrush(Theme.Primary);
             g.FillPath(fill, path);
         }
-        g.DrawString("\uE722", Theme.GlyphFont(20f), Brushes.White, new RectangleF(tile.X, tile.Y, tile.Width, tile.Height), centre);
+        TextRenderer.DrawText(g, "\uE722", Theme.GlyphFont(20f), tile, Color.White,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
 
         // little vaccination-record card
-        var card = new Rectangle(pw / 2 - 110, 88, 220, 84);
+        var card = new Rectangle(p.Width / 2 - 110, 88, 220, 84);
         using (var path = RoundedRect(card, 10))
         {
             using var white = new SolidBrush(Color.White);
@@ -445,8 +418,8 @@ internal sealed partial class AddPetForm
             g.FillPath(white, path);
             g.DrawPath(pen, path);
         }
-        using (var ink = new SolidBrush(Theme.Primary))
-            g.DrawString("VACCINATION RECORD", Theme.Face(7f, FontStyle.Bold), ink, card.X + 70, card.Y + 10);
+        TextRenderer.DrawText(g, "VACCINATION RECORD", Theme.Face(7f, FontStyle.Bold),
+            new Point(card.X + 70, card.Y + 10), Theme.Primary, TextFormatFlags.NoPadding);
         using (var bar = new SolidBrush(Color.FromArgb(207, 224, 248)))
         {
             g.FillRectangle(bar, card.X + 70, card.Y + 30, 130, 6);
@@ -535,8 +508,8 @@ internal sealed partial class AddPetForm
         var badge = new Rectangle(cx - 15, cy + 52, 30, 30);
         using (var ring = new Pen(Color.White, 4f)) g.DrawEllipse(ring, Rectangle.Inflate(badge, 2, 2));
         g.FillEllipse(dark, badge);
-        using var centre = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        g.DrawString("\uE73E", Theme.GlyphFont(11f), Brushes.White, new RectangleF(badge.X, badge.Y, badge.Width, badge.Height), centre);
+        TextRenderer.DrawText(g, "\uE73E", Theme.GlyphFont(11f), badge, Color.White,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     private static GraphicsPath RoundedRect(Rectangle r, int radius)

@@ -17,7 +17,6 @@ internal partial class AppointmentsPage : UserControl
     private DateTime? _rangeStart;          // Sunday of the week being shown, or null for "all dates"
     private int _pageIndex;
     private bool _suspendFilter;
-    private bool _waitingOnly;   // set by ShowPending: list Pending and Rescheduled together; any status change clears it
     private bool _building;
 
     public event EventHandler<AppointmentItem>? ViewRequested;
@@ -26,26 +25,11 @@ internal partial class AppointmentsPage : UserControl
     public event EventHandler? ManageCustomersRequested;
     public event EventHandler? ServicesCatalogRequested;
     public event EventHandler? ViewFullCalendarRequested;
-    public event EventHandler? NewAppointmentRequested;
 
     public AppointmentsPage()
     {
         InitializeComponent();
         DoubleBuffered = true;
-
-        // Quick Actions: a "New Appointment" tile next to Services Catalog (staff book walk-ins and phone calls).
-        quickGrid.SetColumnSpan(servicesCatalogTile, 1);
-        var newAppointmentTile = new MyApp.Controls.ActionTile
-        {
-            BackColor = Color.White,
-            Dock = DockStyle.Fill,
-            Font = servicesCatalogTile.Font,
-            Glyph = "\uE710",
-            Name = "newAppointmentTile",
-            Text = "New Appointment",
-        };
-        newAppointmentTile.Click += (_, _) => NewAppointmentRequested?.Invoke(this, EventArgs.Empty);
-        quickGrid.Controls.Add(newAppointmentTile, 1, 1);
 
         FitLegend();
 
@@ -161,7 +145,6 @@ internal partial class AppointmentsPage : UserControl
         searchField.Box.Text = "";
         serviceFilter.SelectedIndex = 0;
         statusFilter.SelectedIndex = Array.IndexOf(Enum.GetValues<AppointmentStatus>(), AppointmentStatus.Pending) + 1;   // index 0 is "All Statuses"
-        _waitingOnly = true;   // after the index change, whose handler clears the flag
         _suspendFilter = false;
 
         SetRange(null);
@@ -184,7 +167,7 @@ internal partial class AppointmentsPage : UserControl
     private static bool Matches(AppointmentItem a, string query)
     {
         static bool Has(string value, string q) => value.Contains(q, StringComparison.CurrentCultureIgnoreCase);
-        return Has(a.CustomerName, query) || Has(a.PetName, query) || Has(a.Service, query) || Has(a.QueueNumber, query);
+        return Has(a.CustomerName, query) || Has(a.PetName, query) || Has(a.Service, query);
     }
 
     private int PageCount => Math.Max(1, (int)Math.Ceiling(_filtered.Count / (double)PageSize));
@@ -201,8 +184,7 @@ internal partial class AppointmentsPage : UserControl
 
         _filtered = _all
             .Where(a => InRange(a.Start))
-            .Where(a => _waitingOnly ? a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled
-                                     : status is null || a.Status == status)
+            .Where(a => status is null || a.Status == status)
             .Where(a => service is null || string.Equals(a.Service, service, StringComparison.OrdinalIgnoreCase))
             .Where(a => query.Length == 0 || Matches(a, query))
             .OrderBy(a => a.Start)
@@ -383,7 +365,6 @@ internal partial class AppointmentsPage : UserControl
 
     private void statusFilter_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        _waitingOnly = false;
         if (!_suspendFilter) ApplyFilters(resetPage: true);
     }
 

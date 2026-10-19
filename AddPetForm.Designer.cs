@@ -32,8 +32,6 @@ namespace MyApp
             stepTicket = new MyApp.Controls.StepDot();
             titleLabel = new System.Windows.Forms.Label();
             subtitleLabel = new System.Windows.Forms.Label();
-            nameLabel = new System.Windows.Forms.Label();
-            nameField = new MyApp.Controls.InputField();
             emailLabel = new System.Windows.Forms.Label();
             emailField = new MyApp.Controls.InputField();
             mobileLabel = new System.Windows.Forms.Label();
@@ -46,12 +44,12 @@ namespace MyApp
             otpIcon = new System.Windows.Forms.Label();
             otpTitle = new System.Windows.Forms.Label();
             otpHint = new System.Windows.Forms.Label();
-            otpBox1 = new MyApp.Controls.OtpBox();
-            otpBox2 = new MyApp.Controls.OtpBox();
-            otpBox3 = new MyApp.Controls.OtpBox();
-            otpBox4 = new MyApp.Controls.OtpBox();
-            otpBox5 = new MyApp.Controls.OtpBox();
-            otpBox6 = new MyApp.Controls.OtpBox();
+            otpBox1 = new System.Windows.Forms.TextBox();
+            otpBox2 = new System.Windows.Forms.TextBox();
+            otpBox3 = new System.Windows.Forms.TextBox();
+            otpBox4 = new System.Windows.Forms.TextBox();
+            otpBox5 = new System.Windows.Forms.TextBox();
+            otpBox6 = new System.Windows.Forms.TextBox();
             otpErrorLabel = new System.Windows.Forms.Label();
             verifyButton = new MyApp.Controls.PrimaryButton();
             resendLabel = new System.Windows.Forms.Label();
@@ -181,10 +179,10 @@ namespace MyApp
             stepGrooming.Location = new Point(670, 14);
             stepGrooming.Name = "stepGrooming";
             stepGrooming.Number = 4;
-            stepGrooming.Size = new Size(80, 60);
+            stepGrooming.Size = new Size(80, 48);
             stepGrooming.State = MyApp.Controls.StepState.Pending;
             stepGrooming.TabStop = false;
-            stepGrooming.Text = "Service";
+            stepGrooming.Text = "Grooming";
             // 
             // stepLine4
             // 
@@ -231,43 +229,15 @@ namespace MyApp
             subtitleLabel.TextAlign = ContentAlignment.MiddleLeft;
             subtitleLabel.UseMnemonic = false;
             // 
-            // nameLabel
-            // 
-            nameLabel.BackColor = Color.FromArgb(243, 247, 252);
-            nameLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            nameLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            nameLabel.Location = new Point(40, 2);
-            nameLabel.Name = "nameLabel";
-            nameLabel.Size = new Size(380, 16);
-            nameLabel.TabIndex = 0;
-            nameLabel.Text = "FULL NAME";
-            nameLabel.TextAlign = ContentAlignment.MiddleLeft;
-            nameLabel.UseMnemonic = false;
-            // 
-            // nameField
-            // 
-            nameField.BorderColor = Color.FromArgb(227, 233, 242);
-            nameField.CornerColor = Color.FromArgb(243, 247, 252);
-            nameField.FillColor = Color.White;
-            nameField.Glyph = "\uE77B";
-            nameField.Location = new Point(40, 20);
-            nameField.Margin = new Padding(0);
-            nameField.Name = "nameField";
-            nameField.Padding = new Padding(10, 3, 10, 3);
-            nameField.Placeholder = "Juan Dela Cruz";
-            nameField.Radius = 12;
-            nameField.Size = new Size(380, 46);
-            nameField.TabIndex = 1;
-            // 
             // emailLabel
             // 
             emailLabel.BackColor = Color.FromArgb(243, 247, 252);
             emailLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             emailLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            emailLabel.Location = new Point(40, 72);
+            emailLabel.Location = new Point(40, 14);
             emailLabel.Name = "emailLabel";
             emailLabel.Size = new Size(380, 16);
-            emailLabel.TabIndex = 2;
+            emailLabel.TabIndex = 0;
             emailLabel.Text = "EMAIL ADDRESS";
             emailLabel.TextAlign = ContentAlignment.MiddleLeft;
             emailLabel.UseMnemonic = false;
@@ -278,24 +248,24 @@ namespace MyApp
             emailField.CornerColor = Color.FromArgb(243, 247, 252);
             emailField.FillColor = Color.White;
             emailField.Glyph = "\uE715";
-            emailField.Location = new Point(40, 90);
+            emailField.Location = new Point(40, 32);
             emailField.Margin = new Padding(0);
             emailField.Name = "emailField";
             emailField.Padding = new Padding(10, 3, 10, 3);
             emailField.Placeholder = "example@email.com";
             emailField.Radius = 12;
             emailField.Size = new Size(380, 46);
-            emailField.TabIndex = 3;
+            emailField.TabIndex = 1;
             // 
             // mobileLabel
             // 
             mobileLabel.BackColor = Color.FromArgb(243, 247, 252);
             mobileLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             mobileLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            mobileLabel.Location = new Point(40, 140);
+            mobileLabel.Location = new Point(40, 92);
             mobileLabel.Name = "mobileLabel";
             mobileLabel.Size = new Size(380, 16);
-            mobileLabel.TabIndex = 4;
+            mobileLabel.TabIndex = 2;
             mobileLabel.Text = "MOBILE NUMBER (OPTIONAL)";
             mobileLabel.TextAlign = ContentAlignment.MiddleLeft;
             mobileLabel.UseMnemonic = false;
@@ -306,24 +276,24 @@ namespace MyApp
             mobileField.CornerColor = Color.FromArgb(243, 247, 252);
             mobileField.FillColor = Color.White;
             mobileField.Glyph = "\uE717";
-            mobileField.Location = new Point(40, 158);
+            mobileField.Location = new Point(40, 110);
             mobileField.Margin = new Padding(0);
             mobileField.Name = "mobileField";
             mobileField.Padding = new Padding(10, 3, 10, 3);
             mobileField.Placeholder = "09XX XXX XXXX";
             mobileField.Radius = 12;
             mobileField.Size = new Size(380, 46);
-            mobileField.TabIndex = 5;
+            mobileField.TabIndex = 3;
             // 
             // contactErrorLabel
             // 
             contactErrorLabel.BackColor = Color.FromArgb(243, 247, 252);
             contactErrorLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             contactErrorLabel.ForeColor = Color.FromArgb(239, 68, 68);
-            contactErrorLabel.Location = new Point(40, 208);
+            contactErrorLabel.Location = new Point(40, 166);
             contactErrorLabel.Name = "contactErrorLabel";
-            contactErrorLabel.Size = new Size(380, 34);
-            contactErrorLabel.TabIndex = 6;
+            contactErrorLabel.Size = new Size(380, 36);
+            contactErrorLabel.TabIndex = 4;
             contactErrorLabel.Text = "";
             contactErrorLabel.TextAlign = ContentAlignment.TopLeft;
             contactErrorLabel.UseMnemonic = false;
@@ -332,11 +302,11 @@ namespace MyApp
             // 
             sendOtpButton.BackColor = Color.White;
             sendOtpButton.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            sendOtpButton.Location = new Point(40, 246);
+            sendOtpButton.Location = new Point(40, 206);
             sendOtpButton.Name = "sendOtpButton";
             sendOtpButton.Radius = 12;
             sendOtpButton.Size = new Size(380, 48);
-            sendOtpButton.TabIndex = 7;
+            sendOtpButton.TabIndex = 5;
             sendOtpButton.Text = "Send OTP  \u2192";
             // 
             // dividerLine
@@ -345,7 +315,7 @@ namespace MyApp
             dividerLine.Location = new Point(449, 0);
             dividerLine.Name = "dividerLine";
             dividerLine.Size = new Size(1, 300);
-            dividerLine.TabIndex = 8;
+            dividerLine.TabIndex = 6;
             // 
             // orLabel
             // 
@@ -370,7 +340,7 @@ namespace MyApp
             orBadge.Name = "orBadge";
             orBadge.Radius = 14;
             orBadge.Size = new Size(30, 30);
-            orBadge.TabIndex = 9;
+            orBadge.TabIndex = 7;
             // 
             // otpIcon
             // 
@@ -413,75 +383,87 @@ namespace MyApp
             // 
             // otpBox1
             // 
-            otpBox1.BorderColor = Color.FromArgb(205, 217, 234);
-            otpBox1.CornerColor = Color.White;
-            otpBox1.FillColor = Color.White;
-            otpBox1.Location = new Point(24, 104);
-            otpBox1.Margin = new Padding(0);
+            otpBox1.BackColor = Color.White;
+            otpBox1.BorderStyle = BorderStyle.FixedSingle;
+            otpBox1.Enabled = false;
+            otpBox1.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            otpBox1.ForeColor = Color.FromArgb(31, 42, 60);
+            otpBox1.Location = new Point(25, 104);
+            otpBox1.MaxLength = 1;
             otpBox1.Name = "otpBox1";
-            otpBox1.Radius = 10;
-            otpBox1.Size = new Size(47, 46);
+            otpBox1.Size = new Size(44, 38);
             otpBox1.TabIndex = 3;
+            otpBox1.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox2
             // 
-            otpBox2.BorderColor = Color.FromArgb(205, 217, 234);
-            otpBox2.CornerColor = Color.White;
-            otpBox2.FillColor = Color.White;
-            otpBox2.Location = new Point(81, 104);
-            otpBox2.Margin = new Padding(0);
+            otpBox2.BackColor = Color.White;
+            otpBox2.BorderStyle = BorderStyle.FixedSingle;
+            otpBox2.Enabled = false;
+            otpBox2.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            otpBox2.ForeColor = Color.FromArgb(31, 42, 60);
+            otpBox2.Location = new Point(82, 104);
+            otpBox2.MaxLength = 1;
             otpBox2.Name = "otpBox2";
-            otpBox2.Radius = 10;
-            otpBox2.Size = new Size(47, 46);
+            otpBox2.Size = new Size(44, 38);
             otpBox2.TabIndex = 4;
+            otpBox2.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox3
             // 
-            otpBox3.BorderColor = Color.FromArgb(205, 217, 234);
-            otpBox3.CornerColor = Color.White;
-            otpBox3.FillColor = Color.White;
-            otpBox3.Location = new Point(138, 104);
-            otpBox3.Margin = new Padding(0);
+            otpBox3.BackColor = Color.White;
+            otpBox3.BorderStyle = BorderStyle.FixedSingle;
+            otpBox3.Enabled = false;
+            otpBox3.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            otpBox3.ForeColor = Color.FromArgb(31, 42, 60);
+            otpBox3.Location = new Point(139, 104);
+            otpBox3.MaxLength = 1;
             otpBox3.Name = "otpBox3";
-            otpBox3.Radius = 10;
-            otpBox3.Size = new Size(47, 46);
+            otpBox3.Size = new Size(44, 38);
             otpBox3.TabIndex = 5;
+            otpBox3.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox4
             // 
-            otpBox4.BorderColor = Color.FromArgb(205, 217, 234);
-            otpBox4.CornerColor = Color.White;
-            otpBox4.FillColor = Color.White;
-            otpBox4.Location = new Point(195, 104);
-            otpBox4.Margin = new Padding(0);
+            otpBox4.BackColor = Color.White;
+            otpBox4.BorderStyle = BorderStyle.FixedSingle;
+            otpBox4.Enabled = false;
+            otpBox4.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            otpBox4.ForeColor = Color.FromArgb(31, 42, 60);
+            otpBox4.Location = new Point(196, 104);
+            otpBox4.MaxLength = 1;
             otpBox4.Name = "otpBox4";
-            otpBox4.Radius = 10;
-            otpBox4.Size = new Size(47, 46);
+            otpBox4.Size = new Size(44, 38);
             otpBox4.TabIndex = 6;
+            otpBox4.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox5
             // 
-            otpBox5.BorderColor = Color.FromArgb(205, 217, 234);
-            otpBox5.CornerColor = Color.White;
-            otpBox5.FillColor = Color.White;
-            otpBox5.Location = new Point(252, 104);
-            otpBox5.Margin = new Padding(0);
+            otpBox5.BackColor = Color.White;
+            otpBox5.BorderStyle = BorderStyle.FixedSingle;
+            otpBox5.Enabled = false;
+            otpBox5.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            otpBox5.ForeColor = Color.FromArgb(31, 42, 60);
+            otpBox5.Location = new Point(253, 104);
+            otpBox5.MaxLength = 1;
             otpBox5.Name = "otpBox5";
-            otpBox5.Radius = 10;
-            otpBox5.Size = new Size(47, 46);
+            otpBox5.Size = new Size(44, 38);
             otpBox5.TabIndex = 7;
+            otpBox5.TextAlign = HorizontalAlignment.Center;
             // 
             // otpBox6
             // 
-            otpBox6.BorderColor = Color.FromArgb(205, 217, 234);
-            otpBox6.CornerColor = Color.White;
-            otpBox6.FillColor = Color.White;
-            otpBox6.Location = new Point(309, 104);
-            otpBox6.Margin = new Padding(0);
+            otpBox6.BackColor = Color.White;
+            otpBox6.BorderStyle = BorderStyle.FixedSingle;
+            otpBox6.Enabled = false;
+            otpBox6.Font = new Font("Segoe UI", 16F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            otpBox6.ForeColor = Color.FromArgb(31, 42, 60);
+            otpBox6.Location = new Point(310, 104);
+            otpBox6.MaxLength = 1;
             otpBox6.Name = "otpBox6";
-            otpBox6.Radius = 10;
-            otpBox6.Size = new Size(47, 46);
+            otpBox6.Size = new Size(44, 38);
             otpBox6.TabIndex = 8;
+            otpBox6.TextAlign = HorizontalAlignment.Center;
             // 
             // otpErrorLabel
             // 
@@ -546,7 +528,7 @@ namespace MyApp
             otpCard.Name = "otpCard";
             otpCard.Radius = 18;
             otpCard.Size = new Size(380, 300);
-            otpCard.TabIndex = 10;
+            otpCard.TabIndex = 8;
             // 
             // contactPanel
             // 
@@ -559,8 +541,6 @@ namespace MyApp
             contactPanel.Controls.Add(mobileLabel);
             contactPanel.Controls.Add(emailField);
             contactPanel.Controls.Add(emailLabel);
-            contactPanel.Controls.Add(nameField);
-            contactPanel.Controls.Add(nameLabel);
             contactPanel.BackColor = Color.FromArgb(243, 247, 252);
             contactPanel.Location = new Point(0, 150);
             contactPanel.Name = "contactPanel";
@@ -946,8 +926,6 @@ namespace MyApp
         private System.Windows.Forms.Label subtitleLabel;
         private System.Windows.Forms.Label emailLabel;
         private MyApp.Controls.InputField emailField;
-        private System.Windows.Forms.Label nameLabel;
-        private MyApp.Controls.InputField nameField;
         private System.Windows.Forms.Label mobileLabel;
         private MyApp.Controls.InputField mobileField;
         private System.Windows.Forms.Label contactErrorLabel;
@@ -958,12 +936,12 @@ namespace MyApp
         private System.Windows.Forms.Label otpIcon;
         private System.Windows.Forms.Label otpTitle;
         private System.Windows.Forms.Label otpHint;
-        private MyApp.Controls.OtpBox otpBox1;
-        private MyApp.Controls.OtpBox otpBox2;
-        private MyApp.Controls.OtpBox otpBox3;
-        private MyApp.Controls.OtpBox otpBox4;
-        private MyApp.Controls.OtpBox otpBox5;
-        private MyApp.Controls.OtpBox otpBox6;
+        private System.Windows.Forms.TextBox otpBox1;
+        private System.Windows.Forms.TextBox otpBox2;
+        private System.Windows.Forms.TextBox otpBox3;
+        private System.Windows.Forms.TextBox otpBox4;
+        private System.Windows.Forms.TextBox otpBox5;
+        private System.Windows.Forms.TextBox otpBox6;
         private System.Windows.Forms.Label otpErrorLabel;
         private MyApp.Controls.PrimaryButton verifyButton;
         private System.Windows.Forms.Label resendLabel;
