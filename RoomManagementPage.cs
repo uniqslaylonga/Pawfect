@@ -294,7 +294,7 @@ internal sealed class RoomPanel : CardPanel
 /// <summary>A room: round icon, name, who is using it, status pill, and Schedule / Edit / Deactivate / Delete buttons.</summary>
 internal sealed class RoomRowView : Control
 {
-    private const TextFormatFlags Left = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
+    private const TextFormatFlags LeftText = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
     private const TextFormatFlags Center = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
@@ -320,7 +320,7 @@ internal sealed class RoomRowView : Control
     private int S(int v) => RoomsPx.S(this, v);
 
     /// <summary>The four buttons (Schedule, Edit, Activate/Deactivate, Delete) and the status pill, right to left.</summary>
-    private (Rectangle[] Buttons, Rectangle Pill) Layout()
+    private (Rectangle[] Buttons, Rectangle Pill) GetLayout()
     {
         int bh = S(30), y = (Height - bh) / 2, gap = S(8), right = Width - S(16);
         var delete = new Rectangle(right - S(64), y, S(64), bh);
@@ -333,7 +333,7 @@ internal sealed class RoomRowView : Control
 
     private int HitTest(Point p)
     {
-        var (buttons, _) = Layout();
+        var (buttons, _) = GetLayout();
         for (int i = 0; i < buttons.Length; i++)
             if (buttons[i].Contains(p)) return i + 1;
         return 0;
@@ -400,14 +400,14 @@ internal sealed class RoomRowView : Control
             g.FillEllipse(fill, icon);
         TextRenderer.DrawText(g, "", Theme.GlyphFont(12f), icon, fore, Center);
 
-        var (buttons, pill) = Layout();
+        var (buttons, pill) = GetLayout();
 
         // name + details
         int tx = icon.Right + S(14);
         int tw = Math.Max(10, pill.Left - tx - S(12));
         TextRenderer.DrawText(g, _row.Name, Theme.Face(10f, FontStyle.Bold), new Rectangle(tx, S(11), tw, S(22)),
-            active ? Theme.Text : Theme.Muted, Left);
-        TextRenderer.DrawText(g, Details(), Theme.Face(8.5f), new Rectangle(tx, S(33), tw, S(20)), Theme.Muted, Left);
+            active ? Theme.Text : Theme.Muted, LeftText);
+        TextRenderer.DrawText(g, Details(), Theme.Face(8.5f), new Rectangle(tx, S(33), tw, S(20)), Theme.Muted, LeftText);
 
         // status pill
         using (var path = Ui.RoundRect(pill, pill.Height / 2f))
@@ -655,7 +655,7 @@ internal sealed record ScheduleBlock(BlockKind Kind, DateTime Start, DateTime En
 
 internal sealed class ScheduleBlockView : Control
 {
-    private const TextFormatFlags Left = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
+    private const TextFormatFlags LeftText = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
     private const TextFormatFlags Center = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
@@ -711,14 +711,14 @@ internal sealed class ScheduleBlockView : Control
         string range = $"{T(_b.Start)} – {T(_b.End)}";
         if (booking)
         {
-            TextRenderer.DrawText(g, range, Theme.Face(9.5f, FontStyle.Bold), new Rectangle(x, card.Top, mid - x - S(8), card.Height), accent, Left);
-            TextRenderer.DrawText(g, _b.Title, Theme.Face(9.5f, FontStyle.Bold), new Rectangle(mid, card.Top + S(8), Math.Max(10, right - mid), S(22)), Theme.Text, Left);
-            TextRenderer.DrawText(g, _b.Sub, Theme.Face(8.5f), new Rectangle(mid, card.Top + S(30), Math.Max(10, right - mid), S(20)), Theme.TextSoft, Left);
+            TextRenderer.DrawText(g, range, Theme.Face(9.5f, FontStyle.Bold), new Rectangle(x, card.Top, mid - x - S(8), card.Height), accent, LeftText);
+            TextRenderer.DrawText(g, _b.Title, Theme.Face(9.5f, FontStyle.Bold), new Rectangle(mid, card.Top + S(8), Math.Max(10, right - mid), S(22)), Theme.Text, LeftText);
+            TextRenderer.DrawText(g, _b.Sub, Theme.Face(8.5f), new Rectangle(mid, card.Top + S(30), Math.Max(10, right - mid), S(20)), Theme.TextSoft, LeftText);
         }
         else
         {
-            TextRenderer.DrawText(g, range, Theme.Face(9f, FontStyle.Bold), new Rectangle(x, card.Top, mid - x - S(8), card.Height), accent, Left);
-            TextRenderer.DrawText(g, _b.Title + "  ·  room is being cleaned", Theme.Face(8.5f), new Rectangle(mid, card.Top, Math.Max(10, right - mid), card.Height), RoomColors.AmberText, Left);
+            TextRenderer.DrawText(g, range, Theme.Face(9f, FontStyle.Bold), new Rectangle(x, card.Top, mid - x - S(8), card.Height), accent, LeftText);
+            TextRenderer.DrawText(g, _b.Title + "  ·  room is being cleaned", Theme.Face(8.5f), new Rectangle(mid, card.Top, Math.Max(10, right - mid), card.Height), RoomColors.AmberText, LeftText);
         }
     }
 

@@ -405,42 +405,73 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
         return list;
     }
 
-    /// <summary>Minimum gap, in minutes, between two bookings that use the same groomer or the same room (1:00 pm booked, next at 1:30 pm).</summary>
+    /// <summary>Minutes a room needs to be sanitized after a booking ends (1:00 pm booking for 1 hour, room ready again at 2:30 pm).</summary>
     public const int BookingGapMinutes = 30;
 
     /// <summary>
-    /// Looks for another open appointment that uses the same groomer or room less than <see cref="BookingGapMinutes"/> minutes
-    /// away from <paramref name="start"/>. Returns null when it is free, otherwise a message.
+    /// Checks a booking of <paramref name="serviceId"/> starting at <paramref name="start"/> against the open appointments.
+    /// A room is taken from the start of a booking until the service ends plus <see cref="BookingGapMinutes"/> minutes of sanitizing
+    /// (the new booking's own sanitizing time counts too, so it can't run into the next booking).
+    /// A groomer is taken only while grooming, from the start of a booking until the service ends.
+    /// Returns null when it is free, otherwise a message.
     /// </summary>
-    public static string? FindScheduleConflict(int appointmentId, DateTime start, int? groomerId, int? roomId)
+    public static string? FindScheduleConflict(int appointmentId, DateTime start, int serviceId, int? groomerId, int? roomId)
     {
         if (groomerId is null && roomId is null) return null;
 
+        // @end is when the new service finishes. A Completed appointment still keeps its room for sanitizing,
+        // but its groomer is free again.
         const string sql = @"
-SELECT TOP 1 a.GroomerId, a.RoomId, a.StartTime
+DECLARE @end DATETIME2 = DATEADD(MINUTE, ISNULL((SELECT DurationMinutes FROM dbo.Services WHERE ServiceId = @svc), 60), @t);
+
+SELECT TOP 1 a.StartTime, DATEADD(MINUTE, s.DurationMinutes, a.StartTime),
+       CASE WHEN @rm IS NOT NULL AND a.RoomId = @rm
+             AND @t < DATEADD(MINUTE, s.DurationMinutes + @gap, a.StartTime)
+             AND a.StartTime < DATEADD(MINUTE, @gap, @end)
+            THEN 1 ELSE 0 END,
+       @end
 FROM dbo.Appointments a
+JOIN dbo.Services s ON s.ServiceId = a.ServiceId
 WHERE a.AppointmentId <> @id
-  AND a.Status NOT IN (N'Cancelled', N'Completed')
-  AND DATEDIFF(MINUTE, a.StartTime, @t) > -@gap AND DATEDIFF(MINUTE, a.StartTime, @t) < @gap
-  AND ((@g IS NOT NULL AND a.GroomerId = @g) OR (@rm IS NOT NULL AND a.RoomId = @rm))
+  AND a.Status <> N'Cancelled'
+  AND (
+        (@rm IS NOT NULL AND a.RoomId = @rm
+           AND @t < DATEADD(MINUTE, s.DurationMinutes + @gap, a.StartTime)
+           AND a.StartTime < DATEADD(MINUTE, @gap, @end))
+     OR (@g IS NOT NULL AND a.GroomerId = @g AND a.Status <> N'Completed'
+           AND @t < DATEADD(MINUTE, s.DurationMinutes, a.StartTime)
+           AND a.StartTime < @end)
+      )
 ORDER BY a.StartTime";
 
         using var conn = Open();
         using var cmd = Cmd(conn, sql);
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         P(cmd, "@t", SqlDbType.DateTime2, start);
+        P(cmd, "@svc", SqlDbType.Int, serviceId);
         P(cmd, "@g", SqlDbType.Int, groomerId);
         P(cmd, "@rm", SqlDbType.Int, roomId);
         P(cmd, "@gap", SqlDbType.Int, BookingGapMinutes);
         using var r = cmd.ExecuteReader();
         if (!r.Read()) return null;
 
-        string at = r.GetDateTime(2).ToString("MMM d, h:mm tt", System.Globalization.CultureInfo.CurrentCulture);
-        string next = r.GetDateTime(2).AddMinutes(BookingGapMinutes).ToString("h:mm tt", System.Globalization.CultureInfo.CurrentCulture);
-        bool groomerBusy = groomerId is not null && !r.IsDBNull(0) && r.GetInt32(0) == groomerId;
-        return groomerBusy
-            ? $"That groomer already has an appointment at {at}. Bookings need to be {BookingGapMinutes} minutes apart (the next one can start at {next}), or pick another groomer."
-            : $"That room is already booked at {at}. Bookings need to be {BookingGapMinutes} minutes apart (the next one can start at {next}), or pick another room.";
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        DateTime otherStart = r.GetDateTime(0), otherEnd = r.GetDateTime(1), newEnd = r.GetDateTime(3);
+        bool roomHit = r.GetInt32(2) == 1;
+        bool otherFirst = otherStart <= start;        // it is already running (or starts together) vs. it comes after ours
+        string at = otherStart.ToString("MMM d, h:mm tt", culture);
+        string until = otherEnd.ToString("h:mm tt", culture);
+        string ready = otherEnd.AddMinutes(BookingGapMinutes).ToString("h:mm tt", culture);
+        string ourEnd = newEnd.ToString("h:mm tt", culture);
+
+        if (roomHit)
+            return otherFirst
+                ? $"That room isn't free then. It is in use from {at} until {until} and then needs {BookingGapMinutes} minutes to be sanitized (ready at {ready}). Pick a time from {ready} onward, or another room."
+                : $"That room is already booked at {at}. This service would end at {ourEnd} and the room needs {BookingGapMinutes} minutes to be sanitized after it, so it would run into that booking. Pick an earlier time, or another room.";
+
+        return otherFirst
+            ? $"That groomer is busy grooming from {at} until {until}. Pick a time from {until} onward, or another groomer."
+            : $"That groomer already has an appointment at {at}, and this service would run until {ourEnd}. Pick an earlier time, or another groomer.";
     }
 
     /// <summary>

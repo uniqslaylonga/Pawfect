@@ -462,7 +462,7 @@ internal sealed class EditAppointmentForm : DialogBase
 
         try
         {
-            if (EmployeeData.FindScheduleConflict(_item.Id, start, groomerId, roomId) is { } conflict)
+            if (EmployeeData.FindScheduleConflict(_item.Id, start, _services[_service.SelectedIndex].Id, groomerId, roomId) is { } conflict)
             {
                 ShowError(conflict);
                 return;

@@ -113,7 +113,7 @@ internal sealed class NewAppointmentForm : DialogBase
 
         try
         {
-            if (EmployeeData.FindScheduleConflict(0, start, groomerId, roomId) is { } conflict)
+            if (EmployeeData.FindScheduleConflict(0, start, _services[_service.SelectedIndex].Id, groomerId, roomId) is { } conflict)
             {
                 ShowError(conflict);
                 return;
