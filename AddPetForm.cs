@@ -21,6 +21,7 @@ internal sealed partial class AddPetForm : Form
     private readonly bool _kiosk;          // walk-in at the kiosk: no login, the customer is found (or created) from the email
     private readonly bool _skipContactStep;   // signed in with an account the clinic set up: step 1 (email code) is already done
     private string _contactMobile = "";
+    private string _typedName = "";        // kiosk: the name typed in step 1 (saved on the customer record once the code is right)
 
     private readonly List<PetCard> _petCards = new();
     private PetCard? _chosenCard;
@@ -107,6 +108,7 @@ internal sealed partial class AddPetForm : Form
         backButton.Click += (_, _) => GoBack();
         resendTimer.Tick += (_, _) => TickResend();
 
+        nameField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         emailField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         mobileField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         mobileField.Box.MaxLength = 20;
@@ -155,7 +157,25 @@ internal sealed partial class AddPetForm : Form
             ShowContactError("Enter a valid email address, like example@email.com.");
             return;
         }
+        string typedName = nameField.Value.Trim();
         if (_kiosk && !LookUpKioskCustomer(email)) return;
+        if (_kiosk)
+        {
+            // a returning customer can leave the name blank (the one on file is used); a new customer must give one
+            if (typedName.Length == 0 && _customerId == 0)
+            {
+                ShowContactError("Please enter your full name.");
+                return;
+            }
+            if (typedName.Length > 100)
+            {
+                ShowContactError("That name is too long (100 characters at most).");
+                return;
+            }
+            if (typedName.Length == 0) nameField.Box.Text = typedName = _ownerName;   // show the name on file
+            _typedName = typedName;
+            if (_customerId == 0) _ownerName = typedName;                              // the email greets them by name
+        }
         string mobile = mobileField.Value.Trim();
         _contactMobile = mobile;
         if (mobile.Length > 0 && !MobileMatches(mobile))
@@ -241,10 +261,17 @@ internal sealed partial class AddPetForm : Form
         {
             if (_customerId == 0)
             {
-                // first visit: a record is made from the verified email (staff can fix the name later)
-                string name = ContactEmail.Contains('@') ? ContactEmail[..ContactEmail.IndexOf('@')] : ContactEmail;
+                // first visit: a record is made with the name typed in step 1 (the email's first part only if it was somehow left empty)
+                string name = _typedName.Length > 0 ? _typedName
+                    : ContactEmail.Contains('@') ? ContactEmail[..ContactEmail.IndexOf('@')] : ContactEmail;
                 _ownerName = name.Length > 100 ? name[..100] : name;
                 _customerId = EmployeeData.AddCustomer(_ownerName, _contactMobile, ContactEmail, "");
+            }
+            else if (_typedName.Length > 0 && !string.Equals(_typedName, _ownerName, StringComparison.Ordinal))
+            {
+                // returning customer corrected their name: the employee side shows the new one
+                EmployeeData.UpdateCustomerName(_customerId, _typedName);
+                _ownerName = _typedName;
             }
             ownerLabel.Text = "Registering a new pet for " + _ownerName;
             return true;

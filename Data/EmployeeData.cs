@@ -775,6 +775,16 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
         return r.Read() ? (r.GetInt32(0), r.GetString(1)) : null;
     }
 
+    /// <summary>Kiosk: the customer typed their name - save it on the record so staff see the same name.</summary>
+    public static void UpdateCustomerName(int customerId, string name)
+    {
+        using var conn = Open();
+        using var cmd = Cmd(conn, "UPDATE dbo.Customers SET FullName = @n WHERE CustomerId = @id AND IsActive = 1");
+        P(cmd, "@n", SqlDbType.NVarChar, name.Trim(), 100);
+        P(cmd, "@id", SqlDbType.Int, customerId);
+        cmd.ExecuteNonQuery();
+    }
+
     /// <summary>Kiosk: the customer record that has this email (null when there is none yet).</summary>
     public static (int Id, string Name)? FindCustomerByEmail(string email)
     {

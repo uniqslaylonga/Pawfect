@@ -1,4 +1,4 @@
-# Run this ONCE on the employee PC (the one that will hold the shared database). Use 2-Setup-Server.bat.
+﻿# Run this ONCE on the employee PC (the one that will hold the shared database). Use 2-Setup-Server.bat.
 # It installs SQL Server Express if needed, opens it to the LAN, creates the "pawfect" login and restores Pawfect.bak.
 param(
     [string]$Instance      = 'SQLEXPRESS',
@@ -8,10 +8,13 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
+$SqlHost  = 'tcp:127.0.0.1,1433'   # the script sets the instance to port 1433 below, so no SQL Browser needed
+$Service = if ($Instance -eq 'MSSQLSERVER') { 'MSSQLSERVER' } else { "MSSQL`$$Instance" }
+
 function Step([string]$text) { Write-Host ''; Write-Host "== $text" -ForegroundColor Cyan }
 
 function Sql([string]$query) {
-    $c = New-Object System.Data.SqlClient.SqlConnection "Server=.\$Instance;Database=master;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=10;"
+    $c = New-Object System.Data.SqlClient.SqlConnection "Server=$SqlHost;Database=master;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=10;"
     try {
         $c.Open()
         $cmd = $c.CreateCommand(); $cmd.CommandTimeout = 0; $cmd.CommandText = $query
@@ -20,7 +23,7 @@ function Sql([string]$query) {
 }
 
 function SqlRows([string]$query) {
-    $c = New-Object System.Data.SqlClient.SqlConnection "Server=.\$Instance;Database=master;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=10;"
+    $c = New-Object System.Data.SqlClient.SqlConnection "Server=$SqlHost;Database=master;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=10;"
     $rows = @()
     try {
         $c.Open()
@@ -61,7 +64,7 @@ $tcp = "$base\SuperSocketNetLib\Tcp"
 Set-ItemProperty $tcp -Name Enabled -Value 1
 Set-ItemProperty "$tcp\IPAll" -Name TcpPort -Value '1433'
 Set-ItemProperty "$tcp\IPAll" -Name TcpDynamicPorts -Value ''
-Restart-Service "MSSQL`$$Instance" -Force
+Restart-Service $Service -Force
 
 # 3 ---------------------------------------------------------------- firewall
 Step 'Opening the firewall for SQL Server'
@@ -138,3 +141,4 @@ if ($ips.Count -gt 0) {
 }
 Write-Host ''
 Write-Host 'NEXT: copy server.txt next to Pawfect.exe on BOTH PCs (employee and kiosk), then start the app.' -ForegroundColor Green
+

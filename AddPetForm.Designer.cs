@@ -32,6 +32,8 @@ namespace MyApp
             stepTicket = new MyApp.Controls.StepDot();
             titleLabel = new System.Windows.Forms.Label();
             subtitleLabel = new System.Windows.Forms.Label();
+            nameLabel = new System.Windows.Forms.Label();
+            nameField = new MyApp.Controls.InputField();
             emailLabel = new System.Windows.Forms.Label();
             emailField = new MyApp.Controls.InputField();
             mobileLabel = new System.Windows.Forms.Label();
@@ -229,15 +231,43 @@ namespace MyApp
             subtitleLabel.TextAlign = ContentAlignment.MiddleLeft;
             subtitleLabel.UseMnemonic = false;
             // 
+            // nameLabel
+            // 
+            nameLabel.BackColor = Color.FromArgb(243, 247, 252);
+            nameLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            nameLabel.ForeColor = Color.FromArgb(68, 83, 106);
+            nameLabel.Location = new Point(40, 2);
+            nameLabel.Name = "nameLabel";
+            nameLabel.Size = new Size(380, 16);
+            nameLabel.TabIndex = 0;
+            nameLabel.Text = "FULL NAME";
+            nameLabel.TextAlign = ContentAlignment.MiddleLeft;
+            nameLabel.UseMnemonic = false;
+            // 
+            // nameField
+            // 
+            nameField.BorderColor = Color.FromArgb(227, 233, 242);
+            nameField.CornerColor = Color.FromArgb(243, 247, 252);
+            nameField.FillColor = Color.White;
+            nameField.Glyph = "\uE77B";
+            nameField.Location = new Point(40, 20);
+            nameField.Margin = new Padding(0);
+            nameField.Name = "nameField";
+            nameField.Padding = new Padding(10, 3, 10, 3);
+            nameField.Placeholder = "Juan Dela Cruz";
+            nameField.Radius = 12;
+            nameField.Size = new Size(380, 46);
+            nameField.TabIndex = 1;
+            // 
             // emailLabel
             // 
             emailLabel.BackColor = Color.FromArgb(243, 247, 252);
             emailLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             emailLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            emailLabel.Location = new Point(40, 14);
+            emailLabel.Location = new Point(40, 72);
             emailLabel.Name = "emailLabel";
             emailLabel.Size = new Size(380, 16);
-            emailLabel.TabIndex = 0;
+            emailLabel.TabIndex = 2;
             emailLabel.Text = "EMAIL ADDRESS";
             emailLabel.TextAlign = ContentAlignment.MiddleLeft;
             emailLabel.UseMnemonic = false;
@@ -248,24 +278,24 @@ namespace MyApp
             emailField.CornerColor = Color.FromArgb(243, 247, 252);
             emailField.FillColor = Color.White;
             emailField.Glyph = "\uE715";
-            emailField.Location = new Point(40, 32);
+            emailField.Location = new Point(40, 90);
             emailField.Margin = new Padding(0);
             emailField.Name = "emailField";
             emailField.Padding = new Padding(10, 3, 10, 3);
             emailField.Placeholder = "example@email.com";
             emailField.Radius = 12;
             emailField.Size = new Size(380, 46);
-            emailField.TabIndex = 1;
+            emailField.TabIndex = 3;
             // 
             // mobileLabel
             // 
             mobileLabel.BackColor = Color.FromArgb(243, 247, 252);
             mobileLabel.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             mobileLabel.ForeColor = Color.FromArgb(68, 83, 106);
-            mobileLabel.Location = new Point(40, 92);
+            mobileLabel.Location = new Point(40, 140);
             mobileLabel.Name = "mobileLabel";
             mobileLabel.Size = new Size(380, 16);
-            mobileLabel.TabIndex = 2;
+            mobileLabel.TabIndex = 4;
             mobileLabel.Text = "MOBILE NUMBER (OPTIONAL)";
             mobileLabel.TextAlign = ContentAlignment.MiddleLeft;
             mobileLabel.UseMnemonic = false;
@@ -276,24 +306,24 @@ namespace MyApp
             mobileField.CornerColor = Color.FromArgb(243, 247, 252);
             mobileField.FillColor = Color.White;
             mobileField.Glyph = "\uE717";
-            mobileField.Location = new Point(40, 110);
+            mobileField.Location = new Point(40, 158);
             mobileField.Margin = new Padding(0);
             mobileField.Name = "mobileField";
             mobileField.Padding = new Padding(10, 3, 10, 3);
             mobileField.Placeholder = "09XX XXX XXXX";
             mobileField.Radius = 12;
             mobileField.Size = new Size(380, 46);
-            mobileField.TabIndex = 3;
+            mobileField.TabIndex = 5;
             // 
             // contactErrorLabel
             // 
             contactErrorLabel.BackColor = Color.FromArgb(243, 247, 252);
             contactErrorLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             contactErrorLabel.ForeColor = Color.FromArgb(239, 68, 68);
-            contactErrorLabel.Location = new Point(40, 166);
+            contactErrorLabel.Location = new Point(40, 208);
             contactErrorLabel.Name = "contactErrorLabel";
-            contactErrorLabel.Size = new Size(380, 36);
-            contactErrorLabel.TabIndex = 4;
+            contactErrorLabel.Size = new Size(380, 34);
+            contactErrorLabel.TabIndex = 6;
             contactErrorLabel.Text = "";
             contactErrorLabel.TextAlign = ContentAlignment.TopLeft;
             contactErrorLabel.UseMnemonic = false;
@@ -302,11 +332,11 @@ namespace MyApp
             // 
             sendOtpButton.BackColor = Color.White;
             sendOtpButton.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            sendOtpButton.Location = new Point(40, 206);
+            sendOtpButton.Location = new Point(40, 246);
             sendOtpButton.Name = "sendOtpButton";
             sendOtpButton.Radius = 12;
             sendOtpButton.Size = new Size(380, 48);
-            sendOtpButton.TabIndex = 5;
+            sendOtpButton.TabIndex = 7;
             sendOtpButton.Text = "Send OTP  \u2192";
             // 
             // dividerLine
@@ -315,7 +345,7 @@ namespace MyApp
             dividerLine.Location = new Point(449, 0);
             dividerLine.Name = "dividerLine";
             dividerLine.Size = new Size(1, 300);
-            dividerLine.TabIndex = 6;
+            dividerLine.TabIndex = 8;
             // 
             // orLabel
             // 
@@ -340,7 +370,7 @@ namespace MyApp
             orBadge.Name = "orBadge";
             orBadge.Radius = 14;
             orBadge.Size = new Size(30, 30);
-            orBadge.TabIndex = 7;
+            orBadge.TabIndex = 9;
             // 
             // otpIcon
             // 
@@ -516,7 +546,7 @@ namespace MyApp
             otpCard.Name = "otpCard";
             otpCard.Radius = 18;
             otpCard.Size = new Size(380, 300);
-            otpCard.TabIndex = 8;
+            otpCard.TabIndex = 10;
             // 
             // contactPanel
             // 
@@ -529,6 +559,8 @@ namespace MyApp
             contactPanel.Controls.Add(mobileLabel);
             contactPanel.Controls.Add(emailField);
             contactPanel.Controls.Add(emailLabel);
+            contactPanel.Controls.Add(nameField);
+            contactPanel.Controls.Add(nameLabel);
             contactPanel.BackColor = Color.FromArgb(243, 247, 252);
             contactPanel.Location = new Point(0, 150);
             contactPanel.Name = "contactPanel";
@@ -914,6 +946,8 @@ namespace MyApp
         private System.Windows.Forms.Label subtitleLabel;
         private System.Windows.Forms.Label emailLabel;
         private MyApp.Controls.InputField emailField;
+        private System.Windows.Forms.Label nameLabel;
+        private MyApp.Controls.InputField nameField;
         private System.Windows.Forms.Label mobileLabel;
         private MyApp.Controls.InputField mobileField;
         private System.Windows.Forms.Label contactErrorLabel;
