@@ -3,61 +3,100 @@ using MyApp.Controls;
 
 namespace MyApp;
 
-internal sealed class ServiceDialog : ThemedDialog
+internal sealed class ServiceDialog : DialogBase
 {
+    private static readonly string[] Categories = { "Grooming", "Health & Wellness", "Add-ons", "Others" };
+    private static readonly string[] Sizes = { "XS", "Small", "Medium", "Large", "XL", "Giant", "All" };
+    private static readonly string[] Species = { "Both", "Dog", "Cat" };
+
     private readonly ServiceRepository.ServiceRow? _existing;
-    private readonly InputField nameBox, descBox;
-    private readonly ComboBox categoryBox, sizeBox;
-    private readonly NumericUpDown priceBox, minutesBox;
+    private readonly TextBox nameBox = new();
+    private readonly PawSelect categoryBox = new();
+    private readonly PawSelect sizeBox = new();
+    private readonly PawSelect speciesBox = new();
+    private readonly NumericUpDown minKgBox = new() { DecimalPlaces = 1, Maximum = 200, Increment = 1 };
+    private readonly NumericUpDown maxKgBox = new() { DecimalPlaces = 1, Maximum = 200, Increment = 1 };
+    private readonly TextBox descBox = new() { PlaceholderText = "Optional" };
+    private readonly NumericUpDown priceBox = new() { DecimalPlaces = 2, Maximum = 100000, Increment = 50 };
+    private readonly NumericUpDown minutesBox = new() { Minimum = 5, Maximum = 600, Increment = 5, Value = 60 };
 
     /// <summary>Name of the saved service, so AdminForm can write it to the audit log.</summary>
     public string? SavedName { get; private set; }
 
     public ServiceDialog(ServiceRepository.ServiceRow? existing = null)
-        : base(existing == null ? "Add Service" : "Edit Service",
-               existing == null ? "Add a grooming service to the catalog."
-                                : "Update this service's details and price.")
+        : base(existing == null ? "Add Service" : "Edit Service", "Save", "\uE70F",
+               existing == null ? "Name it, price it, set how long it takes" : existing.Name)
     {
         _existing = existing;
 
-        nameBox = AddInput("Service name", "\uE734", "e.g. Full Groom", existing?.Name);
-        categoryBox = AddCombo("Category", new[] { "Grooming", "Health & Wellness", "Add-ons", "Others" }, existing?.Category);
-        sizeBox = AddCombo("Size", new[] { "Small", "Medium", "Large", "Giant", "All" }, existing?.Size);
-        descBox = AddInput("Description (optional)", "\uE946", "Short description", existing?.Description);
-        priceBox = AddNumber("Price (₱)", existing?.Price ?? 0, 0, 100000, decimals: 2, step: 50);
-        minutesBox = AddNumber("Duration (minutes)", existing?.DurationMinutes ?? 60, 5, 600, step: 5);
+        categoryBox.Items.AddRange(Categories.Select(c => (object)c).ToArray());
+        sizeBox.Items.AddRange(Sizes.Select(s => (object)s).ToArray());
+        speciesBox.Items.AddRange(Species.Select(s => (object)s).ToArray());
+        categoryBox.SelectedIndex = 0;
+        sizeBox.SelectedIndex = Array.IndexOf(Sizes, "Small");
+        speciesBox.SelectedIndex = 0;
 
-        AddButtons(existing == null ? "Add Service" : "Save Changes", Save_Click);
+        if (existing != null)
+        {
+            nameBox.Text = existing.Name;
+            categoryBox.SelectedIndex = Math.Max(0, Array.IndexOf(Categories, existing.Category));
+            sizeBox.SelectedIndex = Math.Max(0, Array.IndexOf(Sizes, existing.Size));
+            speciesBox.SelectedIndex = Math.Max(0, Array.IndexOf(Species, existing.Species));
+            minKgBox.Value = existing.MinKg ?? 0;
+            maxKgBox.Value = existing.MaxKg ?? 0;
+            descBox.Text = existing.Description ?? "";
+            priceBox.Value = existing.Price;
+            minutesBox.Value = existing.DurationMinutes;
+        }
+
+        AddRow("Service name *", nameBox);
+        AddRow("Category", categoryBox);
+        AddRow("Size", sizeBox);
+        AddRow("Pet type", speciesBox);
+        AddRow("Weight over (kg)", minKgBox);
+        AddRow("Up to (kg)", maxKgBox);
+        AddRow("Description", descBox);
+        AddRow("Price (\u20B1)", priceBox);
+        AddRow("Minutes", minutesBox);
+        FitHeight();
     }
 
-    private void Save_Click(object? sender, EventArgs e)
+    protected override void OnSaveClicked()
     {
-        if (string.IsNullOrWhiteSpace(nameBox.Value))
+        if (string.IsNullOrWhiteSpace(nameBox.Text))
         {
-            MessageBox.Show(this, "Service name is required.");
+            ShowError("Service name is required.");
             return;
         }
 
-        string category = (string)categoryBox.SelectedItem!;
-        string size = (string)sizeBox.SelectedItem!;
+        string category = Categories[categoryBox.SelectedIndex];
+        string size = Sizes[sizeBox.SelectedIndex];
+        string species = Species[speciesBox.SelectedIndex];
+        decimal? minKg = minKgBox.Value > 0 ? minKgBox.Value : null;   // 0 = no limit
+        decimal? maxKg = maxKgBox.Value > 0 ? maxKgBox.Value : null;
+        if (minKg is decimal lo && maxKg is decimal hi && hi <= lo)
+        {
+            ShowError("'Up to' must be higher than 'Weight over'.");
+            return;
+        }
 
         try
         {
             if (_existing == null)
-                ServiceRepository.Add(nameBox.Value, category, size, descBox.Value, priceBox.Value, (int)minutesBox.Value);
+                ServiceRepository.Add(nameBox.Text, category, size, descBox.Text, priceBox.Value, (int)minutesBox.Value, species, minKg, maxKg);
             else
-                ServiceRepository.Update(_existing.Id, nameBox.Value, category, size, descBox.Value, priceBox.Value, (int)minutesBox.Value);
+                ServiceRepository.Update(_existing.Id, nameBox.Text, category, size, descBox.Text, priceBox.Value, (int)minutesBox.Value, species, minKg, maxKg);
 
-            SavedName = $"{nameBox.Value.Trim()} ({size})";
+            SavedName = $"{nameBox.Text.Trim()} ({size})";
             DialogResult = DialogResult.OK;
         }
         catch (SqlException ex) when (ex.Number is 2627 or 2601)
         {
-            MessageBox.Show(this, "That service already exists for this size.");
+            ShowError("That service already exists for this size.");
         }
         catch (SqlException ex)
         {
-            MessageBox.Show(this, "Could not save: " + ex.Message);
+            ShowError("Could not save: " + ex.Message);
         }
     }
 }
