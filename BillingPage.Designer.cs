@@ -376,7 +376,7 @@ namespace MyApp
             itemsTitle.Name = "itemsTitle";
             itemsTitle.Size = new Size(242, 28);
             itemsTitle.TabIndex = 0;
-            itemsTitle.Text = "2. Add Items / Services";
+            itemsTitle.Text = "Add Item/Service";
             itemsTitle.TextAlign = ContentAlignment.MiddleLeft;
             itemsTitle.UseMnemonic = false;
             // 
