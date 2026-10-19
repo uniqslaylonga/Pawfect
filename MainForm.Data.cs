@@ -39,6 +39,7 @@ internal partial class MainForm
         appointmentsPage.ServicesCatalogRequested += (_, _) => ShowServiceList();
         appointmentsPage.NewAppointmentRequested += (_, _) => NewAppointment();
 
+        billingPage.PetServiceLoader = EmployeeData.GetServicesForPet;
         billingPage.PrintReceiptRequested += (_, sale) => CompleteSale(sale);
         billingPage.ViewTransactionRequested += (_, item) => ShowTransactionDetails(item);
         billingPage.ViewCustomerRequested += (_, _) => ShowPage(Page.Lookup);

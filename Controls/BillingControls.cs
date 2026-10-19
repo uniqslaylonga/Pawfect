@@ -308,7 +308,7 @@ internal sealed class CatalogRowView : Control
         _button = buttonText;
         SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         BackColor = Color.White;
-        Height = RowHeight;
+        Height = S(RowHeight);
         TabStop = false;
     }
 
@@ -316,12 +316,17 @@ internal sealed class CatalogRowView : Control
 
     public event EventHandler? ActionClicked;
 
+    // The row is built in code (not by the designer), so its pixel sizes don't scale with the screen by themselves.
+    // S() applies the display scale (100% at 1920 x 1080, 125% at 1536 x 864) so text and buttons keep fitting.
+    private int S(int px) => LogicalToDeviceUnits(px);
+
     private Rectangle ButtonRect
     {
         get
         {
-            int w = Math.Max(44, TextRenderer.MeasureText(_button, Theme.Face(8.5f, FontStyle.Bold)).Width + 22);
-            return new Rectangle(Width - 4 - w, (Height - 24) / 2, w, 24);
+            int w = Math.Max(S(44), TextRenderer.MeasureText(_button, Theme.Face(8.5f, FontStyle.Bold)).Width + S(22));
+            int h = S(24);
+            return new Rectangle(Width - S(4) - w, (Height - h) / 2, w, h);
         }
     }
 
@@ -364,35 +369,46 @@ internal sealed class CatalogRowView : Control
             g.FillRectangle(bg, ClientRectangle);
 
         // icon tile
-        var tile = new RectangleF(4, (Height - 34) / 2f, 34, 34);
-        using (var path = Ui.RoundRect(tile, 8))
+        int tileSize = S(34);
+        var tile = new RectangleF(S(4), (Height - tileSize) / 2f, tileSize, tileSize);
+        using (var path = Ui.RoundRect(tile, S(8)))
         using (var b = new SolidBrush(Theme.PrimarySoft))
             g.FillPath(b, path);
         TextRenderer.DrawText(g, _glyph, Theme.GlyphFont(10f), Rectangle.Round(tile), Theme.Primary, Tf.Center);
 
         var button = ButtonRect;
-        int right = button.X - 8;
+        int right = button.X - S(8);
+        int textX = S(46);
+        var titleFont = Theme.Face(8.5f, FontStyle.Bold);
 
-        if (_price.Length > 0)
-        {
-            var priceRect = new Rectangle(right - 64, 0, 64, Height);
-            TextRenderer.DrawText(g, _price, Theme.Face(8.5f, FontStyle.Bold), priceRect, Theme.Text, Tf.Right);
-            right = priceRect.X - 6;
-        }
-
-        int textX = 46;
-        int textW = Math.Max(10, right - textX);
         if (_subtitle.Length > 0)
         {
-            TextRenderer.DrawText(g, _title, Theme.Face(8.5f, FontStyle.Bold), new Rectangle(textX, 7, textW, 18), Theme.Text, Tf.Left);
-            TextRenderer.DrawText(g, _subtitle, Theme.Face(7.5f), new Rectangle(textX, 25, textW, 16), Theme.Muted, Tf.Left);
+            // Two lines so a long name isn't squeezed by the price: the name gets the full width up to the button,
+            // the weight band sits under it on the left and the price on the right.
+            TextRenderer.DrawText(g, _title, titleFont, new Rectangle(textX, S(6), Math.Max(10, right - textX), S(19)), Theme.Text, Tf.Left);
+
+            int priceW = 0;
+            if (_price.Length > 0)
+            {
+                priceW = TextRenderer.MeasureText(_price, titleFont).Width + S(4);
+                TextRenderer.DrawText(g, _price, titleFont, new Rectangle(button.Right - priceW, S(25), priceW, S(17)), Theme.Text, Tf.Right);
+            }
+            int subW = Math.Max(10, (priceW > 0 ? button.Right - priceW - S(6) : right) - textX);
+            TextRenderer.DrawText(g, _subtitle, Theme.Face(7.5f), new Rectangle(textX, S(25), subW, S(17)), Theme.Muted, Tf.Left);
         }
         else
         {
-            TextRenderer.DrawText(g, _title, Theme.Face(8.5f, FontStyle.Bold), new Rectangle(textX, 0, textW, Height), Theme.Text, Tf.Left);
+            if (_price.Length > 0)
+            {
+                int priceW = TextRenderer.MeasureText(_price, titleFont).Width + S(4);
+                var priceRect = new Rectangle(right - priceW, 0, priceW, Height);
+                TextRenderer.DrawText(g, _price, titleFont, priceRect, Theme.Text, Tf.Right);
+                right = priceRect.X - S(6);
+            }
+            TextRenderer.DrawText(g, _title, titleFont, new Rectangle(textX, 0, Math.Max(10, right - textX), Height), Theme.Text, Tf.Left);
         }
 
-        using (var path = Ui.RoundRect(new RectangleF(button.X, button.Y, button.Width - 1, button.Height - 1), 6))
+        using (var path = Ui.RoundRect(new RectangleF(button.X, button.Y, button.Width - 1, button.Height - 1), S(6)))
         using (var b = new SolidBrush(_hoverButton ? Color.FromArgb(214, 230, 250) : Theme.PrimarySoft))
             g.FillPath(b, path);
         TextRenderer.DrawText(g, _button, Theme.Face(8.5f, FontStyle.Bold), button, Theme.Primary, Tf.Center);

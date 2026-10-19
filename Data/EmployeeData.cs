@@ -177,7 +177,7 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     public static List<ServiceOffering> GetServices()
     {
         using var conn = Open();
-        using var cmd = Cmd(conn, "SELECT ServiceId, Name, Price, Species, MinKg, MaxKg FROM dbo.Services WHERE IsActive = 1 ORDER BY Name, Species, ISNULL(MinKg, 0)");
+        using var cmd = Cmd(conn, "SELECT ServiceId, Name, CASE WHEN Price = 0 THEN CAST(350 AS DECIMAL(10,2)) ELSE Price END, Species, MinKg, MaxKg FROM dbo.Services WHERE IsActive = 1 ORDER BY Name, Species, ISNULL(MinKg, 0)");
         using var r = cmd.ExecuteReader();
         var list = new List<ServiceOffering>();
         while (r.Read())
@@ -205,7 +205,7 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId, a.PetId
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -225,7 +225,7 @@ ORDER BY a.StartTime";
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
                 r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12),
-                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15)));
+                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15), r.GetInt32(16)));
         }
         return list;
     }

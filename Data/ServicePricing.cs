@@ -8,7 +8,7 @@ namespace MyApp;
 /// Weight-based service prices. A service has ONE name ("Full Groom") and one row per weight band in dbo.Services
 /// (Species + MinKg/MaxKg + Price, see Sql/weight_based_pricing.sql). The band is chosen from the pet's species and
 /// weight, so customers and staff only ever see the plain service name with the price that fits the pet.
-/// A pet matches a band when MinKg &lt; weight &lt;= MaxKg (NULL = no limit); a service without bounds applies to every pet.
+/// A pet matches a band when MinKg &lt; weight &lt;= MaxKg (NULL = no limit); a service with no Dog / Cat label (Species Both) applies to every pet.
 /// </summary>
 internal static class ServicePricing
 {
@@ -16,8 +16,10 @@ internal static class ServicePricing
 
     // The WHERE part shared by every lookup below (table alias "s"; @sp = species, @w = weight in kg or NULL when unknown).
     private const string FitsPet = @"
-s.Species IN (N'Both', @sp)
-AND (@w IS NULL OR ((s.MinKg IS NULL OR @w > s.MinKg) AND (s.MaxKg IS NULL OR @w <= s.MaxKg)))";
+(
+    ISNULL(s.Species, N'') IN (N'', N'Both')   -- no Dog / Cat label: offered for every pet, whatever its weight
+    OR (s.Species = @sp AND (@w IS NULL OR ((s.MinKg IS NULL OR @w > s.MinKg) AND (s.MaxKg IS NULL OR @w <= s.MaxKg))))
+)";
 
     // When a service name matches several rows, prefer the one made for the pet's species, then the cheapest.
     private const string PreferSpecies = "CASE WHEN s.Species = N'Both' THEN 1 ELSE 0 END, CASE WHEN s.Size = N'All' THEN 0 ELSE 1 END, s.Price, s.ServiceId";
@@ -139,7 +141,7 @@ ORDER BY Price, Name";
         var pet = ReadPet(conn, petId);
 
         string sql = $@"
-SELECT s.ServiceId, s.Name, s.Price, s.Species, s.MinKg, s.MaxKg
+SELECT s.ServiceId, s.Name, CASE WHEN s.Price = 0 THEN CAST(350 AS DECIMAL(10,2)) ELSE s.Price END, s.Species, s.MinKg, s.MaxKg
 FROM dbo.Services s
 WHERE s.IsActive = 1 AND {FitsPet}
 ORDER BY s.Name, s.Species, ISNULL(s.MinKg, 0)";

@@ -15,6 +15,23 @@ internal partial class BillingPage : UserControl
 
     private IReadOnlyList<ProductItem> _products = Array.Empty<ProductItem>();
     private IReadOnlyList<ServiceOffering> _services = Array.Empty<ServiceOffering>();
+    private IReadOnlyList<ServiceOffering>? _petServices;   // only the services that fit the picked appointment's pet (null = list everything)
+
+    /// <summary>Set by the main form: returns the services priced for one pet's species and weight.</summary>
+    public Func<int, IEnumerable<ServiceOffering>>? PetServiceLoader { get; set; }
+
+    private IReadOnlyList<ServiceOffering> CatalogServices => _petServices ?? _services;
+
+    private void LoadPetServices()
+    {
+        _petServices = null;
+        if (_selected is { PetId: > 0 } a && PetServiceLoader is not null)
+        {
+            try { _petServices = PetServiceLoader(a.PetId).ToList(); }
+            catch (Microsoft.Data.SqlClient.SqlException) { _petServices = null; }
+        }
+        RebuildCatalog();
+    }
     private IReadOnlyList<AppointmentItem> _appointments = Array.Empty<AppointmentItem>();
     private IReadOnlyList<TransactionItem> _transactions = Array.Empty<TransactionItem>();
 
@@ -78,7 +95,7 @@ internal partial class BillingPage : UserControl
     public void SetServices(IEnumerable<ServiceOffering> services)
     {
         _services = services.ToList();
-        RebuildCatalog();
+        LoadPetServices();
     }
 
     /// <summary>Replaces the appointments that can be picked in "From Appointment" mode.</summary>
@@ -139,6 +156,7 @@ internal partial class BillingPage : UserControl
         paymentMethod.SelectedIndex = 0;
         UpdateCustomerPanel();
         RebuildCart();
+        LoadPetServices();
     }
 
     // ------------------------------------------------------------------ 1. customer
@@ -156,6 +174,7 @@ internal partial class BillingPage : UserControl
             _cart.RemoveAll(l => l.FromAppointment);   // services the cashier added by hand stay in the cart
             customerSearch.Box.Text = "";
             RebuildCart();
+            LoadPetServices();
         }
         ApplyCustomerMode();
     }
@@ -256,6 +275,7 @@ internal partial class BillingPage : UserControl
 
         UpdateCustomerPanel();
         RebuildCart();
+        LoadPetServices();
     }
 
     private void ClearAppointment()
@@ -264,6 +284,7 @@ internal partial class BillingPage : UserControl
         _cart.RemoveAll(l => l.FromAppointment);
         UpdateCustomerPanel();
         RebuildCart();
+        LoadPetServices();
     }
 
     // ------------------------------------------------------------------ 2. items / services
@@ -337,8 +358,8 @@ internal partial class BillingPage : UserControl
 
         if (ServicesTab)
         {
-            anySource = _services.Count > 0;
-            foreach (var s in _services.Where(s => query.Length == 0 || Has(s.Name, query)).OrderBy(s => s.Name))
+            anySource = CatalogServices.Count > 0;
+            foreach (var s in CatalogServices.Where(s => query.Length == 0 || Has(s.Name, query)).OrderBy(s => s.Name))
             {
                 var service = s;
                 var row = new CatalogRowView(service, "\uE734", service.Name, service.Detail, Money.Format(service.Price), "Add");
