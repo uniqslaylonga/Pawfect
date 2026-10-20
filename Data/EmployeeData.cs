@@ -57,6 +57,8 @@ IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appoint
     ALTER TABLE dbo.Appointments ADD QueueNumber NVARCHAR(10) NULL;
 IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'PreferredDays') IS NULL
     ALTER TABLE dbo.Appointments ADD PreferredDays NVARCHAR(40) NULL;
+IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'IsWalkIn') IS NULL
+    ALTER TABLE dbo.Appointments ADD IsWalkIn BIT NOT NULL CONSTRAINT DF_Appointments_IsWalkIn DEFAULT 0;
 IF OBJECT_ID(N'dbo.Customers', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Customers', N'UserId') IS NULL
     ALTER TABLE dbo.Customers ADD UserId INT NULL;", conn);
             cmd.ExecuteNonQuery();
@@ -205,7 +207,7 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId, a.PetId
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId, a.PetId, a.IsWalkIn
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -225,8 +227,35 @@ ORDER BY a.StartTime";
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
                 r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12),
-                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15), r.GetInt32(16)));
+                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15), r.GetInt32(16), r.GetBoolean(17)));
         }
+        return list;
+    }
+
+    /// <summary>
+    /// Today's walk-in SALES (completed sales with no appointment), shaped like appointments so the Appointments page can list
+    /// them under the Walk-ins tile. They are not real appointments: Id is the sale's id made negative. The sales stay in the
+    /// transaction history as before.
+    /// </summary>
+    public static List<AppointmentItem> GetWalkInSales(DateTime day)
+    {
+        const string sql = @"
+SELECT t.TransactionId, t.CreatedAt, ISNULL(c.FullName, N'Walk-in'), ISNULL(c.Phone, N''),
+       ISNULL(STUFF((SELECT N', ' + l.Name FROM dbo.TransactionLines l WHERE l.TransactionId = t.TransactionId
+                     ORDER BY l.LineId FOR XML PATH(N''), TYPE).value(N'.', N'nvarchar(max)'), 1, 2, N''), N'')
+FROM dbo.Transactions t
+LEFT JOIN dbo.Customers c ON c.CustomerId = t.CustomerId
+WHERE t.AppointmentId IS NULL AND t.Status = N'Completed' AND CAST(t.CreatedAt AS DATE) = @d
+ORDER BY t.CreatedAt";
+
+        using var conn = Open();
+        using var cmd = Cmd(conn, sql);
+        P(cmd, "@d", SqlDbType.Date, day.Date);
+        using var r = cmd.ExecuteReader();
+        var list = new List<AppointmentItem>();
+        while (r.Read())
+            list.Add(new AppointmentItem(-r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
+                "\u2014", "", r.GetString(4), AppointmentStatus.Completed, IsWalkIn: true));
         return list;
     }
 
@@ -254,11 +283,11 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
     /// </summary>
     private static string? AllowedFrom(AppointmentStatus target) => target switch
     {
-        AppointmentStatus.Pending => "N'Cancelled'",
-        AppointmentStatus.Confirmed => "N'Pending', N'Rescheduled'",
-        AppointmentStatus.CheckedIn => "N'Pending', N'Confirmed', N'Rescheduled'",
+        AppointmentStatus.Pending     => "N'Cancelled'",
+        AppointmentStatus.Confirmed   => "N'Pending', N'Rescheduled'",
+        AppointmentStatus.CheckedIn   => "N'Pending', N'Confirmed', N'Rescheduled'",
         AppointmentStatus.Rescheduled => "N'Pending', N'Confirmed', N'CheckedIn'",
-        AppointmentStatus.Cancelled => "N'Pending', N'Confirmed', N'CheckedIn', N'Rescheduled'",
+        AppointmentStatus.Cancelled   => "N'Pending', N'Confirmed', N'CheckedIn', N'Rescheduled'",
         _ => null,
     };
 
@@ -821,8 +850,10 @@ DECLARE @yesterday DATE = DATEADD(DAY, -1, @today);
 SELECT
   (SELECT COUNT(*) FROM dbo.Appointments WHERE CAST(StartTime AS DATE) = @today AND Status <> N'Cancelled'),
   (SELECT COUNT(*) FROM dbo.Appointments WHERE CAST(StartTime AS DATE) = @yesterday AND Status <> N'Cancelled'),
-  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @today AND AppointmentId IS NULL AND Status = N'Completed'),
-  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @yesterday AND AppointmentId IS NULL AND Status = N'Completed'),
+  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @today AND AppointmentId IS NULL AND Status = N'Completed')
+    + (SELECT COUNT(*) FROM dbo.Appointments WHERE IsWalkIn = 1 AND CAST(StartTime AS DATE) = @today AND Status <> N'Cancelled'),
+  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @yesterday AND AppointmentId IS NULL AND Status = N'Completed')
+    + (SELECT COUNT(*) FROM dbo.Appointments WHERE IsWalkIn = 1 AND CAST(StartTime AS DATE) = @yesterday AND Status <> N'Cancelled'),
   (SELECT ISNULL(SUM(l.Quantity), 0) FROM dbo.TransactionLines l JOIN dbo.Transactions t ON t.TransactionId = l.TransactionId
      WHERE l.LineKind = N'Service' AND t.Status = N'Completed' AND CAST(t.CreatedAt AS DATE) = @today),
   (SELECT ISNULL(SUM(l.Quantity), 0) FROM dbo.TransactionLines l JOIN dbo.Transactions t ON t.TransactionId = l.TransactionId
@@ -971,7 +1002,7 @@ ORDER BY t.CreatedAt DESC";
     /// customer request does. Saved as Confirmed when <paramref name="confirm"/> is true, otherwise Pending.
     /// </summary>
     public static int AddStaffAppointment(int customerId, int petId, int serviceId, DateTime start,
-        int? groomerId, int? roomId, string notes, bool confirm, string staffEmail)
+        int? groomerId, int? roomId, string notes, bool confirm, string staffEmail, bool walkIn = false)
     {
         using var conn = Open();
         using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
@@ -985,10 +1016,10 @@ DECLARE @n INT = ISNULL((SELECT MAX(TRY_CAST(SUBSTRING(QueueNumber, 2, 9) AS INT
                          WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL), 0) + 1;
 DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
 
-INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, GroomerId, RoomId)
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, GroomerId, RoomId, IsWalkIn)
 OUTPUT INSERTED.AppointmentId
 SELECT @c, p.PetId, @s, @t, CASE WHEN @confirm = 1 THEN N'Confirmed' ELSE N'Pending' END,
-       (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, @g, @rm
+       (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, @g, @rm, @walk
 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx);
         P(cmd, "@c", SqlDbType.Int, customerId);
         P(cmd, "@p", SqlDbType.Int, petId);
@@ -997,6 +1028,7 @@ FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx
         P(cmd, "@g", SqlDbType.Int, groomerId);
         P(cmd, "@rm", SqlDbType.Int, roomId);
         P(cmd, "@confirm", SqlDbType.Bit, confirm);
+        P(cmd, "@walk", SqlDbType.Bit, walkIn);
         P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
         P(cmd, "@email", SqlDbType.NVarChar, staffEmail, 256);
         var id = cmd.ExecuteScalar();
@@ -1060,7 +1092,7 @@ WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confi
     /// A customer's appointment request: it is saved as Pending with their preferred day/time and notes, and an
     /// employee sets the real schedule (day, time, groomer, room) from Edit. The pet must belong to the customer.
     /// </summary>
-    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "", string preferredDays = "")
+    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "", string preferredDays = "", bool walkIn = false)
     {
         using var conn = Open();
         using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
@@ -1073,9 +1105,9 @@ DECLARE @n INT = ISNULL((SELECT MAX(TRY_CAST(SUBSTRING(QueueNumber, 2, 9) AS INT
                          WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL), 0) + 1;
 DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
 
-INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, PreferredDays)
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, PreferredDays, IsWalkIn)
 OUTPUT INSERTED.AppointmentId, INSERTED.QueueNumber
-SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, NULLIF(@days, N'')
+SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, NULLIF(@days, N''), @walk
 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx))
         {
             P(cmd, "@c", SqlDbType.Int, customerId);
@@ -1085,6 +1117,7 @@ FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx
             P(cmd, "@email", SqlDbType.NVarChar, loginEmail, 256);
             P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
             P(cmd, "@days", SqlDbType.NVarChar, preferredDays, 40);
+            P(cmd, "@walk", SqlDbType.Bit, walkIn);
             using var r = cmd.ExecuteReader();
             if (!r.Read())
                 throw new InvalidOperationException("That pet doesn't belong to this account.");

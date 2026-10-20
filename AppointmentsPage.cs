@@ -17,8 +17,9 @@ internal partial class AppointmentsPage : UserControl
     private DateTime? _rangeStart;          // Sunday of the week being shown, or null for "all dates"
     private int _pageIndex;
     private bool _suspendFilter;
-    private enum StatusGroup { None, Waiting, Confirmed }
+    private enum StatusGroup { None, Waiting, Confirmed, WalkIn }
     private StatusGroup _group;   // set by a stat tile or ShowPending: Waiting = Pending + Rescheduled, Confirmed = Confirmed + Checked in; picking a status in the drop-down clears it
+    private IReadOnlyList<AppointmentItem> _walkInSales = Array.Empty<AppointmentItem>();   // today's walk-in sales, listed only under the Walk-ins view
     private DateTime? _dayOnly;   // set by ShowToday: list just this one day instead of the whole week
     private bool _building;
 
@@ -92,6 +93,13 @@ internal partial class AppointmentsPage : UserControl
 
         monthCalendar.SetMarkers(_all);
         ApplyFilters(resetPage: false);
+    }
+
+    /// <summary>Today's walk-in sales (negative ids). They only appear while the Walk-ins view is open and never count in the tiles or the calendar.</summary>
+    public void SetWalkInSales(IEnumerable<AppointmentItem> sales)
+    {
+        _walkInSales = sales.ToList();
+        if (_group == StatusGroup.WalkIn) ApplyFilters(resetPage: false);
     }
 
     /// <summary>Every appointment currently loaded (used by the full calendar window).</summary>
@@ -191,6 +199,22 @@ internal partial class AppointmentsPage : UserControl
         ApplyFilters(resetPage: true);
     }
 
+    /// <summary>Lists today's walk-ins: customers who came without a booking (kiosk or staff-entered) and today's walk-in sales.</summary>
+    public void ShowWalkInsToday()
+    {
+        _suspendFilter = true;
+        searchField.Box.Text = "";
+        serviceFilter.SelectedIndex = 0;
+        statusFilter.SelectedIndex = 0;
+        _group = StatusGroup.WalkIn;   // after the index change, whose handler clears the group
+        _suspendFilter = false;
+
+        SetRange(WeekStart(DateTime.Today), DateTime.Today);
+        _dayOnly = DateTime.Today;   // after SetRange, which clears it
+        UpdateRangeText();
+        ApplyFilters(resetPage: true);
+    }
+
     /// <summary>
     /// A stat tile was clicked: show the appointments it counts (same date range, no search or service filter, so the list
     /// has exactly as many rows as the number on the tile).
@@ -211,7 +235,8 @@ internal partial class AppointmentsPage : UserControl
     private void UpdateTileHighlight()
     {
         CardPanel? active = null;
-        if (_group == StatusGroup.Waiting) active = pendingCard;
+        if (_group == StatusGroup.WalkIn) active = null;
+        else if (_group == StatusGroup.Waiting) active = pendingCard;
         else if (_group == StatusGroup.Confirmed) active = confirmedCard;
         else if (statusFilter.SelectedIndex == 0) active = totalCard;
         else if (statusFilter.SelectedItem == AppointmentStatusStyle.Label(AppointmentStatus.Cancelled)) active = cancelledCard;
@@ -253,12 +278,18 @@ internal partial class AppointmentsPage : UserControl
             : null;
         string? service = serviceFilter.SelectedIndex > 0 ? serviceFilter.SelectedItem : null;
 
-        _filtered = _all
+        // Walk-ins view: the walk-in appointments plus today's walk-in sales, so the list matches the dashboard's Walk-ins number.
+        IEnumerable<AppointmentItem> source = _group == StatusGroup.WalkIn
+            ? _all.Where(a => a.IsWalkIn && a.Status != AppointmentStatus.Cancelled).Concat(_walkInSales)
+            : _all;
+
+        _filtered = source
             .Where(a => InRange(a.Start))
             .Where(a => _group switch
             {
                 StatusGroup.Waiting => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled,
                 StatusGroup.Confirmed => a.Status is AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn,
+                StatusGroup.WalkIn => true,
                 _ => status is null || a.Status == status,
             })
             .Where(a => service is null || string.Equals(a.Service, service, StringComparison.OrdinalIgnoreCase))

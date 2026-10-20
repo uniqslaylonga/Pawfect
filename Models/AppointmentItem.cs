@@ -28,7 +28,8 @@ internal sealed record AppointmentItem(
     byte[]? PetPhoto = null,
     string PreferredDays = "",   // comma list the customer picked, e.g. "Tue,Wed" (empty = no preference / older requests)
     int ServiceId = 0,           // the exact dbo.Services row booked (the weight band, so billing uses the same price)
-    int PetId = 0)               // the pet booked (billing lists only the services that fit this pet)
+    int PetId = 0,               // the pet booked (billing lists only the services that fit this pet)
+    bool IsWalkIn = false)       // the customer came in without a booking (kiosk, or ticked "Walk-in" when staff booked). A negative Id marks a walk-in SALE shown in the list, not a real appointment.
 {
     /// <summary>The preferred days as day-of-week values (empty when the customer didn't pick any).</summary>
     public IReadOnlyList<DayOfWeek> PreferredDayList => PreferredDaysText.Parse(PreferredDays);

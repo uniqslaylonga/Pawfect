@@ -35,6 +35,7 @@ internal sealed class NewAppointmentForm : DialogBase
     private readonly PawTimePicker _time = new();
     private readonly TextBox _notes = new() { PlaceholderText = "Optional notes", MaxLength = 300 };
     private readonly PawCheckBox _confirm = new() { Text = "Confirm this appointment", Checked = true };
+    private readonly PawCheckBox _walkIn = new() { Text = "Walk-in (customer is here now)" };
 
     public int? CreatedAppointmentId { get; private set; }
 
@@ -118,6 +119,11 @@ internal sealed class NewAppointmentForm : DialogBase
         confirmRow.Controls.Add(_confirm);   // fills what is left
         confirmRow.Controls.Add(hint);       // docked to the right first
         AddFull(confirmRow);
+
+        _walkIn.Dock = DockStyle.Fill;
+        var walkInRow = new Panel { Height = 30, Margin = new Padding(0, 2, 0, 0), BackColor = Color.White };
+        walkInRow.Controls.Add(_walkIn);
+        AddFull(walkInRow);
     }
 
     private void AddFull(Control row)
@@ -263,7 +269,7 @@ internal sealed class NewAppointmentForm : DialogBase
 
             CreatedAppointmentId = EmployeeData.AddStaffAppointment(
                 _customers[_customer.SelectedIndex].Id, _pets[_pet.SelectedIndex].Id, _services[_service.SelectedIndex].Id,
-                start, groomerId, roomId, _notes.Text, confirm, _staffEmail);
+                start, groomerId, roomId, _notes.Text, confirm, _staffEmail, _walkIn.Checked);
             DialogResult = DialogResult.OK;
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)

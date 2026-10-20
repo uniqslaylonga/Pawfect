@@ -83,6 +83,40 @@ internal partial class AdminForm : Form
             }
         };
 
+        employeesPage.AddEmployeeRequested += (_, _) =>
+        {
+            using var dlg = new EmployeeDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                AuditLog.Record(CurrentUser, "Employee Created", $"Added {dlg.SavedName} ({dlg.SavedRole})");
+                RefreshUsers();
+            }
+        };
+
+        employeesPage.EditEmployeeRequested += employee =>
+        {
+            using var dlg = new EmployeeDialog(employee);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                AuditLog.Record(CurrentUser, "Employee Edited", $"Edited {dlg.SavedName} ({dlg.SavedRole}) (#{employee.Id})");
+                RefreshUsers();
+            }
+        };
+
+        employeesPage.ToggleEmployeeActiveRequested += (id, active) =>
+        {
+            try
+            {
+                EmployeeRepository.SetActive(id, active);
+                AuditLog.Record(CurrentUser, active ? "Employee Activated" : "Employee Deactivated", $"Employee #{id}");
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                Msg.Show("Could not update the employee: " + ex.Message);
+            }
+            RefreshUsers();
+        };
+
         // Clicking the name chip (avatar, name, role or arrow) opens "My Profile".
         Ui.MakeClickable(userChip, (_, _) => ShowProfile());
 
@@ -354,10 +388,14 @@ internal partial class AdminForm : Form
     }
     private void RefreshUsers()
     {
-        try { employeesPage.LoadUsers(UserRepository.GetAll()); }
+        try
+        {
+            employeesPage.LoadUsers(UserRepository.GetAll());
+            employeesPage.LoadEmployees(EmployeeRepository.GetAll());
+        }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
-            Msg.Show("Could not load users: " + ex.Message);
+            Msg.Show("Could not load users and employees: " + ex.Message);
         }
     }
 

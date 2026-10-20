@@ -32,9 +32,10 @@ internal partial class MainForm
         Disposed += (_, _) => _alertTimer.Dispose();
         _scheduleList = AddListHost(scheduleCard);
 
-        appointmentsPage.ViewRequested += (_, item) => ShowAppointmentDetails(item);
-        appointmentsPage.EditRequested += (_, item) => EditAppointment(item);
-        appointmentsPage.MoreRequested += (_, item) => ShowStatusMenu(item);
+        // A negative id is a walk-in SALE listed under Walk-ins: View opens the sale, and it has nothing to edit or cancel.
+        appointmentsPage.ViewRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else ShowAppointmentDetails(item); };
+        appointmentsPage.EditRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else EditAppointment(item); };
+        appointmentsPage.MoreRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else ShowStatusMenu(item); };
         appointmentsPage.ManageCustomersRequested += (_, _) => ShowPage(Page.Lookup);
         appointmentsPage.ServicesCatalogRequested += (_, _) => ShowServiceList();
         appointmentsPage.NewAppointmentRequested += (_, _) => NewAppointment();
@@ -51,7 +52,7 @@ internal partial class MainForm
         Ui.MakeClickable(appointmentsCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowToday(); });
         Ui.MakeClickable(completedCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowToday(AppointmentStatus.Completed); });
         Ui.MakeClickable(queueCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowPending(); });
-        Ui.MakeClickable(walkInsCard, (_, _) => ShowTransactionHistory());   // walk-in sales have no appointment, so they live in the sales history
+        Ui.MakeClickable(walkInsCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowWalkInsToday(); });   // the sales also stay in the transaction history
 
         // Dashboard "View All" links
         pendingLink.Click += (_, _) =>
@@ -112,6 +113,7 @@ internal partial class MainForm
         {
             var appointments = EmployeeData.GetAppointments();
 
+            appointmentsPage.SetWalkInSales(EmployeeData.GetWalkInSales(DateTime.Today));
             appointmentsPage.SetAppointments(appointments);
 
             // Cancelled and already-billed appointments can't be billed again.
@@ -222,8 +224,8 @@ internal partial class MainForm
         // Pending requests come from booked appointments: services in the "Add-ons" category are the add-on requests,
         // the rest are plain appointments. Walk-ins are never booked, so that tab has nothing to count.
         allTab.Text = $"All ({pending.Count})";
-        walkInTab.Text = "Walk-in (0)";
-        appointmentTab.Text = $"Appointment ({pending.Count(a => !IsAddOn(a))})";
+        walkInTab.Text = $"Walk-in ({pending.Count(a => a.IsWalkIn)})";
+        appointmentTab.Text = $"Appointment ({pending.Count(a => !a.IsWalkIn && !IsAddOn(a))})";
         addOnTab.Text = $"Add-on ({pending.Count(IsAddOn)})";
     }
 
@@ -234,8 +236,8 @@ internal partial class MainForm
     {
         var items = _pendingFilter switch
         {
-            1 => new List<AppointmentItem>(),                          // walk-ins aren't booked, so none are pending here
-            2 => _pendingToday.Where(a => !IsAddOn(a)).ToList(),
+            1 => _pendingToday.Where(a => a.IsWalkIn).ToList(),        // came in without a booking (kiosk, or staff ticked Walk-in)
+            2 => _pendingToday.Where(a => !a.IsWalkIn && !IsAddOn(a)).ToList(),
             3 => _pendingToday.Where(IsAddOn).ToList(),
             _ => _pendingToday,
         };
@@ -746,6 +748,25 @@ internal partial class MainForm
             form.ShowDialog(this);
 
         RefreshSoon();
+    }
+
+    /// <summary>Opens the sale behind a walk-in row (its id is the sale's id made negative).</summary>
+    private void ShowWalkInSale(AppointmentItem item)
+    {
+        try
+        {
+            var sale = EmployeeData.GetRecentTransactions(1000).FirstOrDefault(t => t.Id == -item.Id);
+            if (sale is null)
+            {
+                Msg.Show(this, "That sale can't be found any more.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            ShowTransactionDetails(sale);
+        }
+        catch (SqlException ex)
+        {
+            ShowDbError("open the sale", ex);
+        }
     }
 
     private void ShowTransactionDetails(TransactionItem t)

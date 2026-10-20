@@ -16,13 +16,21 @@ internal static class Auth
             "SELECT FullName, Email, PasswordHash, Role FROM dbo.Users WHERE Email = @email AND IsActive = 1", conn);
         cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
 
-        using var reader = cmd.ExecuteReader();
-        if (!reader.Read()) return null;
+        string name, mail, hash, roleText;
+        using (var reader = cmd.ExecuteReader())
+        {
+            if (!reader.Read()) return null;
+            name = reader.GetString(0);
+            mail = reader.GetString(1);
+            hash = reader.GetString(2);
+            roleText = reader.GetString(3);
+        }
 
-        if (!PasswordHasher.Verify(password, reader.GetString(2))) return null;
-        if (!Enum.TryParse<UserRole>(reader.GetString(3), out var role)) return null;
+        if (!PasswordHasher.Verify(password, hash)) return null;
+        if (!Enum.TryParse<UserRole>(roleText, out var role)) return null;
 
-        return new UserAccount(reader.GetString(0), reader.GetString(1), role);
+        UserRepository.RecordLogin(conn, mail);   // shows up as "Last login" in User Management
+        return new UserAccount(name, mail, role);
     }
 
     /// <summary>True when at least one active admin exists.</summary>

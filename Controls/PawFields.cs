@@ -487,6 +487,10 @@ internal sealed class PawTimePicker : PawSelect
 
     public PawTimePicker(int fromHour = 6, int toHour = 23, int stepMinutes = 15)
     {
+        // Typing narrows the list (for example "7:4" leaves 7:45 am and 7:45 pm), but only a time from the list can be picked, never typed text.
+        Searchable = true;
+        SearchPlaceholder = "Type to find a time, e.g. 7:45 pm";
+        EmptyText = "No times available";
         Glyph = "";
         for (var t = TimeSpan.FromHours(fromHour); t <= new TimeSpan(toHour, 60 - stepMinutes, 0); t += TimeSpan.FromMinutes(stepMinutes))
             _slots.Add(t);

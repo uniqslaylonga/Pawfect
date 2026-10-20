@@ -5,7 +5,7 @@ namespace MyApp;
 
 internal static class UserRepository
 {
-    public sealed record UserRow(int Id, string Name, string Email, string Role, bool Active, DateTime CreatedAt);
+    public sealed record UserRow(int Id, string Name, string Email, string Role, bool Active, DateTime CreatedAt, DateTime? LastLogin = null);   // CreatedAt and LastLogin are UTC
 
     public static List<UserRow> GetAll()
     {
@@ -14,13 +14,49 @@ internal static class UserRepository
         using var conn = new SqlConnection(Database.ConnectionString);
         conn.Open();
 
+        string lastLogin = EnsureLastLoginColumn(conn) ? "LastLoginAt" : "CAST(NULL AS DATETIME2)";
         using var cmd = new SqlCommand(
-            "SELECT UserId, FullName, Email, Role, IsActive, CreatedAt FROM dbo.Users ORDER BY FullName", conn);
+            $"SELECT UserId, FullName, Email, Role, IsActive, CreatedAt, {lastLogin} FROM dbo.Users ORDER BY FullName", conn);
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
             list.Add(new UserRow(reader.GetInt32(0), reader.GetString(1), reader.GetString(2),
-                                 reader.GetString(3), reader.GetBoolean(4), reader.GetDateTime(5)));
+                                 reader.GetString(3), reader.GetBoolean(4), reader.GetDateTime(5),
+                                 reader.IsDBNull(6) ? null : reader.GetDateTime(6)));
         return list;
+    }
+
+    private static bool _lastLoginChecked;
+
+    /// <summary>Adds Users.LastLoginAt the first time it is needed. Returns false if the column can't be created.</summary>
+    private static bool EnsureLastLoginColumn(SqlConnection conn)
+    {
+        if (_lastLoginChecked) return true;
+        try
+        {
+            using var cmd = new SqlCommand(
+                @"IF COL_LENGTH('dbo.Users', 'LastLoginAt') IS NULL
+                      ALTER TABLE dbo.Users ADD LastLoginAt DATETIME2 NULL;", conn);
+            cmd.ExecuteNonQuery();
+            _lastLoginChecked = true;
+            return true;
+        }
+        catch (SqlException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Stamps the time of a successful sign-in. Never throws: a problem here must not stop anyone from signing in.</summary>
+    public static void RecordLogin(SqlConnection conn, string email)
+    {
+        try
+        {
+            if (!EnsureLastLoginColumn(conn)) return;
+            using var cmd = new SqlCommand("UPDATE dbo.Users SET LastLoginAt = SYSUTCDATETIME() WHERE Email = @email", conn);
+            cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
+            cmd.ExecuteNonQuery();
+        }
+        catch (SqlException) { }
     }
 
     public static bool Update(int userId, string name, string email, UserRole role)
