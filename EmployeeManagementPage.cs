@@ -9,13 +9,25 @@ namespace MyApp;
 /// </summary>
 internal partial class EmployeeManagementPage : UserControl
 {
-    private static readonly Color Ink = Color.FromArgb(31, 42, 60);
-    private static readonly Color Quiet = Color.FromArgb(122, 136, 156);
-    private static readonly Color Good = Color.FromArgb(46, 158, 91);
-    private static readonly Color Link = Color.FromArgb(58, 123, 213);
+    internal static readonly Color Ink = Color.FromArgb(31, 42, 60);
+    internal static readonly Color Quiet = Color.FromArgb(122, 136, 156);
+    internal static readonly Color Good = Color.FromArgb(46, 158, 91);
+    internal static readonly Color Link = Color.FromArgb(58, 123, 213);
 
     private List<UserRepository.UserRow> _allUsers = new();
     private List<EmployeeRepository.Row> _allEmployees = new();
+
+    private const int PageSize = 10;
+    private int _employeePage;
+    private int _userPage;
+
+    /// <summary>Clamps the page number and returns the first row index plus the page count.</summary>
+    private static (int Page, int Pages, int First) Paging(int total, int page)
+    {
+        int pages = Math.Max(1, (total + PageSize - 1) / PageSize);
+        page = Math.Clamp(page, 0, pages - 1);
+        return (page, pages, page * PageSize);
+    }
 
     /// <summary>The "+ Add Employee" button was clicked.</summary>
     public event EventHandler? AddEmployeeRequested;
@@ -48,31 +60,40 @@ internal partial class EmployeeManagementPage : UserControl
         employeeAddButton.Click += (_, _) => AddEmployeeRequested?.Invoke(this, EventArgs.Empty);
         userAddButton.Click += (_, _) => AddUserRequested?.Invoke(this, EventArgs.Empty);
 
-        employeeSearch.Box.TextChanged += (_, _) => ApplyEmployeeFilter();
-        employeeRoleFilter.SelectedIndexChanged += (_, _) => ApplyEmployeeFilter();
-        employeeStatusFilter.SelectedIndexChanged += (_, _) => ApplyEmployeeFilter();
+        // Changing a search or filter always goes back to page 1.
+        void EmployeeFilterChanged() { _employeePage = 0; ApplyEmployeeFilter(); }
+        void UserFilterChanged() { _userPage = 0; ApplyUserFilter(); }
 
-        userSearch.Box.TextChanged += (_, _) => ApplyUserFilter();
-        userRoleFilter.SelectedIndexChanged += (_, _) => ApplyUserFilter();
-        userStatusFilter.SelectedIndexChanged += (_, _) => ApplyUserFilter();
+        employeeSearch.Box.TextChanged += (_, _) => EmployeeFilterChanged();
+        employeeRoleFilter.SelectedIndexChanged += (_, _) => EmployeeFilterChanged();
+        employeeStatusFilter.SelectedIndexChanged += (_, _) => EmployeeFilterChanged();
+
+        userSearch.Box.TextChanged += (_, _) => UserFilterChanged();
+        userRoleFilter.SelectedIndexChanged += (_, _) => UserFilterChanged();
+        userStatusFilter.SelectedIndexChanged += (_, _) => UserFilterChanged();
+
+        employeePrevPage.Click += (_, _) => { _employeePage--; ApplyEmployeeFilter(); };
+        employeeNextPage.Click += (_, _) => { _employeePage++; ApplyEmployeeFilter(); };
+        userPrevPage.Click += (_, _) => { _userPage--; ApplyUserFilter(); };
+        userNextPage.Click += (_, _) => { _userPage++; ApplyUserFilter(); };
     }
 
     // ------------------------------------------------------------------ shared helpers
 
     /// <summary>"+3 vs. last month" (how many were added since the 1st of this month) or "No change vs. last month".</summary>
-    private static string AddedText(int addedThisMonth)
+    internal static string AddedText(int addedThisMonth)
         => addedThisMonth <= 0 ? "No change vs. last month" : $"+{addedThisMonth.ToString(CultureInfo.CurrentCulture)} vs. last month";
 
-    private static DateTime MonthStart
+    internal static DateTime MonthStart
     {
         get { var now = DateTime.Now; return new DateTime(now.Year, now.Month, 1); }
     }
 
     /// <summary>True when the "All Status / Active / Inactive" drop-down lets this record through.</summary>
-    private static bool StatusMatches(int selectedIndex, bool active)
+    internal static bool StatusMatches(int selectedIndex, bool active)
         => selectedIndex <= 0 || (selectedIndex == 1 && active) || (selectedIndex == 2 && !active);
 
-    private static TableLayoutPanel NewRowGrid(TableLayoutPanel head)
+    internal static TableLayoutPanel NewRowGrid(TableLayoutPanel head)
     {
         var grid = new TableLayoutPanel
         {
@@ -89,7 +110,7 @@ internal partial class EmployeeManagementPage : UserControl
         return grid;
     }
 
-    private static Label NewCell(string text, Color? color = null)
+    internal static Label NewCell(string text, Color? color = null)
         => new()
         {
             Text = text,
@@ -102,7 +123,7 @@ internal partial class EmployeeManagementPage : UserControl
             Font = new Font("Segoe UI", 9F),
         };
 
-    private static FlowLayoutPanel NewActions(params (string Text, Action OnClick)[] links)
+    internal static FlowLayoutPanel NewActions(params (string Text, Action OnClick)[] links)
     {
         var actions = new FlowLayoutPanel
         {
@@ -132,7 +153,7 @@ internal partial class EmployeeManagementPage : UserControl
         return actions;
     }
 
-    private static Panel WrapRow(TableLayoutPanel grid)
+    internal static Panel WrapRow(TableLayoutPanel grid)
     {
         var row = new Panel { Dock = DockStyle.Top, Height = 44, BackColor = Color.White };
         row.Controls.Add(grid);
@@ -140,7 +161,7 @@ internal partial class EmployeeManagementPage : UserControl
     }
 
     /// <summary>Removes the old rows from a rows panel (everything except its empty-state message).</summary>
-    private static void ClearRows(Panel host, Control empty)
+    internal static void ClearRows(Panel host, Control empty)
     {
         foreach (var old in host.Controls.Cast<Control>().Where(c => c != empty).ToList())
         {
@@ -172,11 +193,15 @@ internal partial class EmployeeManagementPage : UserControl
              e.Department.Contains(q, StringComparison.OrdinalIgnoreCase) ||
              e.Role.Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
 
+        var (page, pages, first) = Paging(shown.Count, _employeePage);
+        _employeePage = page;
+        var pageRows = shown.Skip(first).Take(PageSize).ToList();
+
         employeeRows.SuspendLayout();
         ClearRows(employeeRows, employeeEmpty);
         employeeEmpty.Visible = shown.Count == 0;
-        for (int i = shown.Count - 1; i >= 0; i--)
-            employeeRows.Controls.Add(BuildEmployeeRow(shown[i]));
+        for (int i = pageRows.Count - 1; i >= 0; i--)
+            employeeRows.Controls.Add(BuildEmployeeRow(pageRows[i]));
 
         // Tiles always count everyone; the footer shows what is visible.
         var culture = CultureInfo.CurrentCulture;
@@ -194,7 +219,12 @@ internal partial class EmployeeManagementPage : UserControl
 
         employeeShowing.Text = shown.Count == 0
             ? "No employees"
-            : $"Showing 1 to {shown.Count} of {_allEmployees.Count} employees";
+            : $"Showing {first + 1} to {first + pageRows.Count} of {shown.Count} employees";
+        employeePageChip.Text = (page + 1).ToString(culture);
+        employeePrevPage.Enabled = page > 0;
+        employeeNextPage.Enabled = page < pages - 1;
+        employeePrevPage.Invalidate();
+        employeeNextPage.Invalidate();
 
         employeeRows.ResumeLayout(true);
     }
@@ -242,11 +272,15 @@ internal partial class EmployeeManagementPage : UserControl
              u.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
              u.Email.Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
 
+        var (page, pages, first) = Paging(shown.Count, _userPage);
+        _userPage = page;
+        var pageRows = shown.Skip(first).Take(PageSize).ToList();
+
         userRows.SuspendLayout();
         ClearRows(userRows, userEmpty);
         userEmpty.Visible = shown.Count == 0;
-        for (int i = shown.Count - 1; i >= 0; i--)
-            userRows.Controls.Add(BuildUserRow(shown[i]));
+        for (int i = pageRows.Count - 1; i >= 0; i--)
+            userRows.Controls.Add(BuildUserRow(pageRows[i]));
 
         // Tiles always count everyone; the footer shows what is visible. Users.CreatedAt is stored in UTC.
         var culture = CultureInfo.CurrentCulture;
@@ -263,7 +297,12 @@ internal partial class EmployeeManagementPage : UserControl
 
         userShowing.Text = shown.Count == 0
             ? "No users"
-            : $"Showing 1 to {shown.Count} of {_allUsers.Count} users";
+            : $"Showing {first + 1} to {first + pageRows.Count} of {shown.Count} users";
+        userPageChip.Text = (page + 1).ToString(culture);
+        userPrevPage.Enabled = page > 0;
+        userNextPage.Enabled = page < pages - 1;
+        userPrevPage.Invalidate();
+        userNextPage.Invalidate();
 
         userRows.ResumeLayout(true);
     }

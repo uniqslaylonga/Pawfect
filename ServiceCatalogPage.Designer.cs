@@ -292,7 +292,7 @@ namespace MyApp
             serviceColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 11F));
             serviceColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14F));
             serviceColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 10F));
-            serviceColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84F));
+            serviceColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
             serviceColumnsGrid.Controls.Add(serviceHeaderCheck, 0, 0);
             serviceColumnsGrid.Controls.Add(serviceColService, 1, 0);
             serviceColumnsGrid.Controls.Add(serviceColCategory, 2, 0);

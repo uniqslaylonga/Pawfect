@@ -12,11 +12,15 @@ internal sealed class EmployeeDialog : DialogBase
     private readonly TextBox departmentBox = new() { PlaceholderText = "Department", MaxLength = 60 };
     private readonly TextBox emailBox = new() { PlaceholderText = "Email (optional)", MaxLength = 256 };
     private readonly TextBox phoneBox = new() { PlaceholderText = "Mobile number (optional)", MaxLength = 30 };
+    private readonly TextBox passwordBox = new() { PlaceholderText = "Optional: set a password to give them a login", UseSystemPasswordChar = true, MaxLength = 100 };
     private string _lastDefaultDepartment = "";
 
     /// <summary>What was saved (set after a successful Save).</summary>
     public string SavedName { get; private set; } = "";
     public string SavedRole { get; private set; } = "";
+
+    /// <summary>The email of the login created together with the employee, or null when none was made.</summary>
+    public string? CreatedLoginEmail { get; private set; }
 
     public EmployeeDialog(EmployeeRepository.Row? existing = null)
         : base(existing is null ? "Add Employee" : "Edit Employee", "Save", "\uE77B",
@@ -55,6 +59,8 @@ internal sealed class EmployeeDialog : DialogBase
         AddRow("Department", departmentBox);
         AddRow("Email", emailBox);
         AddRow("Mobile", phoneBox);
+        if (existing is null)
+            AddRow("Login password", passwordBox);   // needs the email above; the account is added to User Management
         FitHeight();
     }
 
@@ -78,9 +84,37 @@ internal sealed class EmployeeDialog : DialogBase
             return;
         }
 
+        string password = passwordBox.Text;
+        bool makeLogin = _existing is null && password.Length > 0;
+        if (makeLogin)
+        {
+            if (email.Length == 0)
+            {
+                ShowError("Enter an email address to create a login (it is the username).");
+                return;
+            }
+            if (password.Length < 8)
+            {
+                ShowError("The login password must be at least 8 characters.");
+                return;
+            }
+        }
+
         try
         {
             string role = SelectedRole;
+            if (makeLogin)
+            {
+                // Admin employees get an Admin login; everyone else signs in as Employee. Done first so a taken email stops the save.
+                try { Auth.CreateUser(name, email, password, role == "Admin" ? UserRole.Admin : UserRole.Employee); }
+                catch (SqlException ex) when (ex.Number is 2627 or 2601)
+                {
+                    ShowError("That email already has a login. Clear the password to add the employee without one.");
+                    return;
+                }
+                CreatedLoginEmail = email;
+            }
+
             if (_existing is null)
                 EmployeeRepository.Add(name, role, departmentBox.Text, email, phoneBox.Text);
             else if (!EmployeeRepository.Update(_existing.Id, name, role, departmentBox.Text, email, phoneBox.Text))

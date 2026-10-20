@@ -83,6 +83,16 @@ FROM dbo.Employees ORDER BY FullName, EmployeeId", conn);
         return list;
     }
 
+    /// <summary>Active employees (the dashboard "Staff" number). With <paramref name="addedBefore"/>, only those added before that local date.</summary>
+    public static int CountActive(DateTime? addedBefore = null)
+    {
+        using var conn = Open();
+        using var cmd = new SqlCommand(
+            "SELECT COUNT(1) FROM dbo.Employees WHERE IsActive = 1" + (addedBefore is null ? "" : " AND CreatedAt < @d"), conn);
+        if (addedBefore is { } d) cmd.Parameters.Add("@d", SqlDbType.DateTime2).Value = d;
+        return (int)cmd.ExecuteScalar()!;
+    }
+
     public static int Add(string name, string role, string department, string email, string phone)
     {
         using var conn = Open();

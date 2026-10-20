@@ -64,6 +64,9 @@ internal partial class AdminForm : Form
 
         employeesPage.ToggleActiveRequested += (id, active) =>
         {
+            if (!active && Msg.Show(this, "Deactivate this account?\n\nThey will no longer be able to sign in until you activate it again.",
+                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
             if (UserRepository.SetActive(id, active))
                 AuditLog.Record(CurrentUser, active ? "User Activated" : "User Deactivated", $"User #{id}");
             else
@@ -89,7 +92,10 @@ internal partial class AdminForm : Form
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
                 AuditLog.Record(CurrentUser, "Employee Created", $"Added {dlg.SavedName} ({dlg.SavedRole})");
+                if (dlg.CreatedLoginEmail is { } login)
+                    AuditLog.Record(CurrentUser, "User Created", $"Created account {login}");
                 RefreshUsers();
+                RefreshDashboard();
             }
         };
 
@@ -100,11 +106,15 @@ internal partial class AdminForm : Form
             {
                 AuditLog.Record(CurrentUser, "Employee Edited", $"Edited {dlg.SavedName} ({dlg.SavedRole}) (#{employee.Id})");
                 RefreshUsers();
+                RefreshDashboard();
             }
         };
 
         employeesPage.ToggleEmployeeActiveRequested += (id, active) =>
         {
+            if (!active && Msg.Show(this, "Deactivate this employee?\n\nThey stay in the list and can be activated again. Groomers are no longer offered for appointments.",
+                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
             try
             {
                 EmployeeRepository.SetActive(id, active);
@@ -115,6 +125,41 @@ internal partial class AdminForm : Form
                 Msg.Show("Could not update the employee: " + ex.Message);
             }
             RefreshUsers();
+            RefreshDashboard();
+        };
+
+        servicesPage.AddServiceRequested += (_, _) =>
+        {
+            using var dlg = new ServiceDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                AuditLog.Record(CurrentUser, "Service Created", $"Added service {dlg.SavedName}");
+                RefreshServices();
+            }
+        };
+
+        servicesPage.EditServiceRequested += service =>
+        {
+            using var dlg = new ServiceDialog(service);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                AuditLog.Record(CurrentUser, "Service Edited", $"Edited service {dlg.SavedName} (#{service.Id})");
+                RefreshServices();
+            }
+        };
+
+        servicesPage.ToggleServiceActiveRequested += (id, active) =>
+        {
+            try
+            {
+                ServiceRepository.SetActive(id, active);
+                AuditLog.Record(CurrentUser, active ? "Service Activated" : "Service Deactivated", $"Service #{id}");
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                Msg.Show("Could not update the service: " + ex.Message);
+            }
+            RefreshServices();
         };
 
         // Clicking the name chip (avatar, name, role or arrow) opens "My Profile".
@@ -260,6 +305,7 @@ internal partial class AdminForm : Form
 
         if (page == AdminPage.Dashboard) RefreshDashboard();
         if (page == AdminPage.Employees) RefreshUsers();
+        if (page == AdminPage.Services) RefreshServices();
         if (page == AdminPage.Audit) RefreshAudit();
     }
 
@@ -281,6 +327,18 @@ internal partial class AdminForm : Form
     }
 
     private void AdminForm_Load(object sender, EventArgs e) => RefreshDashboard();
+
+    private void RefreshServices()
+    {
+        try
+        {
+            servicesPage.Load(ServiceRepository.GetAll(), ServiceRepository.GetBookings());
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            Msg.Show("Could not load services: " + ex.Message);
+        }
+    }
 
     private void RefreshDashboard()
     {

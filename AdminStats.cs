@@ -59,10 +59,9 @@ internal static class AdminStats
         int customers = Scalar(conn, "SELECT COUNT(*) FROM dbo.Customers WHERE IsActive = 1");
         int customersBefore = Scalar(conn, "SELECT COUNT(*) FROM dbo.Customers WHERE IsActive = 1 AND CreatedAt < @m", "@m", monthStart);
 
-        int staff = Scalar(conn, "SELECT COUNT(*) FROM dbo.Users WHERE IsActive = 1 AND Role <> N'Admin'");
-        // Users.CreatedAt is stored in UTC (the other tables use local time).
-        int staffBefore = Scalar(conn, "SELECT COUNT(*) FROM dbo.Users WHERE IsActive = 1 AND Role <> N'Admin' AND CreatedAt < @m",
-            "@m", monthStart.ToUniversalTime());
+        // Staff = active people on the employee roster (Employee & User Management > Employee Management).
+        int staff = EmployeeRepository.CountActive();
+        int staffBefore = EmployeeRepository.CountActive(monthStart);
 
         const string petsFrom = "FROM dbo.Pets p JOIN dbo.Customers c ON c.CustomerId = p.CustomerId WHERE p.IsActive = 1 AND c.IsActive = 1";
         int pets = Scalar(conn, "SELECT COUNT(*) " + petsFrom);
