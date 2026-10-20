@@ -8,6 +8,27 @@ internal static class AuditLog
 {
     public sealed record Entry(int Id, string Actor, string Action, string Details, DateTime When);
 
+    private static bool _tableChecked;
+
+    /// <summary>Creates dbo.AuditLog the first time it is needed, so no manual SQL step is required.</summary>
+    private static void EnsureTable(SqlConnection conn)
+    {
+        if (_tableChecked) return;
+        using var cmd = new SqlCommand(
+            @"IF OBJECT_ID(N'dbo.AuditLog', N'U') IS NULL
+              CREATE TABLE dbo.AuditLog
+              (
+                  AuditId    INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AuditLog PRIMARY KEY,
+                  ActorName  NVARCHAR(100) NOT NULL,
+                  ActorEmail NVARCHAR(256) NULL,
+                  Action     NVARCHAR(50)  NOT NULL,
+                  Details    NVARCHAR(500) NOT NULL CONSTRAINT DF_AuditLog_Details DEFAULT N'',
+                  CreatedAt  DATETIME2     NOT NULL CONSTRAINT DF_AuditLog_CreatedAt DEFAULT SYSUTCDATETIME()
+              );", conn);
+        cmd.ExecuteNonQuery();
+        _tableChecked = true;
+    }
+
     /// <summary>Records one action. Never throws: a logging problem must not break the screen the admin is using.</summary>
     public static void Record(UserAccount? actor, string action, string details)
     {
@@ -15,6 +36,7 @@ internal static class AuditLog
         {
             using var conn = new SqlConnection(Database.ConnectionString);
             conn.Open();
+            EnsureTable(conn);
 
             using var cmd = new SqlCommand(
                 "INSERT INTO dbo.AuditLog (ActorName, ActorEmail, Action, Details) VALUES (@n, @e, @a, @d)", conn);
@@ -37,6 +59,7 @@ internal static class AuditLog
 
         using var conn = new SqlConnection(Database.ConnectionString);
         conn.Open();
+        EnsureTable(conn);
 
         using var cmd = new SqlCommand(
             "SELECT TOP (@top) AuditId, ActorName, Action, Details, CreatedAt FROM dbo.AuditLog ORDER BY AuditId DESC", conn);

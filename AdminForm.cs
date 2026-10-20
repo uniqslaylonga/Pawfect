@@ -96,13 +96,72 @@ internal partial class AdminForm : Form
         // Empty grey ring until real appointment / retail numbers are fed in.
         splitDonut.SetData(Array.Empty<(double, Color)>(), "0%", "Grooming");
 
-        // Daily / Weekly / Monthly switch for the revenue summary (selection only, until data is wired up).
+        // Daily / Weekly / Monthly switch for the Gross Revenue Summary line.
         SelectOne(grossDailyTab, grossDailyTab, grossWeeklyTab, grossMonthlyTab);
         foreach (var tab in new[] { grossDailyTab, grossWeeklyTab, grossMonthlyTab })
         {
             var current = tab;
-            current.Click += (_, _) => SelectOne(current, grossDailyTab, grossWeeklyTab, grossMonthlyTab);
+            current.Click += (_, _) =>
+            {
+                SelectOne(current, grossDailyTab, grossWeeklyTab, grossMonthlyTab);
+                _grossPeriod = ReferenceEquals(current, grossWeeklyTab) ? GrossPeriod.Weekly
+                             : ReferenceEquals(current, grossMonthlyTab) ? GrossPeriod.Monthly
+                             : GrossPeriod.Daily;
+                ApplyGross();
+            };
         }
+
+        // Revenue Overview: services vs. retail for each of the last six months (two bars per month).
+        revenueSubtitle.Text = "Services vs. retail gross revenue (₱), last 6 months";
+        dailyLegend.Text = "Services";
+        weeklyLegend.Text = "Retail";
+        monthlyDot.Visible = false;
+        monthlyLegend.Visible = false;
+
+        // Alerts and Recent Activity: a scrolling list that replaces the empty-state message once there is something to show.
+        _alertsList = AddList(alertsCard);
+        _activityList = AddList(activityCard);
+        Ui.MakeClickable(activityLink, (_, _) => ShowPage(AdminPage.Audit));   // "View All →"
+    }
+
+    private enum GrossPeriod { Daily, Weekly, Monthly }
+
+    private GrossPeriod _grossPeriod = GrossPeriod.Daily;
+    private AdminSnapshot? _snapshot;
+    private readonly ToolTip _tips = new();
+    private Panel? _alertsList;
+    private Panel? _activityList;
+
+    /// <summary>A scrolling list that fills the rest of a dashboard card (below its header). Hidden until it has rows.</summary>
+    private static Panel AddList(CardPanel card)
+    {
+        var list = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, Visible = false };
+        card.Controls.Add(list);
+        list.BringToFront();   // same layer as the empty-state message: below the header, filling what is left
+        return list;
+    }
+
+    /// <summary>Rebuilds a list; with no rows it hides the list and shows the card's empty-state message instead.</summary>
+    private static void FillList(Panel list, EmptyState empty, IReadOnlyList<DashboardRowView> rows)
+    {
+        list.SuspendLayout();
+        foreach (var old in list.Controls.OfType<DashboardRowView>().ToList())
+        {
+            list.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        // Rows are docked to the top, so add them last-to-first to keep the first row on top.
+        for (int i = rows.Count - 1; i >= 0; i--)
+        {
+            rows[i].Dock = DockStyle.Top;
+            list.Controls.Add(rows[i]);
+        }
+        list.AutoScrollPosition = Point.Empty;
+        list.ResumeLayout(true);
+
+        list.Visible = rows.Count > 0;
+        empty.Visible = rows.Count == 0;
     }
 
     /// <summary>Shows who is signed in (name + role) and greets them by first name.</summary>
@@ -193,14 +252,105 @@ internal partial class AdminForm : Form
     {
         try
         {
-            string staff = AdminStats.CountActiveStaff().ToString();
-            staffValue.Text = staff;          // big card
-            metricStaffValue.Text = staff;    // Quick Metrics card
+            _snapshot = AdminStats.GetSnapshot();
+            ApplySnapshot(_snapshot);
+            ApplyAlerts(AdminStats.GetAlerts());
+            ApplyActivity(AuditLog.GetRecent(8));
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
             Msg.Show("Could not load dashboard: " + ex.Message);
         }
+    }
+
+    private static string Change(int now, int atMonthStart)
+    {
+        int diff = now - atMonthStart;
+        return diff == 0 ? "No change vs. last month" : $"{(diff > 0 ? "+" : "−")}{Math.Abs(diff)} vs. last month";
+    }
+
+    private void ApplySnapshot(AdminSnapshot s)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+
+        // The three big cards and the Quick Metrics copies of them.
+        customersValue.Text = metricCustomersValue.Text = s.Customers.ToString(culture);
+        staffValue.Text = metricStaffValue.Text = s.Staff.ToString(culture);
+        petsValue.Text = metricPetsValue.Text = s.Pets.ToString(culture);
+        customersDelta.Text = metricCustomersDelta.Text = Change(s.Customers, s.CustomersAtMonthStart);
+        staffDelta.Text = metricStaffDelta.Text = Change(s.Staff, s.StaffAtMonthStart);
+        petsDelta.Text = metricPetsDelta.Text = Change(s.Pets, s.PetsAtMonthStart);
+
+        ApplyGross();
+
+        // Revenue Overview bars.
+        if (s.ServicesByMonth.Concat(s.RetailByMonth).Any(v => v > 0))
+            revenueChart.SetData(s.MonthLabels, new[]
+            {
+                new BarSeries("Services", dailyDot.DotColor, s.ServicesByMonth),
+                new BarSeries("Retail", weeklyDot.DotColor, s.RetailByMonth),
+            });
+        else
+            revenueChart.Clear();
+
+        // Grooming appointments vs. walk-in retail sales (completed sales this month).
+        int grooming = s.GroomingSalesThisMonth, retail = s.RetailSalesThisMonth, all = grooming + retail;
+        groomingCount.Text = grooming == 1 ? "1 appointment" : $"{grooming.ToString(culture)} appointments";
+        retailCount.Text = retail == 1 ? "1 sale" : $"{retail.ToString(culture)} sales";
+        groomingPercent.Text = all == 0 ? "0%" : $"{Math.Round(grooming * 100.0 / all)}%";
+        retailPercent.Text = all == 0 ? "0%" : $"{Math.Round(retail * 100.0 / all)}%";
+
+        var segments = new List<(double, Color)>();
+        if (grooming > 0) segments.Add((grooming, groomingDot.DotColor));
+        if (retail > 0) segments.Add((retail, retailDot.DotColor));
+        splitDonut.SetData(segments, groomingPercent.Text, "Grooming");
+        _tips.SetToolTip(splitDonut, $"Completed sales this month: {grooming} from appointments, {retail} walk-in.");
+    }
+
+    /// <summary>Draws the Gross Revenue Summary line for the chosen Daily / Weekly / Monthly tab.</summary>
+    private void ApplyGross()
+    {
+        if (_snapshot is not { } s) return;
+
+        var points = _grossPeriod switch
+        {
+            GrossPeriod.Weekly => s.Weekly,
+            GrossPeriod.Monthly => s.Monthly,
+            _ => s.Daily,
+        };
+
+        if (points.All(p => p.Value <= 0)) grossChart.Clear();   // no sales in this range: show the empty message instead of a flat line
+        else grossChart.SetData(points.Select(p => p.Label).ToList(), points.Select(p => p.Value).ToList());
+    }
+
+    private void ApplyAlerts(List<DashAlert> alerts)
+    {
+        if (_alertsList is null) return;
+
+        var rows = alerts.Select(a => new DashboardRowView(a.Title, a.Detail, a.Meta, a.Kind switch
+        {
+            AlertKind.OutOfStock => Theme.Danger,
+            AlertKind.LowStock => Theme.Orange,
+            AlertKind.Waiting => Theme.Primary,
+            _ => Theme.Purple,
+        })).ToList();
+
+        FillList(_alertsList, alertsEmpty, rows);
+    }
+
+    private void ApplyActivity(List<AuditLog.Entry> entries)
+    {
+        if (_activityList is null) return;
+
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var rows = entries.Select(e => new DashboardRowView(
+            e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
+            e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
+            e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) ? Theme.Danger
+            : e.Action.Contains("Created", StringComparison.OrdinalIgnoreCase) ? Theme.Green
+            : Theme.Primary)).ToList();
+
+        FillList(_activityList, activityEmpty, rows);
     }
     private void RefreshUsers()
     {

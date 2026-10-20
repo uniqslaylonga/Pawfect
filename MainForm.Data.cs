@@ -656,6 +656,13 @@ internal partial class MainForm
             ShowDbError("update the appointment", ex);
             return;
         }
+        catch (InvalidOperationException ex)
+        {
+            // Not an allowed change (for example the appointment was completed or cancelled by someone else meanwhile).
+            Msg.Show(this, ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            RefreshSoon();
+            return;
+        }
         RefreshSoon();
     }
 

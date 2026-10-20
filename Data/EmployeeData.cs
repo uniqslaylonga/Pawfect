@@ -247,20 +247,95 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
         return (int)cmd.ExecuteScalar()!;
     }
 
+    /// <summary>
+    /// The statuses an appointment may be in right now for it to move TO <paramref name="target"/>
+    /// (Pending -> Confirmed -> CheckedIn, Cancelled from any open status, Cancelled -> Pending to restore).
+    /// Completed is not here on purpose: only <see cref="SaveSale"/> completes a visit, and only voiding a sale reopens it.
+    /// </summary>
+    private static string? AllowedFrom(AppointmentStatus target) => target switch
+    {
+        AppointmentStatus.Pending => "N'Cancelled'",
+        AppointmentStatus.Confirmed => "N'Pending', N'Rescheduled'",
+        AppointmentStatus.CheckedIn => "N'Pending', N'Confirmed', N'Rescheduled'",
+        AppointmentStatus.Rescheduled => "N'Pending', N'Confirmed', N'CheckedIn'",
+        AppointmentStatus.Cancelled => "N'Pending', N'Confirmed', N'CheckedIn', N'Rescheduled'",
+        _ => null,
+    };
+
+    /// <summary>Changes the status, but only along an allowed path (see <see cref="AllowedFrom"/>). Throws InvalidOperationException when it isn't allowed.</summary>
     public static void SetAppointmentStatus(int appointmentId, AppointmentStatus status)
     {
+        string from = AllowedFrom(status)
+            ?? throw new InvalidOperationException("That status can't be set by hand. A visit becomes Completed when it is billed.");
+
         using var conn = Open();
-        using var cmd = Cmd(conn, "UPDATE dbo.Appointments SET Status = @s WHERE AppointmentId = @id");
+        using var cmd = Cmd(conn, "UPDATE dbo.Appointments SET Status = @s WHERE AppointmentId = @id AND Status IN (" + from + ")");
         P(cmd, "@s", SqlDbType.NVarChar, status.ToString(), 20);
         P(cmd, "@id", SqlDbType.Int, appointmentId);
-        cmd.ExecuteNonQuery();
+        if (cmd.ExecuteNonQuery() == 0)
+            throw new InvalidOperationException(
+                "This appointment can't be changed that way any more - its status was changed by someone else, or it is completed or deleted. The list will refresh.");
     }
 
+    private const string OpenForChange = "N'Pending', N'Confirmed', N'CheckedIn', N'Rescheduled'";
+
+    /// <summary>
+    /// Moves an open appointment to another time. The room and groomer already on it are checked for a clash first,
+    /// in the same transaction as the change, so two people can't take the same slot.
+    /// </summary>
     public static void RescheduleAppointment(int appointmentId, DateTime start)
     {
         using var conn = Open();
-        using var cmd = Cmd(conn, "UPDATE dbo.Appointments SET StartTime = @t, Status = N'Rescheduled' WHERE AppointmentId = @id");
-        P(cmd, "@t", SqlDbType.DateTime2, start);
+        using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+
+        int serviceId;
+        int? groomerId, roomId;
+        using (var cmd = Cmd(conn,
+            "SELECT ServiceId, GroomerId, RoomId FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK) WHERE AppointmentId = @id AND Status IN (" + OpenForChange + ")", tx))
+        {
+            P(cmd, "@id", SqlDbType.Int, appointmentId);
+            using var r = cmd.ExecuteReader();
+            if (!r.Read())
+                throw new InvalidOperationException("This appointment can't be moved any more (it may be cancelled, completed or deleted).");
+            serviceId = r.GetInt32(0);
+            groomerId = r.IsDBNull(1) ? null : r.GetInt32(1);
+            roomId = r.IsDBNull(2) ? null : r.GetInt32(2);
+        }
+
+        if (FindScheduleConflict(conn, tx, appointmentId, start, serviceId, groomerId, roomId) is { } conflict)
+            throw new InvalidOperationException(conflict);
+
+        using (var cmd = Cmd(conn,
+            "UPDATE dbo.Appointments SET StartTime = @t, Status = N'Rescheduled' WHERE AppointmentId = @id AND Status IN (" + OpenForChange + ")", tx))
+        {
+            P(cmd, "@t", SqlDbType.DateTime2, start);
+            P(cmd, "@id", SqlDbType.Int, appointmentId);
+            cmd.ExecuteNonQuery();
+        }
+
+        FixQueueNumberClash(conn, tx, appointmentId);
+        tx.Commit();
+    }
+
+    /// <summary>
+    /// After an appointment moves to another day it keeps its queue number, unless another appointment on the new day
+    /// already has that number - then it gets the next free one for that day, so two tickets never share a number.
+    /// </summary>
+    private static void FixQueueNumberClash(SqlConnection conn, SqlTransaction tx, int appointmentId)
+    {
+        using var cmd = Cmd(conn, @"
+IF EXISTS (SELECT 1 FROM dbo.Appointments a
+           JOIN dbo.Appointments b ON b.AppointmentId <> a.AppointmentId AND b.QueueNumber = a.QueueNumber
+                                  AND CAST(b.StartTime AS DATE) = CAST(a.StartTime AS DATE)
+           WHERE a.AppointmentId = @id AND a.QueueNumber IS NOT NULL)
+BEGIN
+    DECLARE @day DATE = (SELECT CAST(StartTime AS DATE) FROM dbo.Appointments WHERE AppointmentId = @id);
+    DECLARE @n INT = ISNULL((SELECT MAX(TRY_CAST(SUBSTRING(QueueNumber, 2, 9) AS INT)) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
+                             WHERE CAST(StartTime AS DATE) = @day AND QueueNumber IS NOT NULL), 0) + 1;
+    UPDATE dbo.Appointments
+    SET QueueNumber = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END
+    WHERE AppointmentId = @id;
+END", tx);
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         cmd.ExecuteNonQuery();
     }
@@ -400,10 +475,22 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
     public static string? FindScheduleConflict(int appointmentId, DateTime start, int serviceId, int? groomerId, int? roomId)
     {
         if (groomerId is null && roomId is null) return null;
+        using var conn = Open();
+        return FindScheduleConflict(conn, null, appointmentId, start, serviceId, groomerId, roomId);
+    }
+
+    /// <summary>
+    /// Same check, on an open connection. With a transaction it also locks the rows it read (UPDLOCK, HOLDLOCK), so the
+    /// booking saved right after it in that transaction can't be beaten to the same room or groomer by someone else.
+    /// </summary>
+    private static string? FindScheduleConflict(SqlConnection conn, SqlTransaction? tx, int appointmentId, DateTime start,
+        int serviceId, int? groomerId, int? roomId)
+    {
+        if (groomerId is null && roomId is null) return null;
 
         // @end is when the new service finishes. A Completed appointment still keeps its room for sanitizing,
         // but its groomer is free again.
-        const string sql = @"
+        string sql = @"
 DECLARE @end DATETIME2 = DATEADD(MINUTE, ISNULL((SELECT DurationMinutes FROM dbo.Services WHERE ServiceId = @svc), 60), @t);
 
 SELECT TOP 1 a.StartTime, DATEADD(MINUTE, s.DurationMinutes, a.StartTime),
@@ -412,7 +499,7 @@ SELECT TOP 1 a.StartTime, DATEADD(MINUTE, s.DurationMinutes, a.StartTime),
              AND a.StartTime < DATEADD(MINUTE, @gap, @end)
             THEN 1 ELSE 0 END,
        @end
-FROM dbo.Appointments a
+FROM dbo.Appointments a /*LOCK*/
 JOIN dbo.Services s ON s.ServiceId = a.ServiceId
 WHERE a.AppointmentId <> @id
   AND a.Status <> N'Cancelled'
@@ -426,8 +513,8 @@ WHERE a.AppointmentId <> @id
       )
 ORDER BY a.StartTime";
 
-        using var conn = Open();
-        using var cmd = Cmd(conn, sql);
+        if (tx is not null) sql = sql.Replace("/*LOCK*/", "WITH (UPDLOCK, HOLDLOCK)");
+        using var cmd = Cmd(conn, sql, tx);
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         P(cmd, "@t", SqlDbType.DateTime2, start);
         P(cmd, "@svc", SqlDbType.Int, serviceId);
@@ -481,16 +568,27 @@ WHERE a.AppointmentId = @id
   AND EXISTS (SELECT 1 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = a.CustomerId AND p.IsActive = 1)";
 
         using var conn = Open();
-        using var cmd = Cmd(conn, sql);
-        P(cmd, "@p", SqlDbType.Int, petId);
-        P(cmd, "@s", SqlDbType.Int, serviceId);
-        P(cmd, "@t", SqlDbType.DateTime2, start);
-        P(cmd, "@g", SqlDbType.Int, groomerId);
-        P(cmd, "@rm", SqlDbType.Int, roomId);
-        P(cmd, "@confirm", SqlDbType.Bit, confirm);
-        P(cmd, "@id", SqlDbType.Int, appointmentId);
-        if (cmd.ExecuteNonQuery() == 0)
-            throw new InvalidOperationException("This appointment can't be changed any more (it may be cancelled, completed or deleted).");
+        using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+
+        // Checked here again, inside the transaction that saves the change, so a clash that appeared after the dialog's own check is still caught.
+        if (FindScheduleConflict(conn, tx, appointmentId, start, serviceId, groomerId, roomId) is { } conflict)
+            throw new InvalidOperationException(conflict);
+
+        using (var cmd = Cmd(conn, sql, tx))
+        {
+            P(cmd, "@p", SqlDbType.Int, petId);
+            P(cmd, "@s", SqlDbType.Int, serviceId);
+            P(cmd, "@t", SqlDbType.DateTime2, start);
+            P(cmd, "@g", SqlDbType.Int, groomerId);
+            P(cmd, "@rm", SqlDbType.Int, roomId);
+            P(cmd, "@confirm", SqlDbType.Bit, confirm);
+            P(cmd, "@id", SqlDbType.Int, appointmentId);
+            if (cmd.ExecuteNonQuery() == 0)
+                throw new InvalidOperationException("This appointment can't be changed any more (it may be cancelled, completed or deleted).");
+        }
+
+        FixQueueNumberClash(conn, tx, appointmentId);
+        tx.Commit();
     }
 
     /// <summary>Permanently deletes an appointment. Returns null on success, otherwise the reason it was refused.</summary>
@@ -877,9 +975,14 @@ ORDER BY t.CreatedAt DESC";
     {
         using var conn = Open();
         using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+
+        // Same check as the dialog's, repeated inside this transaction so the slot can't be taken between the check and the save.
+        if (FindScheduleConflict(conn, tx, 0, start, serviceId, groomerId, roomId) is { } conflict)
+            throw new InvalidOperationException(conflict);
+
         using var cmd = Cmd(conn, @"
-DECLARE @n INT = (SELECT COUNT(*) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
-                  WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL) + 1;
+DECLARE @n INT = ISNULL((SELECT MAX(TRY_CAST(SUBSTRING(QueueNumber, 2, 9) AS INT)) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
+                         WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL), 0) + 1;
 DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
 
 INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, GroomerId, RoomId)
@@ -966,8 +1069,8 @@ WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confi
         int appointmentId;
         string queueNumber;
         using (var cmd = Cmd(conn, @"
-DECLARE @n INT = (SELECT COUNT(*) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
-                  WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL) + 1;
+DECLARE @n INT = ISNULL((SELECT MAX(TRY_CAST(SUBSTRING(QueueNumber, 2, 9) AS INT)) FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK)
+                         WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL), 0) + 1;
 DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
 
 INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, PreferredDays)
