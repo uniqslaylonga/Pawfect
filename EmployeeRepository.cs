@@ -209,6 +209,70 @@ WHERE EmployeeId = @id", conn, tx);
         tx.Commit();
     }
 
+    public enum RemoveResult { Removed, NotFound, HasAppointments, LastAdmin, Self }
+
+    /// <summary>
+    /// Permanently deletes an employee. A groomer's entry in the appointment lists goes too, and so does the employee's
+    /// login account (matched by email) - otherwise the roster would just copy it back the next time it loads.
+    /// A groomer who already has appointments can't be removed, because those bookings still point at them.
+    /// </summary>
+    public static RemoveResult Remove(int id, string? signedInEmail)
+    {
+        using var conn = Open();
+        using var tx = conn.BeginTransaction();
+
+        int? groomerId;
+        string email;
+        using (var find = new SqlCommand("SELECT GroomerId, Email FROM dbo.Employees WHERE EmployeeId = @id", conn, tx))
+        {
+            find.Parameters.Add("@id", SqlDbType.Int).Value = id;
+            using var r = find.ExecuteReader();
+            if (!r.Read()) return RemoveResult.NotFound;
+            groomerId = r.IsDBNull(0) ? null : r.GetInt32(0);
+            email = r.GetString(1);
+        }
+
+        if (groomerId is int g)
+        {
+            using var used = new SqlCommand("SELECT COUNT(1) FROM dbo.Appointments WHERE GroomerId = @g", conn, tx);
+            used.Parameters.Add("@g", SqlDbType.Int).Value = g;
+            if ((int)used.ExecuteScalar()! > 0) return RemoveResult.HasAppointments;
+        }
+
+        // The login goes first so its safety checks (last admin, yourself) can stop the whole removal.
+        if (email.Length > 0)
+        {
+            int? userId = null;
+            using (var login = new SqlCommand(
+                "SELECT UserId FROM dbo.Users WHERE Email = @e AND Role IN (N'Admin', N'Employee')", conn, tx))
+            {
+                login.Parameters.Add("@e", SqlDbType.NVarChar, 256).Value = email;
+                if (login.ExecuteScalar() is int u) userId = u;
+            }
+            if (userId is int uid)
+            {
+                var res = UserRepository.Remove(conn, tx, uid, signedInEmail);
+                if (res == UserRepository.RemoveResult.LastAdmin) return RemoveResult.LastAdmin;
+                if (res == UserRepository.RemoveResult.Self) return RemoveResult.Self;
+            }
+        }
+
+        using (var del = new SqlCommand("DELETE FROM dbo.Employees WHERE EmployeeId = @id", conn, tx))
+        {
+            del.Parameters.Add("@id", SqlDbType.Int).Value = id;
+            del.ExecuteNonQuery();
+        }
+        if (groomerId is int gid)
+        {
+            using var delG = new SqlCommand("DELETE FROM dbo.Groomers WHERE GroomerId = @g", conn, tx);
+            delG.Parameters.Add("@g", SqlDbType.Int).Value = gid;
+            delG.ExecuteNonQuery();
+        }
+
+        tx.Commit();
+        return RemoveResult.Removed;
+    }
+
     // ------------------------------------------------------------------ the matching dbo.Groomers row
 
     private static int NewGroomer(SqlConnection conn, SqlTransaction tx, string name, bool active)

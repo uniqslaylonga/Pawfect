@@ -62,15 +62,30 @@ internal partial class AdminForm : Form
             }
         };
 
-        employeesPage.ToggleActiveRequested += (id, active) =>
+        employeesPage.RemoveRequested += user =>
         {
-            if (!active && Msg.Show(this, "Deactivate this account?\n\nThey will no longer be able to sign in until you activate it again.",
-                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            if (Msg.Show(this, $"Remove the account for {user.Name} ({user.Email})?\n\nThe login is deleted for good and can't be undone. Past appointments and sales are kept, but no longer show who handled them.",
+                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
                 return;
-            if (UserRepository.SetActive(id, active))
-                AuditLog.Record(CurrentUser, active ? "User Activated" : "User Deactivated", $"User #{id}");
-            else
-                Msg.Show("You can't deactivate the last active admin.");
+            try
+            {
+                switch (UserRepository.Remove(user.Id, CurrentUser?.Email))
+                {
+                    case UserRepository.RemoveResult.Removed:
+                        AuditLog.Record(CurrentUser, "User Removed", $"Removed account {user.Email} (#{user.Id})");
+                        break;
+                    case UserRepository.RemoveResult.LastAdmin:
+                        Msg.Show("You can't remove the last active admin.");
+                        break;
+                    case UserRepository.RemoveResult.Self:
+                        Msg.Show("You can't remove the account you are signed in with.");
+                        break;
+                }
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                Msg.Show("Could not remove the account: " + ex.Message);
+            }
             RefreshUsers();
             RefreshDashboard();
         };
@@ -110,19 +125,32 @@ internal partial class AdminForm : Form
             }
         };
 
-        employeesPage.ToggleEmployeeActiveRequested += (id, active) =>
+        employeesPage.RemoveEmployeeRequested += employee =>
         {
-            if (!active && Msg.Show(this, "Deactivate this employee?\n\nThey stay in the list and can be activated again. Groomers are no longer offered for appointments.",
-                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            if (Msg.Show(this, $"Remove {employee.Name} from the employee list?\n\nThis can't be undone. If they have a login account, it is deleted too, and groomers are taken off the appointment lists.",
+                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
                 return;
             try
             {
-                EmployeeRepository.SetActive(id, active);
-                AuditLog.Record(CurrentUser, active ? "Employee Activated" : "Employee Deactivated", $"Employee #{id}");
+                switch (EmployeeRepository.Remove(employee.Id, CurrentUser?.Email))
+                {
+                    case EmployeeRepository.RemoveResult.Removed:
+                        AuditLog.Record(CurrentUser, "Employee Removed", $"Removed {employee.Name} ({employee.Role}) (#{employee.Id})");
+                        break;
+                    case EmployeeRepository.RemoveResult.HasAppointments:
+                        Msg.Show($"{employee.Name} already has appointments, so they can't be removed.");
+                        break;
+                    case EmployeeRepository.RemoveResult.LastAdmin:
+                        Msg.Show("You can't remove the last active admin.");
+                        break;
+                    case EmployeeRepository.RemoveResult.Self:
+                        Msg.Show("You can't remove the account you are signed in with.");
+                        break;
+                }
             }
             catch (Microsoft.Data.SqlClient.SqlException ex)
             {
-                Msg.Show("Could not update the employee: " + ex.Message);
+                Msg.Show("Could not remove the employee: " + ex.Message);
             }
             RefreshUsers();
             RefreshDashboard();
@@ -438,7 +466,7 @@ internal partial class AdminForm : Form
         var rows = entries.Select(e => new DashboardRowView(
             e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
             e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
-            e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) ? Theme.Danger
+            (e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) || e.Action.Contains("Removed", StringComparison.OrdinalIgnoreCase)) ? Theme.Danger
             : e.Action.Contains("Created", StringComparison.OrdinalIgnoreCase) ? Theme.Green
             : Theme.Primary)).ToList();
 

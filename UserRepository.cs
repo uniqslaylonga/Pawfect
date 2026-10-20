@@ -201,6 +201,64 @@ internal static class UserRepository
         return true;
     }
 
+    public enum RemoveResult { Removed, NotFound, LastAdmin, Self }
+
+    /// <summary>
+    /// Permanently deletes an account. Refuses to delete the last active admin, or the account that is signed in.
+    /// Appointments, sales and customer records that pointed at the account are kept, just no longer linked to it.
+    /// </summary>
+    public static RemoveResult Remove(int userId, string? signedInEmail)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+        var result = Remove(conn, tx, userId, signedInEmail);
+        if (result == RemoveResult.Removed) tx.Commit(); else tx.Rollback();
+        return result;
+    }
+
+    /// <summary>Same as <see cref="Remove(int,string?)"/>, inside a transaction the caller owns (the caller commits).</summary>
+    internal static RemoveResult Remove(SqlConnection conn, SqlTransaction tx, int userId, string? signedInEmail)
+    {
+        string email, role;
+        bool active;
+        using (var find = new SqlCommand("SELECT Email, Role, IsActive FROM dbo.Users WHERE UserId = @id", conn, tx))
+        {
+            find.Parameters.Add("@id", SqlDbType.Int).Value = userId;
+            using var r = find.ExecuteReader();
+            if (!r.Read()) return RemoveResult.NotFound;
+            email = r.GetString(0);
+            role = r.GetString(1);
+            active = r.GetBoolean(2);
+        }
+
+        if (signedInEmail is not null && string.Equals(email, signedInEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+            return RemoveResult.Self;
+
+        if (role == "Admin" && active)
+        {
+            using var check = new SqlCommand(
+                "SELECT COUNT(1) FROM dbo.Users WHERE Role = 'Admin' AND IsActive = 1 AND UserId <> @id", conn, tx);
+            check.Parameters.Add("@id", SqlDbType.Int).Value = userId;
+            if ((int)check.ExecuteScalar()! == 0) return RemoveResult.LastAdmin;
+        }
+
+        // Keep the history, drop the link to the deleted login.
+        using (var unlink = new SqlCommand(@"
+UPDATE dbo.Appointments  SET CreatedByUserId = NULL WHERE CreatedByUserId = @id;
+UPDATE dbo.Transactions  SET CashierUserId   = NULL WHERE CashierUserId   = @id;
+UPDATE dbo.Customers     SET UserId          = NULL WHERE UserId          = @id;
+IF OBJECT_ID(N'dbo.Employees', N'U') IS NOT NULL
+    DELETE FROM dbo.Employees WHERE Email = @email AND GroomerId IS NULL;
+DELETE FROM dbo.Users WHERE UserId = @id;", conn, tx))
+        {
+            unlink.Parameters.Add("@id", SqlDbType.Int).Value = userId;
+            unlink.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email;
+            unlink.ExecuteNonQuery();
+        }
+        return RemoveResult.Removed;
+    }
+
     private static bool IsAdmin(SqlConnection conn, int userId)
     {
         using var cmd = new SqlCommand("SELECT COUNT(1) FROM dbo.Users WHERE UserId = @id AND Role = 'Admin'", conn);
