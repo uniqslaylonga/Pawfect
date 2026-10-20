@@ -69,9 +69,37 @@ IF OBJECT_ID(N'dbo.Groomers', N'U') IS NULL
         return text.Length > max ? text[..max] : text;
     }
 
+    /// <summary>
+    /// Puts every Admin / Employee login that is not on the roster yet onto it (matched by email), so existing accounts
+    /// show up in Employee Management. Admin logins become Admin employees; Employee logins become Cashier (change it with Edit).
+    /// </summary>
+    private static void SyncFromUsers(SqlConnection conn)
+    {
+        // Groomers already in the appointment lists (e.g. the sample Groomer 1, 2, 3) become Groomer employees linked to that row.
+        using (var groomers = new SqlCommand(@"
+INSERT INTO dbo.Employees (FullName, Role, Department, GroomerId, IsActive)
+SELECT g.Name, N'Groomer', N'Grooming', g.GroomerId, g.IsActive
+FROM dbo.Groomers g
+WHERE NOT EXISTS (SELECT 1 FROM dbo.Employees e WHERE e.GroomerId = g.GroomerId);", conn))
+            groomers.ExecuteNonQuery();
+
+        using var cmd = new SqlCommand(@"
+INSERT INTO dbo.Employees (FullName, Role, Department, Email, IsActive)
+SELECT u.FullName,
+       CASE WHEN u.Role = N'Admin' THEN N'Admin' ELSE N'Cashier' END,
+       CASE WHEN u.Role = N'Admin' THEN N'Administration' ELSE N'Billing' END,
+       u.Email, u.IsActive
+FROM dbo.Users u
+WHERE u.Role IN (N'Admin', N'Employee')
+  AND NOT EXISTS (SELECT 1 FROM dbo.Employees e WHERE e.Email = u.Email);", conn);
+        cmd.ExecuteNonQuery();
+    }
+
     public static List<Row> GetAll()
     {
         using var conn = Open();
+        try { SyncFromUsers(conn); }
+        catch (SqlException) { }   // a problem copying logins/groomers must never hide the roster itself
         using var cmd = new SqlCommand(@"
 SELECT EmployeeId, FullName, Role, Department, Email, Phone, IsActive, CreatedAt, GroomerId
 FROM dbo.Employees ORDER BY FullName, EmployeeId", conn);
