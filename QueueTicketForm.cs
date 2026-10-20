@@ -25,6 +25,7 @@ internal sealed class QueueTicketForm : Form
 
     public QueueTicketForm(QueueTicket ticket)
     {
+        Icon = AppIcon.Value;
         _ticket = ticket;
 
         Text = "Your Queue Ticket";

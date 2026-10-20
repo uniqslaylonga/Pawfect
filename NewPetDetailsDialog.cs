@@ -42,6 +42,7 @@ internal sealed class NewPetDetailsDialog : Form
     /// <param name="existing">The picked pet to show and update, or null to register a new one.</param>
     public NewPetDetailsDialog(int customerId, PetProfile? existing = null)
     {
+        Icon = AppIcon.Value;
         _customerId = customerId;
         _existing = existing;
 

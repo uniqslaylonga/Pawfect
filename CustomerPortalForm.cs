@@ -23,6 +23,7 @@ internal sealed class CustomerPortalForm : Form
 
     public CustomerPortalForm(UserAccount user)
     {
+        Icon = AppIcon.Value;
         _user = user;
 
         Text = "Pawfect";

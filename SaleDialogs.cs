@@ -14,6 +14,7 @@ internal sealed class ReceiptForm : Form
 
     public ReceiptForm(ReceiptData data)
     {
+        Icon = AppIcon.Value;
         _data = data;
 
         Text = "Receipt " + data.ReceiptNumber;
@@ -132,6 +133,7 @@ internal sealed class TransactionDetailsForm : Form
 
     public TransactionDetailsForm(TransactionItem item)
     {
+        Icon = AppIcon.Value;
         _item = item;
 
         Text = "Transaction " + item.ReceiptNumber;
@@ -276,6 +278,7 @@ internal sealed class TransactionHistoryForm : Form
 
     public TransactionHistoryForm()
     {
+        Icon = AppIcon.Value;
         Text = "Transaction History";
         Font = Theme.Face(9f);
         BackColor = Theme.Bg;

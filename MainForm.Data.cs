@@ -744,19 +744,14 @@ internal partial class MainForm
 
     // ------------------------------------------------------------------ export
 
+    private string PreparedBy => CurrentUser?.Name ?? "Staff";
+
     private void ExportCustomers()
     {
         var rows = lookupPage.Customers;
         if (rows.Count == 0) { NothingToExport("customers"); return; }
 
-        WriteCsv("customers.csv",
-            new[] { "Name", "Phone", "Email", "Address", "Pets", "Last Visit", "Added" },
-            rows.Select(c => new[]
-            {
-                c.Name, c.Phone, c.Email, c.Address, c.PetNames,
-                c.LastVisit?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "",
-                c.CreatedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            }));
+        SavePdf("customers.pdf", path => PdfReports.Customers(path, rows, PreparedBy));
     }
 
     private void ExportPets()
@@ -764,9 +759,7 @@ internal partial class MainForm
         var rows = lookupPage.Pets;
         if (rows.Count == 0) { NothingToExport("pets"); return; }
 
-        WriteCsv("pets.csv",
-            new[] { "Pet", "Species", "Breed", "Owner", "Owner Phone" },
-            rows.Select(p => new[] { p.Name, p.Species, p.Breed, p.OwnerName, p.OwnerPhone }));
+        SavePdf("pet-records.pdf", path => PdfReports.Pets(path, rows, PreparedBy));
     }
 
     private void ExportTodaySales()
@@ -784,15 +777,34 @@ internal partial class MainForm
 
         if (today.Count == 0) { NothingToExport("sales for today"); return; }
 
-        var inv = CultureInfo.InvariantCulture;
-        WriteCsv($"sales-{DateTime.Today.ToString("yyyy-MM-dd", inv)}.csv",
-            new[] { "Receipt", "Time", "Customer", "Services", "Items", "Total", "Paid By", "Status" },
-            today.OrderBy(x => x.When).Select(x => new[]
-            {
-                x.ReceiptNumber, x.When.ToString("HH:mm", inv), x.CustomerName,
-                x.ServiceCount.ToString(inv), x.ItemCount.ToString(inv), x.Total.ToString("0.00", inv),
-                x.PaymentMethod, TransactionStatusStyle.Label(x.Status),
-            }));
+        var name = $"sales-{DateTime.Today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}.pdf";
+        SavePdf(name, path => PdfReports.DailySales(path, today, PreparedBy));
+    }
+
+    /// <summary>Asks where to save, builds the PDF there, then opens it in the default PDF viewer.</summary>
+    private void SavePdf(string suggestedName, Action<string> generate)
+    {
+        using var dialog = new SaveFileDialog { Filter = "PDF document (*.pdf)|*.pdf", FileName = suggestedName };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        try
+        {
+            generate(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            Msg.Show(this, "Couldn't create the PDF.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+        }
+        catch
+        {
+            // The PDF is saved; there is just no PDF viewer to open it with.
+        }
     }
 
     private void NothingToExport(string what)

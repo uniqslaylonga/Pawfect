@@ -12,6 +12,7 @@ internal partial class WelcomeForm : Form
     public WelcomeForm()
     {
         InitializeComponent();
+        Icon = AppIcon.Value;
         DoubleBuffered = true;
 
         startButton.Click += (_, _) => Begin();

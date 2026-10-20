@@ -34,6 +34,7 @@ internal partial class MainForm : Form
     public MainForm()
     {
         InitializeComponent();
+        Icon = AppIcon.Value;
         DoubleBuffered = true;
         FullScreen.Apply(this, centerContent: false);
         _ = new SidebarCollapser(sidebar, navPanel, logoutNav, brandName, brandTagline);

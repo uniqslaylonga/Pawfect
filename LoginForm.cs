@@ -17,6 +17,7 @@ internal partial class LoginForm : Form
     public LoginForm()
     {
         InitializeComponent();
+        Icon = AppIcon.Value;
         DoubleBuffered = true;
 
         KeyDown += (_, e) =>

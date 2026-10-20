@@ -42,6 +42,7 @@ internal sealed class PawMessageForm : Form
     public PawMessageForm(string text, string caption, MessageBoxButtons buttons, MessageBoxIcon icon,
         MessageBoxDefaultButton defaultButton, bool hasOwner)
     {
+        Icon = AppIcon.Value;
         Text = caption;
         Font = Theme.Face(9f);
         BackColor = Color.White;
@@ -192,6 +193,7 @@ internal sealed class AppointmentDetailsDialog : Form
 
     public AppointmentDetailsDialog(AppointmentItem a, bool offerActions = false)
     {
+        Icon = AppIcon.Value;
         // Pet photo and vaccination card live on the pet, so look them up through the appointment.
         byte[]? photoBytes = null, cardBytes = null;
         try

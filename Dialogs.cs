@@ -45,6 +45,7 @@ internal abstract class DialogBase : Form
         MinimizeBox = false;
         ShowInTaskbar = false;
         ShowIcon = false;
+        Icon = AppIcon.Value;
         ClientSize = new Size(460, 300);
 
         Grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
@@ -679,6 +680,7 @@ internal sealed class FullCalendarForm : Form
 
     public FullCalendarForm(IReadOnlyList<AppointmentItem> items, DateTime? startDay = null)
     {
+        Icon = AppIcon.Value;
         Text = "Appointment Calendar";
         Font = Theme.Face(9f);
         BackColor = Color.White;

@@ -8,6 +8,7 @@ internal partial class CreateAdminForm : Form
     public CreateAdminForm()
     {
         InitializeComponent();
+        Icon = AppIcon.Value;
     }
 
     private void createButton_Click(object? sender, EventArgs e)

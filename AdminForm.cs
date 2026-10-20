@@ -27,6 +27,7 @@ internal partial class AdminForm : Form
     public AdminForm()
     {
         InitializeComponent();
+        Icon = AppIcon.Value;
         DoubleBuffered = true;
         FullScreen.Apply(this, centerContent: false);
         _ = new SidebarCollapser(sidebar, navPanel, logoutNav, brandName, brandTagline);

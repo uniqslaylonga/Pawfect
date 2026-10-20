@@ -9,11 +9,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>MyApp</RootNamespace>
     <AssemblyName>Pawfect</AssemblyName>
+    <ApplicationIcon>pawfect.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.*" />
     <PackageReference Include="MailKit" Version="4.*" />
+    <PackageReference Include="QuestPDF" Version="2025.*" />
   </ItemGroup>
 
   <!-- Google Vision key: paste it into vision.key (one line). It is copied next to Pawfect.exe on every build.
@@ -21,6 +23,10 @@
   <ItemGroup>
     <None Update="vision.key" CopyToOutputDirectory="PreserveNewest" Condition="Exists('vision.key')" />
     <None Update="smtp.config" CopyToOutputDirectory="PreserveNewest" Condition="Exists('smtp.config')" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="pawfect.ico" LogicalName="pawfect.ico" />
   </ItemGroup>
 
 </Project>

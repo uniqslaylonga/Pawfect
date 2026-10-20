@@ -47,6 +47,7 @@ internal sealed partial class AddPetForm : Form
     public AddPetForm()
     {
         InitializeComponent();
+        Icon = AppIcon.Value;
         _otpBoxes = new[] { otpBox1.Box, otpBox2.Box, otpBox3.Box, otpBox4.Box, otpBox5.Box, otpBox6.Box };
         foreach (var b in _otpBoxes) b.Enabled = false;   // switched on once the code has been sent
         WireUp();

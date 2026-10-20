@@ -40,6 +40,7 @@ internal sealed class PetViewerForm : Form
 
     public PetViewerForm(int customerId, string ownerName, int? selectPetId = null)
     {
+        Icon = AppIcon.Value;
         _customerId = customerId;
         _ownerName = ownerName;
 
@@ -561,6 +562,7 @@ internal sealed class ImageViewerForm : Form
 
     public ImageViewerForm(string title, Image image)
     {
+        Icon = AppIcon.Value;
         _copy = new Bitmap(image);
 
         Text = title;
