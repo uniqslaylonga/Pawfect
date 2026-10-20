@@ -12,6 +12,12 @@ namespace MyApp;
 /// </summary>
 internal static class FullScreen
 {
+    /// <summary>
+    /// Whether the top-right minimize / restore / close buttons are shown. Off: the windows are plain full-screen
+    /// (Esc and Alt+F4 still close them, the taskbar still minimizes). Set to true to bring the buttons back.
+    /// </summary>
+    public static bool ShowCaptionButtons { get; set; } = false;
+
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, int msg, int wParam, int lParam);
 
@@ -58,7 +64,7 @@ internal static class FullScreen
         form.ShowInTaskbar = true;                      // so a minimized window can be brought back from the taskbar
 
         bool full = true;
-        var caption = new CaptionButtons();
+        var caption = new CaptionButtons { Visible = ShowCaptionButtons };
         var grip = new Panel { Height = 10, BackColor = Color.Transparent, TabStop = false, Visible = false };   // drag strip, windowed mode only
         form.Controls.Add(grip);
         form.Controls.Add(caption);
