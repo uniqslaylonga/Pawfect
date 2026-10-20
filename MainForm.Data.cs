@@ -47,6 +47,12 @@ internal partial class MainForm
         appointmentsPage.ViewFullCalendarRequested += (_, _) => ShowFullCalendar();
         scheduleLink.Click += (_, _) => ShowFullCalendar(DateTime.Today);   // dashboard "Today's Schedule" -> View Calendar
 
+        // The four tiles at the top of the dashboard open the list they count.
+        Ui.MakeClickable(appointmentsCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowToday(); });
+        Ui.MakeClickable(completedCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowToday(AppointmentStatus.Completed); });
+        Ui.MakeClickable(queueCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowPending(); });
+        Ui.MakeClickable(walkInsCard, (_, _) => ShowTransactionHistory());   // walk-in sales have no appointment, so they live in the sales history
+
         // Dashboard "View All" links
         pendingLink.Click += (_, _) =>
         {

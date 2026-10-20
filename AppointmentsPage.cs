@@ -17,7 +17,9 @@ internal partial class AppointmentsPage : UserControl
     private DateTime? _rangeStart;          // Sunday of the week being shown, or null for "all dates"
     private int _pageIndex;
     private bool _suspendFilter;
-    private bool _waitingOnly;   // set by ShowPending: list Pending and Rescheduled together; any status change clears it
+    private enum StatusGroup { None, Waiting, Confirmed }
+    private StatusGroup _group;   // set by a stat tile or ShowPending: Waiting = Pending + Rescheduled, Confirmed = Confirmed + Checked in; picking a status in the drop-down clears it
+    private DateTime? _dayOnly;   // set by ShowToday: list just this one day instead of the whole week
     private bool _building;
 
     public event EventHandler<AppointmentItem>? ViewRequested;
@@ -48,6 +50,12 @@ internal partial class AppointmentsPage : UserControl
         quickGrid.Controls.Add(newAppointmentTile, 1, 1);
 
         FitLegend();
+
+        // The four stat tiles at the top filter the list below to the appointments they count.
+        Ui.MakeClickable(totalCard, (_, _) => ApplyTile(null, StatusGroup.None));
+        Ui.MakeClickable(pendingCard, (_, _) => ApplyTile(AppointmentStatus.Pending, StatusGroup.Waiting));
+        Ui.MakeClickable(confirmedCard, (_, _) => ApplyTile(AppointmentStatus.Confirmed, StatusGroup.Confirmed));
+        Ui.MakeClickable(cancelledCard, (_, _) => ApplyTile(AppointmentStatus.Cancelled, StatusGroup.None));
 
         components ??= new System.ComponentModel.Container();
         new ToolTip(components).SetToolTip(dateRange, "Click the dates to switch between this week and all dates.");
@@ -161,10 +169,55 @@ internal partial class AppointmentsPage : UserControl
         searchField.Box.Text = "";
         serviceFilter.SelectedIndex = 0;
         statusFilter.SelectedIndex = Array.IndexOf(Enum.GetValues<AppointmentStatus>(), AppointmentStatus.Pending) + 1;   // index 0 is "All Statuses"
-        _waitingOnly = true;   // after the index change, whose handler clears the flag
+        _group = StatusGroup.Waiting;   // after the index change, whose handler clears the group
         _suspendFilter = false;
 
         SetRange(null);
+    }
+
+    /// <summary>Lists just today's appointments, optionally only those with one status (dashboard tiles).</summary>
+    public void ShowToday(AppointmentStatus? status = null)
+    {
+        _suspendFilter = true;
+        searchField.Box.Text = "";
+        serviceFilter.SelectedIndex = 0;
+        statusFilter.SelectedIndex = status is null ? 0 : Array.IndexOf(Enum.GetValues<AppointmentStatus>(), status.Value) + 1;
+        _group = StatusGroup.None;
+        _suspendFilter = false;
+
+        SetRange(WeekStart(DateTime.Today), DateTime.Today);
+        _dayOnly = DateTime.Today;   // after SetRange, which clears it
+        UpdateRangeText();
+        ApplyFilters(resetPage: true);
+    }
+
+    /// <summary>
+    /// A stat tile was clicked: show the appointments it counts (same date range, no search or service filter, so the list
+    /// has exactly as many rows as the number on the tile).
+    /// </summary>
+    private void ApplyTile(AppointmentStatus? status, StatusGroup group)
+    {
+        _suspendFilter = true;
+        searchField.Box.Text = "";
+        serviceFilter.SelectedIndex = 0;
+        statusFilter.SelectedIndex = status is null ? 0 : Array.IndexOf(Enum.GetValues<AppointmentStatus>(), status.Value) + 1;
+        _group = group;   // after the index change, whose handler clears the group
+        _suspendFilter = false;
+
+        ApplyFilters(resetPage: true);
+    }
+
+    /// <summary>Outlines the stat tile whose list is showing.</summary>
+    private void UpdateTileHighlight()
+    {
+        CardPanel? active = null;
+        if (_group == StatusGroup.Waiting) active = pendingCard;
+        else if (_group == StatusGroup.Confirmed) active = confirmedCard;
+        else if (statusFilter.SelectedIndex == 0) active = totalCard;
+        else if (statusFilter.SelectedItem == AppointmentStatusStyle.Label(AppointmentStatus.Cancelled)) active = cancelledCard;
+
+        foreach (var card in new[] { totalCard, pendingCard, confirmedCard, cancelledCard })
+            card.BorderColor = ReferenceEquals(card, active) ? Theme.Primary : Theme.Border;
     }
 
     /// <summary>Clears the search, filters and week so every appointment is listed.</summary>
@@ -179,7 +232,8 @@ internal partial class AppointmentsPage : UserControl
     private static DateTime WeekStart(DateTime day) => day.Date.AddDays(-(int)day.DayOfWeek);
 
     private bool InRange(DateTime when)
-        => _rangeStart is null || (when.Date >= _rangeStart.Value && when.Date <= _rangeStart.Value.AddDays(6));
+        => _dayOnly is { } day ? when.Date == day :
+           _rangeStart is null || (when.Date >= _rangeStart.Value && when.Date <= _rangeStart.Value.AddDays(6));
 
     private static bool Matches(AppointmentItem a, string query)
     {
@@ -201,8 +255,12 @@ internal partial class AppointmentsPage : UserControl
 
         _filtered = _all
             .Where(a => InRange(a.Start))
-            .Where(a => _waitingOnly ? a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled
-                                     : status is null || a.Status == status)
+            .Where(a => _group switch
+            {
+                StatusGroup.Waiting => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled,
+                StatusGroup.Confirmed => a.Status is AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn,
+                _ => status is null || a.Status == status,
+            })
             .Where(a => service is null || string.Equals(a.Service, service, StringComparison.OrdinalIgnoreCase))
             .Where(a => query.Length == 0 || Matches(a, query))
             .OrderBy(a => a.Start)
@@ -214,10 +272,19 @@ internal partial class AppointmentsPage : UserControl
         UpdateFooter();
         UpdateStats();
         UpdateUpcoming();
+        UpdateTileHighlight();
     }
 
     private void UpdateRangeText()
     {
+        if (_dayOnly is { } day)
+        {
+            string text = day.ToString("MMM d, yyyy", CultureInfo.CurrentCulture);
+            dateRange.Text = day == DateTime.Today ? "Today \u00B7 " + text : text;
+            LayoutToolbar();
+            return;
+        }
+
         if (_rangeStart is null)
         {
             dateRange.Text = "All dates";
@@ -251,6 +318,7 @@ internal partial class AppointmentsPage : UserControl
 
     private void SetRange(DateTime? weekStart, DateTime? selectedDay = null)
     {
+        _dayOnly = null;
         _rangeStart = weekStart;
         monthCalendar.SelectedDate = selectedDay;
         if (weekStart is not null) monthCalendar.Month = weekStart.Value;
@@ -383,7 +451,7 @@ internal partial class AppointmentsPage : UserControl
 
     private void statusFilter_SelectedIndexChanged(object? sender, EventArgs e)
     {
-        _waitingOnly = false;
+        _group = StatusGroup.None;
         if (!_suspendFilter) ApplyFilters(resetPage: true);
     }
 
