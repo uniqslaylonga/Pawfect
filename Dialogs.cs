@@ -492,36 +492,6 @@ internal sealed class EditAppointmentForm : DialogBase
     }
 }
 
-/// <summary>Read-only list of the services an admin has set up (employees can't change prices).</summary>
-internal sealed class ServiceListForm : DialogBase
-{
-    public ServiceListForm() : base("Services", "Close")
-    {
-        var box = new TextBox
-        {
-            Multiline = true,
-            ReadOnly = true,
-            Height = 240,
-            ScrollBars = ScrollBars.Vertical,
-            BackColor = Color.White,
-        };
-        var services = EmployeeData.GetServices();
-        box.Text = services.Count == 0
-            ? "No services exist yet. An admin needs to add them."
-            : string.Join(Environment.NewLine, services.GroupBy(s => s.Name).SelectMany(g =>
-                g.Count() == 1 && g.First().Detail.Length == 0
-                    ? new[] { $"{g.Key}  -  {Money.Format(g.First().Price)}" }
-                    // one price per weight band: the service name once, then a line per band
-                    : new[] { g.Key }.Concat(g.Select(s => $"      {(s.Detail.Length > 0 ? s.Detail : "All sizes")}  -  {Money.Format(s.Price)}"))));
-        AddRow("Services", box);
-        SaveButton.Visible = false;
-        CancelButtonControl.Text = "Close";
-        FitHeight();
-    }
-
-    protected override void OnSaveClicked() => DialogResult = DialogResult.OK;
-}
-
 /// <summary>A big month grid. Each day lists its appointments (time + pet), coloured by status.</summary>
 internal sealed class FullCalendarGrid : Control
 {
