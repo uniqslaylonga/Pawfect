@@ -123,7 +123,9 @@ internal sealed partial class AddPetForm
         _passwordButton.Update();
         try
         {
-            await Task.Run(() => EmployeeData.CreateCustomerLogin(customerId, email, password));
+            bool taken = await Task.Run(() => UserRepository.GetByEmail(email) is not null);
+            if (taken) error = "That email is already used by another account.";
+            else await Task.Run(() => EmployeeData.CreateCustomerLogin(customerId, email, password));
         }
         catch (SqlException ex) when (ex.Number is 2627 or 2601)
         {

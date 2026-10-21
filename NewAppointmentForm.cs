@@ -306,6 +306,7 @@ internal sealed class CreateCustomerLoginForm : DialogBase
 
         try
         {
+            if (UserRepository.GetByEmail(email) is not null) { ShowError("That email is already used by another account."); return; }
             EmployeeData.CreateCustomerLogin(_customer.Id, email, _password.Text);
             DialogResult = DialogResult.OK;
         }

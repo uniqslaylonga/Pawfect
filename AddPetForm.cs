@@ -161,6 +161,11 @@ internal sealed partial class AddPetForm : Form
         }
         string typedName = nameField.Value.Trim();
         if (_kiosk && !LookUpKioskCustomer(email)) return;
+        if (_kiosk && EmailTakenByAnotherAccount(email))
+        {
+            ShowContactError("This email already has an account. Please use a different email, or ask the staff for help.");
+            return;
+        }
         if (_kiosk)
         {
             // a returning customer can leave the name blank (the one on file is used); a new customer must give one
@@ -239,6 +244,20 @@ internal sealed partial class AddPetForm : Form
     }
 
     // ---- kiosk: the customer is found by email (or created once the code is right)
+
+    /// <summary>
+    /// True when a sign-in with this email already exists but isn't this customer's own, so a new account can't be made with it.
+    /// Checked before the code is emailed, so the customer finds out right away instead of after the password page.
+    /// </summary>
+    private bool EmailTakenByAnotherAccount(string email)
+    {
+        try
+        {
+            if (_customerId != 0 && EmployeeData.CustomerHasLogin(_customerId)) return false;   // it is their own account
+            return UserRepository.GetByEmail(email) is not null;
+        }
+        catch (SqlException) { return false; }   // can't tell: the save step below still catches a duplicate
+    }
 
     private bool LookUpKioskCustomer(string email)
     {
