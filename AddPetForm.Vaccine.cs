@@ -29,7 +29,6 @@ internal sealed partial class AddPetForm
     private Panel? _validGroup;
     private Label? _vaccineInfoText;
     private Label? _vaccineStatus;
-    private Button? _skipButton;
     private int _vaccinePetId;
     private string _vaccinePetName = "";
     private bool _vaccineDone;
@@ -92,7 +91,6 @@ internal sealed partial class AddPetForm
         _vaccineBanner!.Visible = true;   // a warning hidden after a verified scan comes back if this step is opened again
         _scanGroup!.Visible = !valid;
         _validGroup!.Visible = valid;
-        _skipButton!.Visible = !valid;
         titleLabel.Visible = !valid;       // the "No need to scan!" look has its own heading
         subtitleLabel.Visible = !valid;
 
@@ -145,7 +143,6 @@ internal sealed partial class AddPetForm
     {
         HideServiceStep();
         if (_vaccinePanel is not null) _vaccinePanel.Visible = false;
-        if (_skipButton is not null) _skipButton.Visible = false;
         stepVaccine.State = StepState.Pending;
 
         // the other steps use the title where the designer put it
@@ -222,14 +219,6 @@ internal sealed partial class AddPetForm
         _vaccineBanner!.Visible = false;
         titleLabel.Location = Px(40, 84);
         subtitleLabel.Location = Px(40, 122);
-    }
-
-    private void SkipVaccineScan()
-    {
-        var answer = Msg.Show(this,
-            $"Skip scanning?\n\nThe shop can't confirm {_vaccinePetName}'s vaccinations until a card is on file, so the appointment may be held until you bring one.",
-            "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-        if (answer == DialogResult.Yes) FinishVaccineStep();
     }
 
     /// <summary>Done with the vaccine step: the caller opens the appointment request for this pet.</summary>
@@ -375,24 +364,6 @@ internal sealed partial class AddPetForm
         _vaccinePanel.Controls.Add(_scanGroup);
         _vaccinePanel.Controls.Add(_validGroup);
         ContentHost.Controls.Add(_vaccinePanel);
-
-        // "Skip Scanning" sits between Back and Continue on the form itself
-        _skipButton = new Button
-        {
-            Text = "Skip Scanning",
-            Location = new Point(385, 486),
-            Size = new Size(130, 42),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.White,
-            ForeColor = Theme.Primary,
-            Font = Theme.Face(9.5f, FontStyle.Bold),
-            Cursor = Cursors.Hand,
-            Visible = false,
-            UseVisualStyleBackColor = false,
-        };
-        _skipButton.FlatAppearance.BorderColor = Theme.Border;
-        _skipButton.Click += (_, _) => SkipVaccineScan();
-        ContentHost.Controls.Add(_skipButton);
     }
 
     private static void PaintScanFrame(object? sender, PaintEventArgs e)
