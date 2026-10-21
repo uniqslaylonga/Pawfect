@@ -140,6 +140,73 @@ internal static class PdfReports
             });
     }
 
+    /// <summary>Reports &amp; Financial Auditing: the rows of the chosen tab (or the ticked ones) under the period totals.</summary>
+    public static void Audit(string path, AuditTab tab, string period, IReadOnlyList<AuditRow> rows, AuditTotals totals,
+        int totalRows, bool selectionOnly, string preparedBy)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        string Peso(decimal v) => "\u20B1" + v.ToString("N2", culture);
+
+        string subtitle = period + (selectionOnly ? $"  \u00B7  {rows.Count} of {totalRows} rows selected" : "");
+        int flagged = rows.Count(r => r.Note.Length > 0);
+
+        var headers = tab switch
+        {
+            AuditTab.Movement => new[] { "Date & Time", "Movement", "Product", "Qty", "Value", "Reference", "Status" },
+            AuditTab.Summary => new[] { "Date", "Type", "Summary", "Items", "Net Sales", "Receipts", "Status" },
+            _ => new[] { "Date & Time", "Type", "Product / Service", "Qty", "Amount", "Reference", "Status" },
+        };
+        float[] weights = { 1.7f, 1.1f, 2.8f, 0.7f, 1.3f, 1.8f, 1.3f };
+        var cols = headers.Select((h, i) => new Col(h, weights[i], Right: i is 3 or 4)).ToArray();
+
+        Build(path, ReportsData.Title(tab), subtitle, preparedBy, landscape: true,
+            new[]
+            {
+                ("Total Sales (Audited)", Peso(totals.Sales)),
+                ("Inventory Movement", totals.Units.ToString("N0", culture) + (totals.Units == 1 ? " item" : " items")),
+                ("Discrepancies Found", totals.Discrepancies.ToString("N0", culture)),
+                ("Rows in This Report", rows.Count.ToString("N0", culture)),
+            },
+            body =>
+            {
+                body.Item().Element(c => DataTable(c, cols,
+                    rows.Select(r => new[]
+                    {
+                        new Cx(r.When.TimeOfDay == TimeSpan.Zero
+                            ? r.When.ToString("MMM d, yyyy", culture)
+                            : r.When.ToString("MMM d, yyyy h:mm tt", culture)),
+                        new Cx(r.Type),
+                        new Cx(r.Item, Bold: true),
+                        new Cx(r.Quantity),
+                        new Cx(r.Amount, r.AmountIsNegative ? Hex(Theme.Danger) : null),
+                        new Cx(r.Reference),
+                        new Cx(r.Status, Hex(ReportsData.BadgeFore(r.Badge)), Bold: true),
+                    }).ToList()));
+
+                if (flagged > 0)
+                {
+                    body.Item().Column(c =>
+                    {
+                        c.Item().Text("Needs review").Bold().FontSize(10).FontColor(Hex(Theme.Danger));
+                        foreach (var r in rows.Where(r => r.Note.Length > 0).Take(40))
+                        {
+                            string label = r.Type switch
+                            {
+                                "Stock Check" => r.Item,
+                                "Daily Summary" => r.When.ToString("MMM d, yyyy", culture),
+                                _ => r.Reference,
+                            };
+                            c.Item().PaddingTop(3).Text($"{label}: {r.Note.Replace("\n", "; ")}").FontSize(8.5f).FontColor(TextSoft);
+                        }
+                    });
+                }
+
+                body.Item().Text("The cards above cover the whole period. Sales totals count completed sales only; refunded and voided sales are listed but not counted. "
+                                 + "A discrepancy is a sale whose line items, discount, total, cash received or change do not add up, or a product whose stock does not match its batches.")
+                    .FontSize(8).FontColor(Muted);
+            });
+    }
+
     // ------------------------------------------------------------------ shared layout
 
     public static void Inventory(string path, IReadOnlyList<InventoryRow> rows, string preparedBy)

@@ -94,6 +94,14 @@ internal partial class AdminForm : Form
         inventoryPage.ViewAllLowStockRequested += (_, _) => inventoryPage.FilterByStatus(inventoryPage.HasLowStock ? "Low Stock" : "Out of Stock");
         inventoryPage.GenerateReportRequested += (_, _) => ExportInventoryReport();
 
+        // Reports & Financial Auditing: the page asks for data, this form reads it and hands it back.
+        reportsPage.RefreshRequested += (_, _) => RefreshReports();
+        reportsPage.DownloadReportRequested += (_, _) => ExportAudit(pdf: true);
+        reportsPage.ExportPdfRequested += (_, _) => ExportAudit(pdf: true);
+        reportsPage.ExportExcelRequested += (_, _) => ExportAudit(pdf: false);
+        reportsPage.ViewAllReportsRequested += (_, _) => reportsPage.ResetFilters();
+        reportsPage.ViewAllActivityRequested += (_, _) => ShowPage(AdminPage.Audit);
+
         employeesPage.AddUserRequested += (_, _) =>
         {
             using var dlg = new AddUserDialog();
@@ -378,6 +386,7 @@ internal partial class AdminForm : Form
         if (page == AdminPage.Employees) RefreshUsers();
         if (page == AdminPage.Services) RefreshServices();
         if (page == AdminPage.Inventory) RefreshInventory();
+        if (page == AdminPage.Reports) RefreshReports(reloadLists: true);
         if (page == AdminPage.Audit) RefreshAudit();
     }
 
@@ -605,6 +614,81 @@ internal partial class AdminForm : Form
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
             Msg.Show("Could not load users and employees: " + ex.Message);
+        }
+    }
+
+    private void RefreshReports(bool reloadLists = false)
+    {
+        try
+        {
+            if (reloadLists)
+                reportsPage.SetFilterLists(ReportsData.GetCategories(), ReportsData.GetStaff());
+
+            var query = reportsPage.BuildQuery();
+            var report = ReportsData.Load(query.Current, query.CompareNow, query.ComparePrev, query.Tab);
+            reportsPage.ShowData(report, query.CompareLabel);
+            reportsPage.SetRecentActivity(AuditLog.GetRecent(8));
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            Msg.Show("Could not load reports: " + ex.Message);
+        }
+    }
+
+    /// <summary>Saves what the Reports table shows (the ticked rows, or every row of the current filter) as a PDF or an Excel workbook (.xlsx).</summary>
+    private void ExportAudit(bool pdf)
+    {
+        var rows = reportsPage.ExportRows;
+        if (rows.Count == 0)
+        {
+            Msg.Show(this, "There is nothing to export yet.\n\nPick another date range, category or tab, or wait until sales and stock are recorded.",
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        var tab = reportsPage.CurrentTab;
+        string period = reportsPage.PeriodText;
+        string who = CurrentUser?.Name ?? "Admin";
+        string baseName = tab switch
+        {
+            AuditTab.Movement => "inventory-movement",
+            AuditTab.Summary => "audit-summary",
+            _ => "sales-audit-log",
+        };
+        string ext = pdf ? ".pdf" : ".xlsx";
+
+        using var dialog = new SaveFileDialog
+        {
+            Filter = pdf ? "PDF document (*.pdf)|*.pdf" : "Excel workbook (*.xlsx)|*.xlsx",
+            FileName = $"{baseName}-{DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}{ext}",
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        try
+        {
+            if (pdf)
+                PdfReports.Audit(dialog.FileName, tab, period, rows, reportsPage.Totals, reportsPage.TotalRows, reportsPage.HasSelection, who);
+            else
+                XlsxExport.WriteAudit(dialog.FileName, tab, rows, reportsPage.Totals, period, who);
+        }
+        catch (Exception ex)
+        {
+            Msg.Show(this, (pdf ? "Couldn't create the PDF." : "Couldn't save the Excel file. If it is already open in Excel, close it and try again.") + "\n\n" + ex.Message,
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        AuditLog.Record(CurrentUser, "Report Exported", $"{ReportsData.Title(tab)} ({period}), {rows.Count} row{(rows.Count == 1 ? "" : "s")}, {(pdf ? "PDF" : "Excel")}");
+        try { reportsPage.SetRecentActivity(AuditLog.GetRecent(8)); }
+        catch (Microsoft.Data.SqlClient.SqlException) { }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+        }
+        catch
+        {
+            // The file is saved; there is just nothing installed to open it with.
         }
     }
 
