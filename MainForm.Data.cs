@@ -732,6 +732,14 @@ internal partial class MainForm
         {
             receipt = EmployeeData.SaveSale(sale, CurrentUser.Email);
         }
+        catch (InsufficientStockException ex)
+        {
+            Msg.Show(this,
+                $"Not enough {ex.ProductName} in stock: {ex.Available} left, {ex.Requested} in the cart.\n\nLower the quantity or remove it, then try again. Nothing was saved.",
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            RefreshSoon();   // reload so the catalog shows the real counts; the cart is kept
+            return;
+        }
         catch (SqlException ex)
         {
             ShowDbError("save the sale", ex);

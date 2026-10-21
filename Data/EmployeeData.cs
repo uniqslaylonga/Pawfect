@@ -60,7 +60,11 @@ IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appoint
 IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'IsWalkIn') IS NULL
     ALTER TABLE dbo.Appointments ADD IsWalkIn BIT NOT NULL CONSTRAINT DF_Appointments_IsWalkIn DEFAULT 0;
 IF OBJECT_ID(N'dbo.Customers', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Customers', N'UserId') IS NULL
-    ALTER TABLE dbo.Customers ADD UserId INT NULL;", conn);
+    ALTER TABLE dbo.Customers ADD UserId INT NULL;
+IF OBJECT_ID(N'dbo.Products', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Products', N'QtyOnHand') IS NULL
+    ALTER TABLE dbo.Products ADD QtyOnHand INT NOT NULL CONSTRAINT DF_Products_Qty DEFAULT 0;
+IF OBJECT_ID(N'dbo.Transactions', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Transactions', N'StockDeducted') IS NULL
+    ALTER TABLE dbo.Transactions ADD StockDeducted BIT NOT NULL CONSTRAINT DF_Transactions_StockDeducted DEFAULT 0;", conn);
             cmd.ExecuteNonQuery();
             _schemaChecked = true;
         }
@@ -194,11 +198,27 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     public static List<ProductItem> GetProducts()
     {
         using var conn = Open();
-        using var cmd = Cmd(conn, "SELECT ProductId, Code, Name, Category, Price FROM dbo.Products WHERE IsActive = 1 ORDER BY Name");
+        using var cmd = Cmd(conn, "SELECT ProductId, Code, Name, Category, Price, QtyOnHand FROM dbo.Products WHERE IsActive = 1 ORDER BY Name");
         using var r = cmd.ExecuteReader();
         var list = new List<ProductItem>();
-        while (r.Read()) list.Add(new ProductItem(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDecimal(4)));
+        while (r.Read()) list.Add(new ProductItem(r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3), r.GetDecimal(4), r.GetInt32(5)));
         return list;
+    }
+
+    /// <summary>
+    /// Restock: adds units to a product's QtyOnHand and returns the new count. Used by the admin's Inventory
+    /// &gt; Update Stock dialog.
+    /// </summary>
+    public static int AddStock(int productId, int quantity)
+    {
+        if (quantity <= 0) throw new ArgumentOutOfRangeException(nameof(quantity));
+
+        using var conn = Open();
+        using var cmd = Cmd(conn,
+            "UPDATE dbo.Products SET QtyOnHand = QtyOnHand + @q OUTPUT INSERTED.QtyOnHand WHERE ProductId = @id");
+        P(cmd, "@q", SqlDbType.Int, quantity);
+        P(cmd, "@id", SqlDbType.Int, productId);
+        return cmd.ExecuteScalar() is int now ? now : throw new InvalidOperationException("That product no longer exists.");
     }
 
     // ------------------------------------------------------------------ appointments
@@ -681,6 +701,21 @@ WHERE t.TransactionId = @id AND a.Status = N'Completed'", tx);
             cmd.ExecuteNonQuery();
         }
 
+        if (newStatus == TransactionStatus.Voided)
+        {
+            // Put the products back on the shelf, but only for sales that actually took stock out
+            // (sales saved before stock tracking existed have StockDeducted = 0 and are left alone).
+            using var cmd = Cmd(conn, @"
+UPDATE p SET p.QtyOnHand = p.QtyOnHand + l.Qty
+FROM dbo.Products p
+JOIN (SELECT ProductId, SUM(Quantity) AS Qty FROM dbo.TransactionLines
+      WHERE TransactionId = @id AND LineKind = N'Product' AND ProductId IS NOT NULL
+      GROUP BY ProductId) l ON l.ProductId = p.ProductId
+JOIN dbo.Transactions t ON t.TransactionId = @id AND t.StockDeducted = 1", tx);
+            P(cmd, "@id", SqlDbType.Int, transactionId);
+            cmd.ExecuteNonQuery();
+        }
+
         tx.Commit();
         return true;
     }
@@ -758,7 +793,7 @@ VALUES
         }
 
         string receipt = FormatReceipt(transactionId);
-        using (var cmd = Cmd(conn, "UPDATE dbo.Transactions SET ReceiptNumber = @r WHERE TransactionId = @id", tx))
+        using (var cmd = Cmd(conn, "UPDATE dbo.Transactions SET ReceiptNumber = @r, StockDeducted = 1 WHERE TransactionId = @id", tx))
         {
             P(cmd, "@r", SqlDbType.NVarChar, receipt, 30);
             P(cmd, "@id", SqlDbType.Int, transactionId);
@@ -780,6 +815,33 @@ VALUES (@t, @kind, @service, @product, @name, @detail, @price, @qty)", tx);
             P(cmd, "@price", SqlDbType.Decimal, line.UnitPrice);
             P(cmd, "@qty", SqlDbType.Int, line.Quantity);
             cmd.ExecuteNonQuery();
+        }
+
+        // Take the products out of stock in this same transaction. The WHERE clause makes the check and the
+        // deduction one atomic step, so two counters can never both sell the last unit. If any product is short,
+        // the exception rolls the whole sale back (nothing is saved).
+        foreach (var group in sale.Lines.Where(l => l.Kind == CartLineKind.Product).GroupBy(l => l.SourceId))
+        {
+            int wanted = group.Sum(l => l.Quantity);
+            using var take = Cmd(conn,
+                "UPDATE dbo.Products SET QtyOnHand = QtyOnHand - @q WHERE ProductId = @p AND QtyOnHand >= @q", tx);
+            P(take, "@q", SqlDbType.Int, wanted);
+            P(take, "@p", SqlDbType.Int, group.Key);
+            if (take.ExecuteNonQuery() > 0)
+            {
+                InventoryData.ConsumeFifo(conn, tx, group.Key, wanted);   // oldest batches go first
+                continue;
+            }
+
+            string shortName = group.First().Name;
+            int have = 0;
+            using (var look = Cmd(conn, "SELECT Name, QtyOnHand FROM dbo.Products WHERE ProductId = @p", tx))
+            {
+                P(look, "@p", SqlDbType.Int, group.Key);
+                using var rd = look.ExecuteReader();
+                if (rd.Read()) { shortName = rd.GetString(0); have = rd.GetInt32(1); }
+            }
+            throw new InsufficientStockException(shortName, have, wanted);
         }
 
         if (appointmentId is int id)

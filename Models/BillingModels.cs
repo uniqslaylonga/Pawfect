@@ -3,7 +3,24 @@
 namespace MyApp;
 
 /// <summary>A retail product that can be sold at the counter. Fill these from your data source and pass them to <c>BillingPage.SetProducts</c>.</summary>
-internal sealed record ProductItem(int Id, string Code, string Name, string Category, decimal Price);
+/// <param name="QtyOnHand">Units in stock right now (Products.QtyOnHand). The cart never goes above this.</param>
+internal sealed record ProductItem(int Id, string Code, string Name, string Category, decimal Price, int QtyOnHand);
+
+/// <summary>Thrown by <c>EmployeeData.SaveSale</c> when a product has fewer units on hand than the sale needs. Nothing is saved.</summary>
+internal sealed class InsufficientStockException : Exception
+{
+    public InsufficientStockException(string productName, int available, int requested)
+        : base($"Not enough {productName} in stock ({available} left, {requested} needed).")
+    {
+        ProductName = productName;
+        Available = available;
+        Requested = requested;
+    }
+
+    public string ProductName { get; }
+    public int Available { get; }
+    public int Requested { get; }
+}
 
 /// <summary>A grooming / care service that can be billed. Pass these to <c>BillingPage.SetServices</c>.</summary>
 /// <param name="Detail">Small grey text under the name, e.g. "Dog \u00b7 up to 5 kg" when the same service has one price per weight band.</param>

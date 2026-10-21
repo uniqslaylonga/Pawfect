@@ -410,7 +410,9 @@ internal partial class BillingPage : UserControl
             foreach (var p in list)
             {
                 var product = p;
-                var row = new CatalogRowView(product, "\uE719", product.Name, product.Code, Money.Format(product.Price), "Add");
+                var row = new CatalogRowView(product, "\uE719", product.Name,
+                    $"{product.Code}  \u00B7  {(product.QtyOnHand > 0 ? $"{product.QtyOnHand} in stock" : "Out of stock")}",
+                    Money.Format(product.Price), "Add");
                 row.ActionClicked += (_, _) => AddProduct(product);
                 rows.Add(row);
             }
@@ -448,6 +450,14 @@ internal partial class BillingPage : UserControl
     private void AddProduct(ProductItem product)
     {
         var existing = _cart.FirstOrDefault(l => l.Kind == CartLineKind.Product && l.SourceId == product.Id);
+        if ((existing?.Quantity ?? 0) + 1 > product.QtyOnHand)
+        {
+            Msg.Show(this, product.QtyOnHand <= 0
+                    ? $"{product.Name} is out of stock."
+                    : $"Only {product.QtyOnHand} of {product.Name} in stock, and that many are already in the cart.",
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
         if (existing is not null)
         {
             existing.Quantity++;
@@ -485,7 +495,15 @@ internal partial class BillingPage : UserControl
             var row = new CartRowView(line) { Dock = DockStyle.Top };
             row.QuantityStepped += (_, delta) =>
             {
-                line.Quantity = Math.Max(1, line.Quantity + delta);
+                int next = Math.Max(1, line.Quantity + delta);
+                if (line.Kind == CartLineKind.Product && next > line.Quantity &&
+                    _products.FirstOrDefault(p => p.Id == line.SourceId) is { } stocked && next > stocked.QtyOnHand)
+                {
+                    Msg.Show(this, $"Only {stocked.QtyOnHand} of {stocked.Name} in stock.",
+                        "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                line.Quantity = next;
                 row.Invalidate();
                 UpdateTotals();
             };

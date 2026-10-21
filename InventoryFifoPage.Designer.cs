@@ -294,7 +294,7 @@ namespace MyApp
             inventoryColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 11F));
             inventoryColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 8F));
             inventoryColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9F));
-            inventoryColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84F));
+            inventoryColumnsGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124F));
             inventoryColumnsGrid.Controls.Add(inventoryHeaderCheck, 0, 0);
             inventoryColumnsGrid.Controls.Add(inventoryColProduct, 1, 0);
             inventoryColumnsGrid.Controls.Add(inventoryColCategory, 2, 0);

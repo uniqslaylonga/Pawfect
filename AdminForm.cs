@@ -51,6 +51,49 @@ internal partial class AdminForm : Form
         contentPanel.Controls.Add(auditPage);
         auditPage.BringToFront();
 
+        inventoryPage.UpdateStockRequested += (_, _) => OpenRestock(null);
+        inventoryPage.RestockRequested += id => OpenRestock(id);
+
+        inventoryPage.AddProductRequested += (_, _) =>
+        {
+            using var dlg = new ProductDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                AuditLog.Record(CurrentUser, "Product Created", $"Added product {dlg.SavedName}");
+                RefreshInventory();
+                RefreshDashboard();
+            }
+        };
+
+        inventoryPage.EditProductRequested += id =>
+        {
+            try
+            {
+                if (InventoryData.GetProduct(id) is not { } product)
+                {
+                    Msg.Show("That product no longer exists.");
+                    RefreshInventory();
+                    return;
+                }
+                using var dlg = new ProductDialog(product);
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    AuditLog.Record(CurrentUser, "Product Edited", $"Edited product {dlg.SavedName} (#{id})");
+                    RefreshInventory();
+                    RefreshDashboard();
+                }
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                Msg.Show("Could not open the product: " + ex.Message);
+            }
+        };
+
+        inventoryPage.ViewBatchesRequested += (_, _) => inventoryPage.ShowAllBatches();
+        inventoryPage.ViewAllAlertsRequested += (_, _) => inventoryPage.FilterByStatus(inventoryPage.HasExpired ? "Expired" : "Near Expiry");
+        inventoryPage.ViewAllLowStockRequested += (_, _) => inventoryPage.FilterByStatus(inventoryPage.HasLowStock ? "Low Stock" : "Out of Stock");
+        inventoryPage.GenerateReportRequested += (_, _) => ExportInventoryReport();
+
         employeesPage.AddUserRequested += (_, _) =>
         {
             using var dlg = new AddUserDialog();
@@ -334,6 +377,7 @@ internal partial class AdminForm : Form
         if (page == AdminPage.Dashboard) RefreshDashboard();
         if (page == AdminPage.Employees) RefreshUsers();
         if (page == AdminPage.Services) RefreshServices();
+        if (page == AdminPage.Inventory) RefreshInventory();
         if (page == AdminPage.Audit) RefreshAudit();
     }
 
@@ -355,6 +399,85 @@ internal partial class AdminForm : Form
     }
 
     private void AdminForm_Load(object sender, EventArgs e) => RefreshDashboard();
+
+    private void OpenRestock(int? productId)
+    {
+        try
+        {
+            using var dlg = new AddStockDialog(productId);
+            if (dlg.ShowDialog(this) == DialogResult.OK && dlg.Summary is { } summary)
+            {
+                AuditLog.Record(CurrentUser, "Stock Added", summary);
+                RefreshInventory();
+                RefreshDashboard();
+                Msg.Show(this, summary, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            Msg.Show(this, "Couldn't update the stock.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void RefreshInventory()
+    {
+        try
+        {
+            var rows = InventoryData.GetRows();
+            var (added, received) = InventoryData.GetMonthStats();
+            inventoryPage.Load(rows, added, received);
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            Msg.Show("Could not load inventory: " + ex.Message);
+        }
+    }
+
+    private void ExportInventoryReport()
+    {
+        List<InventoryRow> rows;
+        try
+        {
+            rows = InventoryData.GetRows();
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            Msg.Show("Could not load inventory: " + ex.Message);
+            return;
+        }
+
+        if (rows.Count == 0)
+        {
+            Msg.Show(this, "There are no products to put in a report yet.", "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "PDF document (*.pdf)|*.pdf",
+            FileName = $"inventory-{DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}.pdf",
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        try
+        {
+            PdfReports.Inventory(dialog.FileName, rows, CurrentUser?.Name ?? "Admin");
+        }
+        catch (Exception ex)
+        {
+            Msg.Show(this, "Couldn't create the PDF.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+        }
+        catch
+        {
+            // The PDF is saved; there is just no PDF viewer to open it with.
+        }
+    }
 
     private void RefreshServices()
     {

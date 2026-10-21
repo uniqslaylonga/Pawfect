@@ -142,6 +142,60 @@ internal static class PdfReports
 
     // ------------------------------------------------------------------ shared layout
 
+    public static void Inventory(string path, IReadOnlyList<InventoryRow> rows, string preparedBy)
+    {
+        var today = DateTime.Today;
+        var culture = CultureInfo.CurrentCulture;
+        var products = rows.GroupBy(r => r.ProductId).Select(g => g.First()).ToList();
+        int low = products.Count(p => p.ReorderLevel > 0 && p.QtyOnHand <= p.ReorderLevel);
+        int expiring = rows.Count(r => r.Expiry is DateTime e && e.Date <= today.AddDays(InventoryData.NearExpiryDays));
+
+        string Day(DateTime? d) => d is DateTime v ? v.ToString("MMM d, yyyy", culture) : "";
+        string StateColor(StockState s) => s switch
+        {
+            StockState.OutOfStock or StockState.Expired => Hex(Theme.Danger),
+            StockState.LowStock or StockState.NearExpiry => Hex(Theme.Orange),
+            _ => Hex(Theme.Green),
+        };
+
+        Build(path, "Inventory & FIFO Report", today.ToString("dddd, MMMM d, yyyy", culture), preparedBy, landscape: true,
+            new[]
+            {
+                ("Products", products.Count.ToString("N0", culture)),
+                ("Total Stock", products.Sum(p => p.QtyOnHand).ToString("N0", culture)),
+                ("Low Stock Items", low.ToString("N0", culture)),
+                ("Expired / Near Expiry", expiring.ToString("N0", culture)),
+            },
+            body =>
+            {
+                body.Item().Element(c => DataTable(c,
+                    new[]
+                    {
+                        new Col("Product", 2.6f), new Col("Category", 1.4f), new Col("Batch #", 1.3f), new Col("Supplier", 1.5f),
+                        new Col("Received", 1.1f), new Col("Expiry", 1.1f), new Col("Qty", 0.7f, Right: true), new Col("Status", 1.1f),
+                    },
+                    rows.Select(r =>
+                    {
+                        var state = InventoryData.StateOf(r, today);
+                        return new[]
+                        {
+                            new Cx(r.Name, Bold: true),
+                            new Cx(r.Category),
+                            new Cx(r.BatchNo),
+                            new Cx(r.Supplier),
+                            new Cx(Day(r.Received)),
+                            new Cx(Day(r.Expiry)),
+                            new Cx(r.BatchQty.ToString("N0", culture)),
+                            new Cx(InventoryData.Label(state), StateColor(state), Bold: true),
+                        };
+                    }).ToList()));
+
+                body.Item().Text("Batches are listed oldest first, the order they are used (FIFO). \"Near Expiry\" means a batch expires within "
+                                 + InventoryData.NearExpiryDays + " days; \"Low Stock\" means a product is at or below its reorder level.")
+                    .FontSize(8).FontColor(Muted);
+            });
+    }
+
     private static void Build(string path, string title, string subtitle, string preparedBy, bool landscape,
         (string Label, string Value)[] stats, Action<ColumnDescriptor> body)
     {
