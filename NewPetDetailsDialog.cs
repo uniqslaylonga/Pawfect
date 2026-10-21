@@ -25,11 +25,6 @@ internal sealed class NewPetDetailsDialog : Form
     private readonly int _customerId;
     private readonly PetProfile? _existing;
 
-    // A pet whose vaccination card is on file got its details from the card scan, so the customer can't change them here
-    // (a wrong read is fixed by scanning again). Only fields the card actually gave are locked; an empty one stays editable.
-    private readonly bool _fromCard;
-    private bool _lockName, _lockSpecies, _lockBreed, _lockGender, _lockAge, _lockWeight;
-
     private readonly FieldBox _name = new(250, 40);
     private readonly FieldBox _weight = new(250, 40) { Suffix = "kg" };
     private readonly FieldBox _notes = new(520, 64, multiline: true);
@@ -50,7 +45,6 @@ internal sealed class NewPetDetailsDialog : Form
         Icon = AppIcon.Value;
         _customerId = customerId;
         _existing = existing;
-        _fromCard = existing?.VaccinationCard is { Length: > 0 };
 
         Font = Theme.Face(9f);
         BackColor = Color.White;
@@ -134,8 +128,7 @@ internal sealed class NewPetDetailsDialog : Form
         _weight.Box.KeyPress += (_, e) => { if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '.' && e.KeyChar != ',') e.Handled = true; };
 
         if (existing is not null) Prefill(existing);
-        if (_fromCard) LockCardDetails(existing!);
-        Shown += (_, _) => { if (!_lockName) _name.Box.Focus(); };
+        Shown += (_, _) => _name.Box.Focus();
 
         FullScreen.Apply(this, centerContent: true);   // full screen; the 580 x 510 form is scaled up and centred
     }
@@ -167,9 +160,7 @@ internal sealed class NewPetDetailsDialog : Form
         };
         var sub = new Label
         {
-            Text = _existing is null ? "Please answer a few quick questions about your pet."
-                 : _fromCard ? $"{_existing.Name}'s details were read from the vaccination card and can't be changed here."
-                 : $"Check {_existing.Name}'s details before continuing.",
+            Text = _existing is null ? "Please answer a few quick questions about your pet." : $"Check {_existing.Name}'s details before continuing.",
             Font = Theme.Face(8.5f),
             ForeColor = Theme.Muted,
             BackColor = Color.White,
@@ -241,24 +232,6 @@ internal sealed class NewPetDetailsDialog : Form
         _notes.Box.Text = pet.Notes;
     }
 
-    /// <summary>Makes the fields that came from the card scan read-only. Notes stay editable.</summary>
-    private void LockCardDetails(PetProfile pet)
-    {
-        _lockName = true;
-        _lockSpecies = _dog.Selected || _cat.Selected;
-        _lockBreed = pet.Breed.Length > 0;
-        _lockGender = pet.Gender.Length > 0;
-        _lockAge = pet.BirthDate is not null;
-        _lockWeight = pet.WeightKg is not null;
-
-        _name.Box.ReadOnly = true;
-        if (_lockSpecies) { _dog.Enabled = false; _cat.Enabled = false; }
-        if (_lockBreed) _breed.Enabled = false;
-        if (_lockGender) { _male.Enabled = false; _female.Enabled = false; }
-        if (_lockAge) _age.Enabled = false;
-        if (_lockWeight) _weight.Box.ReadOnly = true;
-    }
-
     private static List<string> AgeLabels()
     {
         var list = new List<string> { "Under 1 year" };
@@ -281,24 +254,20 @@ internal sealed class NewPetDetailsDialog : Form
     {
         string name = _name.Box.Text.Trim();
         if (name.Length == 0) { Fail("Enter your pet's name.", _name.Box); return; }
-        if (!_lockName && !PetNameRules.IsValid(name)) { Fail(PetNameRules.Hint, _name.Box); return; }
-        if (!_lockSpecies && !_dog.Selected && !_cat.Selected) { Fail("Choose Dog or Cat."); return; }
+        if (!PetNameRules.IsValid(name)) { Fail(PetNameRules.Hint, _name.Box); return; }
+        if (!_dog.Selected && !_cat.Selected) { Fail("Choose Dog or Cat."); return; }
 
-        decimal weight = _lockWeight ? _existing!.WeightKg!.Value : 0;
-        if (!_lockWeight &&
-            (!decimal.TryParse(_weight.Box.Text.Trim().Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out weight)
-             || weight <= 0 || weight > 200))
+        if (!decimal.TryParse(_weight.Box.Text.Trim().Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture, out var weight)
+            || weight <= 0 || weight > 200)
         {
             Fail("Enter your pet's weight in kg (for example 5).", _weight.Box);
             return;
         }
 
-        // Locked fields keep exactly what the card scan saved (the age list is only approximate, so it must never overwrite a birthdate).
-        string species = _lockSpecies ? _existing!.Species : _dog.Selected ? "Dog" : "Cat";
-        string breed = _lockBreed ? _existing!.Breed : _breed.SelectedItem ?? "";
-        string gender = _lockGender ? _existing!.Gender : _male.Selected ? "Male" : _female.Selected ? "Female" : "";
-        DateTime? birth = _lockAge ? _existing!.BirthDate
-            : _age.SelectedIndex >= 0 ? BirthFromAgeIndex(_age.SelectedIndex) : _existing?.BirthDate;
+        string species = _dog.Selected ? "Dog" : "Cat";
+        string breed = _breed.SelectedItem ?? "";
+        string gender = _male.Selected ? "Male" : _female.Selected ? "Female" : "";
+        DateTime? birth = _age.SelectedIndex >= 0 ? BirthFromAgeIndex(_age.SelectedIndex) : _existing?.BirthDate;
 
         try
         {

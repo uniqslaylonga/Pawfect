@@ -370,14 +370,6 @@ internal sealed class VaccinationScanForm : DialogBase
             }
             int skipped = card.Vaccinations.Count - stamped.Count;
 
-            // Anti-Rabies must be on the card (dogs and cats), nothing may be expired, and the 14-day immunity wait must be over.
-            bool dogOrCat = card.Species.Length == 0 || card.Species is "Dog" or "Cat";
-            if (VaccineRules.Problem(stamped.Select(v => (v.Vaccine, v.Given, v.Expires)), DateTime.Today, requireRabies: dogOrCat) is { } why)
-            {
-                Reject(why);
-                return;
-            }
-
             // The pet's picture is cut out of the PET PHOTO frame (a failure here never blocks the scan).
             byte[]? petPhoto = null;
             try { petPhoto = await Task.Run(() => PetPhotoFinder.Find(jpeg, read.Pieces)); }
