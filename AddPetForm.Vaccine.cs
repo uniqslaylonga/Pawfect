@@ -169,16 +169,14 @@ internal sealed partial class AddPetForm
     }
 
     /// <summary>
-    /// The record is good while at least one saved vaccination has an expiry date that is still in the future. A row with no
-    /// readable expiry date does not count as in date. A card that was filed
-    /// without any readable vaccination rows is taken as good: nothing on it says it has lapsed.
+    /// The record is good only while every vaccine on the card is still in date (see PetVaccinations.AnyLapsed). A card that was
+    /// filed without any readable vaccination rows is taken as good: nothing on it says it has lapsed.
     /// </summary>
     private static VaccineState GetVaccineState(int petId)
     {
         var rows = PetVaccinations.GetForPet(petId);
         if (rows.Count == 0) return VaccineState.Valid;
-        var today = DateTime.Today;
-        return rows.Any(r => r.Expires is { } e && e.Date >= today) ? VaccineState.Valid : VaccineState.Expired;
+        return PetVaccinations.AnyLapsed(rows) ? VaccineState.Expired : VaccineState.Valid;   // one expired vaccine is enough to stop
     }
 
     private void ScanVaccineCard()

@@ -47,6 +47,14 @@ internal static class CustomerFlow
     {
         try
         {
+            // Last check before the ticket: an expired or missing vaccine record never gets in, whichever step let the pet this far.
+            if (PetProfiles.GetPictures(petId).Card is not { Length: > 0 } || PetVaccinations.AnyLapsed(PetVaccinations.GetForPet(petId)))
+            {
+                Msg.Show(null, "This pet's vaccine record is missing or has expired, so it can't be admitted.\n\nPlease scan a vaccine card with current dates.",
+                    "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             var service = ServicePricing.Find(serviceName, petId);   // the service priced for this pet's weight
             if (service is null)
             {

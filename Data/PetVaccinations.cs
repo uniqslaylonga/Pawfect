@@ -122,6 +122,19 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PetVaccinations
     }
 
     /// <summary>The saved vaccinations of one pet, newest first.</summary>
+    /// <summary>
+    /// True when any vaccine on the card has lapsed. Each vaccine is judged by its newest record, so an old shot that was
+    /// already renewed doesn't count. A vaccine whose expiry date couldn't be read can't be shown to be current, so it counts as lapsed.
+    /// A card with no readable rows at all says nothing about expiry and is not treated as lapsed.
+    /// </summary>
+    public static bool AnyLapsed(IReadOnlyList<PetVaccinationRecord> rows)
+    {
+        var today = DateTime.Today;
+        return rows
+            .GroupBy(r => (r.Vaccine ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+            .Any(g => !g.Any(r => r.Expires is { } e && e.Date >= today));
+    }
+
     public static List<PetVaccinationRecord> GetForPet(int petId)
     {
         using var conn = Open();
