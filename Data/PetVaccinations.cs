@@ -153,3 +153,47 @@ ORDER BY DateGiven DESC, VaccinationId DESC", conn);
         return list;
     }
 }
+
+
+/// <summary>
+/// What a vaccination card must show before the pet is let in: Anti-Rabies on the card, no vaccine past its expiry date,
+/// and at least 14 days since each vaccine was given (the body needs that long to build immunity).
+/// </summary>
+internal static class VaccineRules
+{
+    public const int ImmunityDays = 14;
+
+    /// <param name="requireRabies">Dogs and cats must have Anti-Rabies on the card.</param>
+    /// <returns>Why the pet can't be let in, or null when the card passes.</returns>
+    public static string? Problem(IEnumerable<(string Vaccine, DateTime? Given, DateTime? Expires)> rows, DateTime today, bool requireRabies)
+    {
+        var list = rows.ToList();
+        if (list.Count == 0) return null;   // nothing on the card says it has lapsed
+
+        if (requireRabies && !list.Any(r => (r.Vaccine ?? "").Contains("rabies", StringComparison.OrdinalIgnoreCase)))
+            return "Card not accepted: there is no Anti-Rabies vaccine on this card.";
+
+        // Each vaccine is judged by its own doses, so an old shot that was already renewed doesn't count against the pet.
+        var groups = list.GroupBy(r => (r.Vaccine ?? "").Trim(), StringComparer.OrdinalIgnoreCase).ToList();
+
+        if (groups.Any(g => !g.Any(r => r.Expires is { } e && e.Date >= today.Date)))
+            return "Card not accepted: a vaccine on this card has expired (or its expiry date couldn't be read). Please scan a card with current dates.";
+
+        // 14 days after the dose, the pet is protected. A date that couldn't be read can't be shown to be old enough.
+        DateTime? admitFrom = null;
+        foreach (var g in groups)
+        {
+            if (g.Any(r => r.Given is { } d && d.Date.AddDays(ImmunityDays) <= today.Date)) continue;
+
+            var dated = g.Where(r => r.Given.HasValue).Select(r => r.Given!.Value.Date).ToList();
+            if (dated.Count == 0) return "Card not accepted: the date a vaccine was given couldn't be read. Retake the photo so the dates are clear.";
+            var ready = dated.Min().AddDays(ImmunityDays);
+            if (admitFrom is null || ready > admitFrom) admitFrom = ready;
+        }
+        if (admitFrom is { } from)
+            return $"Card not accepted: the {ImmunityDays}-day immunity period after vaccination isn't done yet. " +
+                   $"This pet can be admitted from {from.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)}.";
+
+        return null;
+    }
+}
