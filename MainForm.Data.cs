@@ -52,7 +52,7 @@ internal partial class MainForm
         Ui.MakeClickable(appointmentsCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowToday(); });
         Ui.MakeClickable(completedCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowToday(AppointmentStatus.Completed); });
         Ui.MakeClickable(queueCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowPending(); });
-        Ui.MakeClickable(walkInsCard, (_, _) => { ShowPage(Page.Appointments); appointmentsPage.ShowWalkInsToday(); });   // the sales also stay in the transaction history
+        Ui.MakeClickable(walkInsCard, (_, _) => ShowTransactionHistory());   // the "Sales" tile opens today's sales
 
         // Dashboard "View All" links
         pendingLink.Click += (_, _) =>

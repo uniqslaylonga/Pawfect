@@ -912,10 +912,8 @@ DECLARE @yesterday DATE = DATEADD(DAY, -1, @today);
 SELECT
   (SELECT COUNT(*) FROM dbo.Appointments WHERE CAST(StartTime AS DATE) = @today AND Status <> N'Cancelled'),
   (SELECT COUNT(*) FROM dbo.Appointments WHERE CAST(StartTime AS DATE) = @yesterday AND Status <> N'Cancelled'),
-  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @today AND AppointmentId IS NULL AND Status = N'Completed')
-    + (SELECT COUNT(*) FROM dbo.Appointments WHERE IsWalkIn = 1 AND CAST(StartTime AS DATE) = @today AND Status <> N'Cancelled'),
-  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @yesterday AND AppointmentId IS NULL AND Status = N'Completed')
-    + (SELECT COUNT(*) FROM dbo.Appointments WHERE IsWalkIn = 1 AND CAST(StartTime AS DATE) = @yesterday AND Status <> N'Cancelled'),
+  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @today AND Status = N'Completed'),
+  (SELECT COUNT(*) FROM dbo.Transactions WHERE CAST(CreatedAt AS DATE) = @yesterday AND Status = N'Completed'),
   (SELECT ISNULL(SUM(l.Quantity), 0) FROM dbo.TransactionLines l JOIN dbo.Transactions t ON t.TransactionId = l.TransactionId
      WHERE l.LineKind = N'Service' AND t.Status = N'Completed' AND CAST(t.CreatedAt AS DATE) = @today),
   (SELECT ISNULL(SUM(l.Quantity), 0) FROM dbo.TransactionLines l JOIN dbo.Transactions t ON t.TransactionId = l.TransactionId

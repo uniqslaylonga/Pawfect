@@ -19,7 +19,7 @@ internal sealed partial class AddPetForm : Form
     private string _profilePhone = "";
 
     private readonly bool _kiosk;          // walk-in at the kiosk: no login, the customer is found (or created) from the email
-    private readonly bool _skipContactStep;   // signed in with an account the clinic set up: step 1 (email code) is already done
+    private readonly bool _skipContactStep;   // signed in with an account staff set up: step 1 (email code) is already done
     private string _contactMobile = "";
     private string _typedName = "";        // kiosk: the name typed in step 1 (saved on the customer record once the code is right)
 
@@ -84,7 +84,7 @@ internal sealed partial class AddPetForm : Form
         try { (_profileEmail, _profilePhone) = EmployeeData.GetCustomerContact(customerId); }
         catch (SqlException) { /* the check below falls back to the login email only */ }
 
-        // The account was set up (and linked to this customer) by the clinic and the password was just checked at login,
+        // The account was set up (and linked to this customer) by staff and the password was just checked at login,
         // so there is no email code to enter: go straight to step 2, Select a Pet.
         _skipContactStep = true;
         ShowSelectStep();
@@ -180,12 +180,7 @@ internal sealed partial class AddPetForm : Form
         }
         string mobile = mobileField.Value.Trim();
         _contactMobile = mobile;
-        if (mobile.Length == 0 && _customerId == 0)
-        {
-            ShowContactError("Please enter your mobile number.");
-            mobileField.Box.Focus();
-            return;
-        }
+        // The mobile number is optional: only check it when something was typed.
         if (mobile.Length > 0 && !PhoneRules.IsValid(mobile))
         {
             ShowContactError(PhoneRules.Hint);

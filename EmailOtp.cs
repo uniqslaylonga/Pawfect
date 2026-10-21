@@ -66,6 +66,7 @@ internal static class EmailOtp
         MimeMessage message;
         try { message = BuildMessage(settings, challenge.Email, recipientName, code); }
         catch (ParseException ex) { throw new OtpException("An email address isn't valid - check the user and from lines in smtp.config.", ex); }
+        catch (Exception ex) when (ex is not OtpException) { throw new OtpException($"The email couldn't be prepared.\r\n({ex.Message})", ex); }
 
         // Gmail accepts 587 (STARTTLS) and 465 (SSL). Some networks block one of them, so try the other as a fallback.
         var ports = settings.Port == 465 ? new[] { 465, 587 } : new[] { settings.Port, 465 };
@@ -95,6 +96,11 @@ internal static class EmailOtp
                 if (ex.Message.Contains("5.7.", StringComparison.Ordinal) || ex.Message.Contains("not accepted", StringComparison.OrdinalIgnoreCase))
                     throw new OtpException($"Gmail refused the login - the email or app password in smtp.config is wrong.\r\n({ex.Message})", ex);
                 last = ex;   // try the next port
+            }
+            catch (Exception ex)
+            {
+                // Anything else: show the real reason instead of letting the app fail silently.
+                throw new OtpException($"The email couldn't be sent.\r\n({ex.GetType().Name}: {ex.Message})", ex);
             }
         }
         throw new OtpException($"We couldn't reach the mail server. Check your internet connection, or try another network.\r\n({last?.Message})", last);

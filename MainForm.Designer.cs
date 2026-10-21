@@ -436,8 +436,8 @@ namespace MyApp
             statsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             statsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             statsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            statsRow.Controls.Add(appointmentsCard, 0, 0);
-            statsRow.Controls.Add(walkInsCard, 1, 0);
+            statsRow.Controls.Add(walkInsCard, 0, 0);
+            statsRow.Controls.Add(appointmentsCard, 1, 0);
             statsRow.Controls.Add(completedCard, 2, 0);
             statsRow.Controls.Add(queueCard, 3, 0);
             statsRow.Dock = DockStyle.Fill;
@@ -589,7 +589,7 @@ namespace MyApp
             walkInsLabel.Name = "walkInsLabel";
             walkInsLabel.Size = new Size(120, 18);
             walkInsLabel.TabIndex = 2;
-            walkInsLabel.Text = "Walk-ins";
+            walkInsLabel.Text = "Sales";
             walkInsLabel.TextAlign = ContentAlignment.MiddleLeft;
             walkInsLabel.UseMnemonic = false;
             // 

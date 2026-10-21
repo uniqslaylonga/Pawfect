@@ -364,7 +364,7 @@ internal sealed class VaccinationScanForm : DialogBase
             if (stamped.Count == 0)
             {
                 Reject(check.ColumnFound
-                    ? "Card not accepted: there is no veterinarian stamp on the vaccination record. Every vaccination must be stamped by the clinic."
+                    ? "Card not accepted: there is no veterinarian stamp on the vaccination record. Every vaccination must be stamped by a veterinarian."
                     : "Couldn't find the Veterinarian's Signature/License column. Retake the photo so the whole table is in view.");
                 return;
             }

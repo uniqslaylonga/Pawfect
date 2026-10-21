@@ -30,7 +30,7 @@ internal sealed class ProfileDialog : DialogBase
 
     private readonly UserRole _userRole;
 
-    public ProfileDialog(UserAccount user, byte[]? avatar) : base("My Profile", "Save changes")
+    public ProfileDialog(UserAccount user, byte[]? avatar) : base("My Profile", "Save changes", "\uE77B", "Update your name, email, photo and password")
     {
         _currentEmail = user.Email;
         _userRole = user.Role;
@@ -71,12 +71,12 @@ internal sealed class ProfileDialog : DialogBase
     /// <summary>The picture preview with "Change photo" and "Remove" buttons.</summary>
     private void AddPhotoRow()
     {
-        var host = new Panel { Height = 88, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 6), BackColor = Color.White };
+        var host = new Panel { Height = 92, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8), BackColor = Color.White };
 
-        _photo.Location = new Point(0, 8);
+        _photo.Location = new Point(0, 10);
         host.Controls.Add(_photo);
 
-        var change = MakeLinkButton("Change photo...", 92, 16);
+        var change = MakeLinkButton("Change photo", 92, 12);
         var remove = MakeLinkButton("Remove photo", 92, 50);
         change.Click += (_, _) => ChoosePhoto();
         remove.Click += (_, _) =>
@@ -92,16 +92,12 @@ internal sealed class ProfileDialog : DialogBase
         Grid.SetColumnSpan(host, 2);
     }
 
-    private static Button MakeLinkButton(string text, int x, int y) => new()
+    private static PawButton MakeLinkButton(string text, int x, int y) => new()
     {
         Text = text,
         Location = new Point(x, y),
-        Size = new Size(130, 28),
-        FlatStyle = FlatStyle.Flat,
-        BackColor = Color.White,
-        ForeColor = Theme.Primary,
-        Cursor = Cursors.Hand,
-        FlatAppearance = { BorderColor = Theme.Border },
+        Size = new Size(140, 30),
+        Kind = PawButtonKind.Outline,
     };
 
     private void ChoosePhoto()

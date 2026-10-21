@@ -105,7 +105,7 @@ internal partial class AppointmentsPage : UserControl
     /// <summary>Every appointment currently loaded (used by the full calendar window).</summary>
     public IReadOnlyList<AppointmentItem> Appointments => _all;
 
-    /// <summary>Clears the search and filters, then shows the week containing this day with the day selected.</summary>
+    /// <summary>Clears the search and filters, then lists just this day (picked in the calendar) with the day selected.</summary>
     public void ShowDate(DateTime date)
     {
         _suspendFilter = true;
@@ -114,7 +114,7 @@ internal partial class AppointmentsPage : UserControl
         serviceFilter.SelectedIndex = 0;
         _suspendFilter = false;
 
-        SetRange(WeekStart(date), date);
+        SetRange(WeekStart(date), date, dayOnly: true);
     }
 
     /// <summary>
@@ -347,12 +347,15 @@ internal partial class AppointmentsPage : UserControl
         searchField.Width = Math.Max(120, statusFilter.Left - gap - searchField.Left);
     }
 
-    private void SetRange(DateTime? weekStart, DateTime? selectedDay = null)
+    private void SetRange(DateTime? weekStart, DateTime? selectedDay = null, bool dayOnly = false)
     {
-        _dayOnly = null;
+        _dayOnly = dayOnly ? selectedDay?.Date : null;
         _rangeStart = weekStart;
         monthCalendar.SelectedDate = selectedDay;
-        if (weekStart is not null) monthCalendar.Month = weekStart.Value;
+        // Show the month of the day that was picked. (Using the week's first day flipped the calendar to the
+        // previous month whenever the week started there.) For plain week navigation use the middle of the week.
+        var focus = selectedDay ?? weekStart?.AddDays(3);
+        if (focus is not null) monthCalendar.Month = focus.Value;
         UpdateRangeText();
         ApplyFilters(resetPage: true);
     }
@@ -501,7 +504,7 @@ internal partial class AppointmentsPage : UserControl
         => SetRange(_rangeStart is null ? WeekStart(DateTime.Today) : null);
 
     private void monthCalendar_DateClicked(object? sender, DateTime date)
-        => SetRange(WeekStart(date), date);
+        => SetRange(WeekStart(date), date, dayOnly: true);   // list just the clicked day
 
     private void headerCheck_CheckedChanged(object? sender, EventArgs e)
     {
