@@ -465,14 +465,10 @@ internal partial class MainForm
             menu.AddAction("New appointment", "\uE787", MenuTone.Primary, () => NewAppointment(c.Id));
             if (!c.HasLogin)
                 menu.AddAction("Create login", "\uE77B", MenuTone.Primary, () => CreateLogin(c));
-            menu.AddDivider();
-            menu.AddAction("Delete customer", "\uE74D", MenuTone.Danger, () => DeleteCustomer(c));
         }
         else if (source is PetRecord p)
         {
             menu.AddAction("View pet", "\uE80F", MenuTone.Success, () => ViewPets(p));
-            menu.AddDivider();
-            menu.AddAction("Delete pet", "\uE74D", MenuTone.Danger, () => DeletePet(p));
         }
         else
         {
@@ -512,43 +508,6 @@ internal partial class MainForm
     {
         using var form = new PetForm(customerId, ownerName);
         if (form.ShowDialog(this) != DialogResult.OK) return;
-        RefreshSoon();
-    }
-
-    private void DeleteCustomer(CustomerRecord c)
-    {
-        if (Msg.Show(this,
-                $"Delete {c.Name}?\n\nTheir pets are removed from the lists too. Past appointments and receipts are kept.",
-                "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-            return;
-
-        string? problem;
-        try { problem = EmployeeData.DeleteCustomer(c.Id); }
-        catch (SqlException ex) { ShowDbError("delete the customer", ex); return; }
-
-        if (problem is not null)
-        {
-            Msg.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-        RefreshSoon();
-    }
-
-    private void DeletePet(PetRecord p)
-    {
-        if (Msg.Show(this, $"Delete {p.Name} ({p.OwnerName}'s pet)?\n\nPast appointments and receipts are kept.",
-                "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-            return;
-
-        string? problem;
-        try { problem = EmployeeData.DeletePet(p.Id); }
-        catch (SqlException ex) { ShowDbError("delete the pet", ex); return; }
-
-        if (problem is not null)
-        {
-            Msg.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
         RefreshSoon();
     }
 
@@ -613,15 +572,9 @@ internal partial class MainForm
             => menu.AddAction(text, glyph, tone, () => ChangeStatus(item, status));
 
         // Confirm and Check in live on the View card (see ShowAppointmentDetails).
-        if (item.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed)) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
+        // Confirmed and checked-in appointments can't be cancelled; use Reschedule on the View card instead.
+        if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
         if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", "\uE777", MenuTone.Primary, AppointmentStatus.Pending);
-
-        // Billed appointments keep their receipt, so they can't be deleted.
-        if (item.Status != AppointmentStatus.Completed)
-        {
-            menu.AddDivider();
-            menu.AddAction("Delete appointment", "\uE74D", MenuTone.Danger, () => DeleteAppointment(item));
-        }
 
         if (menu.Items.Count <= 1)
         {
@@ -658,25 +611,6 @@ internal partial class MainForm
         RefreshSoon();
     }
 
-    private void DeleteAppointment(AppointmentItem item)
-    {
-        if (Msg.Show(this,
-                $"Permanently delete {item.CustomerName}'s appointment for {item.PetName}?\n\nThis can't be undone. (Use Cancel instead to keep a record.)",
-                "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-            return;
-
-        string? problem;
-        try { problem = EmployeeData.DeleteAppointment(item.Id); }
-        catch (SqlException ex) { ShowDbError("delete the appointment", ex); return; }
-
-        if (problem is not null)
-        {
-            Msg.Show(this, problem, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-        RefreshSoon();
-    }
-
     private void ShowServiceList()
     {
         try
@@ -693,7 +627,9 @@ internal partial class MainForm
     private void ShowAppointmentDetails(AppointmentItem a)
     {
         using var dialog = new AppointmentDetailsDialog(a, offerActions: true);
-        if (dialog.ShowDialog(this) != DialogResult.Yes || dialog.RequestedStatus is not { } status) return;
+        if (dialog.ShowDialog(this) != DialogResult.Yes) return;
+        if (dialog.RescheduleRequested) { EditAppointment(a); return; }
+        if (dialog.RequestedStatus is not { } status) return;
         ApplyReviewedStatus(a, status);
     }
 

@@ -191,6 +191,9 @@ internal sealed class AppointmentDetailsDialog : Form
     /// <summary>Set when the person pressed Confirm or Check in instead of Close (the caller applies it).</summary>
     public AppointmentStatus? RequestedStatus { get; private set; }
 
+    /// <summary>True when Reschedule was chosen (the caller opens the schedule editor).</summary>
+    public bool RescheduleRequested { get; private set; }
+
     public AppointmentDetailsDialog(AppointmentItem a, bool offerActions = false)
     {
         Icon = AppIcon.Value;
@@ -348,6 +351,9 @@ internal sealed class AppointmentDetailsDialog : Form
                 confirm.Click += (_, _) => { RequestedStatus = AppointmentStatus.Confirmed; DialogResult = DialogResult.Yes; };
                 rightButtons.Add(confirm);
             }
+            var reschedule = MakeButton("Reschedule", PawButtonKind.Outline, 96);
+            reschedule.Click += (_, _) => { RescheduleRequested = true; DialogResult = DialogResult.Yes; };
+            rightButtons.Add(reschedule);
             var checkIn = MakeButton("Check in", PawButtonKind.Primary, 96);
             checkIn.Click += (_, _) => { RequestedStatus = AppointmentStatus.CheckedIn; DialogResult = DialogResult.Yes; };
             rightButtons.Add(checkIn);
@@ -355,7 +361,8 @@ internal sealed class AppointmentDetailsDialog : Form
         rightButtons.Add(close);
 
         PawButton? cancel = null;
-        if (a.Status is not (AppointmentStatus.Cancelled or AppointmentStatus.Completed))
+        // Once an appointment is confirmed or checked in it can no longer be cancelled from here.
+        if (a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
         {
             cancel = MakeButton("Cancel appointment", PawButtonKind.Danger, 96);
             cancel.Click += (_, _) => { RequestedStatus = AppointmentStatus.Cancelled; DialogResult = DialogResult.Yes; };

@@ -7,7 +7,7 @@ namespace MyApp;
 
 /// <summary>
 /// Room Management: its own page next to Dashboard, Appointments, Billing and Lookup. Staff can see every room and whether it is
-/// vacant, in use (and by which groomer) or being sanitized, open a room's schedule, add a room, rename it, switch it off or delete it.
+/// vacant, in use (and by which groomer) or being sanitized, open a room's schedule, add a room, rename it, or switch it off.
 /// A room is "in use" from the start of a booking until the service ends, then "sanitizing" for
 /// <see cref="RoomScheduleRepository.SanitizeMinutes"/> minutes (the same 30-minute gap the appointment form enforces).
 /// Built from the same pieces as the other pages: Theme colours, CardPanel, PrimaryButton, IconBadge and DialogBase.
@@ -35,7 +35,6 @@ internal sealed class RoomManagementPage : UserControl
         _rooms.ScheduleClicked += (_, row) => ShowSchedule(row);
         _rooms.EditClicked += (_, row) => Edit(row);
         _rooms.ToggleClicked += (_, row) => Toggle(row);
-        _rooms.DeleteClicked += (_, row) => Delete(row);
 
         _tick.Tick += (_, _) => Reload(quiet: true);
         VisibleChanged += (_, _) => _tick.Enabled = Visible;
@@ -107,42 +106,6 @@ internal sealed class RoomManagementPage : UserControl
         Changed?.Invoke(this, ($"Room {(activate ? "Activated" : "Deactivated")}", $"Room \"{row.Name}\""));
     }
 
-    private void Delete(RoomRow row)
-    {
-        // A room that still has bookings can't be deleted: they would be left without a room.
-        if (row.Upcoming > 0 || row.State == RoomState.InUse)
-        {
-            Msg.Show(FindForm(),
-                $"Can't delete {row.Name}.\n\nIt still has upcoming bookings or is being used right now. " +
-                "Move those appointments to another room (or cancel them) first, then try again.",
-                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        if (Msg.Show(FindForm(),
-                $"Delete {row.Name}?\n\nThe room is removed for good. Past appointments stay in the records but will no longer show a room. " +
-                "If you only want to stop using it for new bookings, choose Deactivate instead.",
-                "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-            return;
-
-        int blocking;
-        try { blocking = RoomScheduleRepository.TryDelete(row.Id); }
-        catch (SqlException ex)
-        {
-            Msg.Show(FindForm(), "Couldn't delete the room.\n\n" + ex.Message, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
-        }
-
-        Reload();
-        if (blocking > 0)
-        {
-            // Someone booked it between loading the list and clicking Delete.
-            Msg.Show(FindForm(), $"Can't delete {row.Name}.\n\nA booking was just made for this room. Move it to another room first, then try again.",
-                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        Changed?.Invoke(this, ("Room Deleted", $"Deleted room \"{row.Name}\""));
-    }
 }
 
 /// <summary>Scales the page's pixel sizes to the screen (this page is built in code, so WinForms doesn't do it).</summary>
@@ -184,7 +147,6 @@ internal sealed class RoomPanel : CardPanel
     public event EventHandler<RoomRow>? ScheduleClicked;
     public event EventHandler<RoomRow>? EditClicked;
     public event EventHandler<RoomRow>? ToggleClicked;
-    public event EventHandler<RoomRow>? DeleteClicked;
 
     public RoomPanel()
     {
@@ -256,7 +218,6 @@ internal sealed class RoomPanel : CardPanel
             view.ScheduleClicked += (_, _) => ScheduleClicked?.Invoke(this, row);
             view.EditClicked += (_, _) => EditClicked?.Invoke(this, row);
             view.ToggleClicked += (_, _) => ToggleClicked?.Invoke(this, row);
-            view.DeleteClicked += (_, _) => DeleteClicked?.Invoke(this, row);
             _list.Controls.Add(view);
         }
         FitRows();
@@ -292,7 +253,7 @@ internal sealed class RoomPanel : CardPanel
 
 // ====================================================================== one row
 
-/// <summary>A room: round icon, name, who is using it, status pill, and Schedule / Edit / Deactivate / Delete buttons.</summary>
+/// <summary>A room: round icon, name, who is using it, status pill, and Schedule / Edit / Deactivate buttons.</summary>
 internal sealed class RoomRowView : Control
 {
     private const TextFormatFlags LeftText = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
@@ -302,12 +263,11 @@ internal sealed class RoomRowView : Control
 
     private readonly RoomRow _row;
     private bool _hover;
-    private int _hotButton;          // 1 = Schedule, 2 = Edit, 3 = Activate/Deactivate, 4 = Delete
+    private int _hotButton;          // 1 = Schedule, 2 = Edit, 3 = Activate/Deactivate
 
     public event EventHandler? ScheduleClicked;
     public event EventHandler? EditClicked;
     public event EventHandler? ToggleClicked;
-    public event EventHandler? DeleteClicked;
 
     public RoomRowView(RoomRow row)
     {
@@ -320,16 +280,15 @@ internal sealed class RoomRowView : Control
 
     private int S(int v) => RoomsPx.S(this, v);
 
-    /// <summary>The four buttons (Schedule, Edit, Activate/Deactivate, Delete) and the status pill, right to left.</summary>
+    /// <summary>The three buttons (Schedule, Edit, Activate/Deactivate) and the status pill, right to left.</summary>
     private (Rectangle[] Buttons, Rectangle Pill) GetLayout()
     {
         int bh = S(30), y = (Height - bh) / 2, gap = S(8), right = Width - S(16);
-        var delete = new Rectangle(right - S(64), y, S(64), bh);
-        var toggle = new Rectangle(delete.Left - gap - S(88), y, S(88), bh);
+        var toggle = new Rectangle(right - S(88), y, S(88), bh);
         var edit = new Rectangle(toggle.Left - gap - S(56), y, S(56), bh);
         var schedule = new Rectangle(edit.Left - gap - S(80), y, S(80), bh);
         var pill = new Rectangle(schedule.Left - S(12) - S(92), (Height - S(24)) / 2, S(92), S(24));
-        return (new[] { schedule, edit, toggle, delete }, pill);
+        return (new[] { schedule, edit, toggle }, pill);
     }
 
     private int HitTest(Point p)
@@ -369,7 +328,6 @@ internal sealed class RoomRowView : Control
             case 1: ScheduleClicked?.Invoke(this, EventArgs.Empty); break;
             case 2: EditClicked?.Invoke(this, EventArgs.Empty); break;
             case 3: ToggleClicked?.Invoke(this, EventArgs.Empty); break;
-            case 4: DeleteClicked?.Invoke(this, EventArgs.Empty); break;
         }
     }
 
@@ -420,7 +378,6 @@ internal sealed class RoomRowView : Control
         DrawButton(g, buttons[1], "Edit", _hotButton == 2, Theme.TextSoft, Theme.Primary, Theme.PrimarySoft);
         DrawButton(g, buttons[2], active ? "Deactivate" : "Activate", _hotButton == 3,
             active ? Theme.TextSoft : Theme.Green, active ? Theme.Danger : Theme.Green, active ? Color.FromArgb(253, 238, 238) : Theme.GreenSoft);
-        DrawButton(g, buttons[3], "Delete", _hotButton == 4, Theme.TextSoft, Theme.Danger, Color.FromArgb(253, 238, 238));
     }
 
     private string Details()
