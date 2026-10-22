@@ -256,7 +256,11 @@ internal sealed class AppointmentRowView : Control
     private const TextFormatFlags CenterFlags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
         TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
 
-    private static readonly string[] ActionGlyphs = { "\uE7B3", "\uE70F", "\uE712" };
+    private static readonly string[] ActionGlyphs = { "\uE7B3", "\uE787", "\uE712" };   // View, Reschedule (calendar), More
+
+    /// <summary>Reschedule is the only way to change a booking, and only while it is pending, confirmed or rescheduled.</summary>
+    private bool ActionEnabled(int i) => i != 1 ||
+        (Item.Id >= 0 && Item.Status is AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled);
 
     /// <summary>Soft avatar colours for the pet column. The colour is picked from the pet's name so it never changes.</summary>
     private static readonly (Color Fill, Color Fore)[] PetTints =
@@ -336,7 +340,7 @@ internal sealed class AppointmentRowView : Control
     private int ActionAt(Point p)
     {
         for (int i = 0; i < ActionGlyphs.Length; i++)
-            if (ActionRect(i).Contains(p)) return i;
+            if (ActionEnabled(i) && ActionRect(i).Contains(p)) return i;
         return -1;
     }
 
@@ -461,6 +465,7 @@ internal sealed class AppointmentRowView : Control
         // Actions
         for (int i = 0; i < ActionGlyphs.Length; i++)
         {
+            if (!ActionEnabled(i)) continue;
             var r = ActionRect(i);
             bool hot = i == _hoverAction;
             if (hot)

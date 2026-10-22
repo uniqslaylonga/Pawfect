@@ -340,7 +340,7 @@ internal sealed class EditAppointmentForm : DialogBase
     private readonly PetPictureBox _petCard = new("Vaccination card", "No vaccination card on file", new Size(180, 120));
 
     public EditAppointmentForm(AppointmentItem item)
-        : base(item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled ? "Schedule Appointment" : "Edit Appointment", "Save", "\uE787",
+        : base(item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled ? "Schedule Appointment" : "Reschedule Appointment", "Save", "\uE787",
               item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled
                   ? "Set the day, time, groomer and room"
                   : "Change the booking details")

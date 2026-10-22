@@ -34,7 +34,7 @@ internal partial class MainForm
 
         // A negative id is a walk-in SALE listed under Walk-ins: View opens the sale, and it has nothing to edit or cancel.
         appointmentsPage.ViewRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else ShowAppointmentDetails(item); };
-        appointmentsPage.EditRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else EditAppointment(item); };
+        appointmentsPage.EditRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else EditAppointment(item); };   // the row's Reschedule icon
         appointmentsPage.MoreRequested += (_, item) => { if (item.Id < 0) ShowWalkInSale(item); else ShowStatusMenu(item); };
         appointmentsPage.ManageCustomersRequested += (_, _) => ShowPage(Page.Lookup);
         appointmentsPage.ServicesCatalogRequested += (_, _) => ShowServiceList();
@@ -540,10 +540,11 @@ internal partial class MainForm
 
     private void EditAppointment(AppointmentItem item)
     {
-        if (item.Status is AppointmentStatus.Cancelled or AppointmentStatus.Completed)
+        // Appointments are only changed through Reschedule, and only while pending, confirmed or rescheduled.
+        if (item.Status is not (AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled))
         {
             Msg.Show(this,
-                $"A {AppointmentStatusStyle.Label(item.Status).ToLowerInvariant()} appointment can't be edited." +
+                $"A {AppointmentStatusStyle.Label(item.Status).ToLowerInvariant()} appointment can't be rescheduled." +
                 (item.Status == AppointmentStatus.Cancelled ? "\n\nUse the ... menu to restore it first." : ""),
                 "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
