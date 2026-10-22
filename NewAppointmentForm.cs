@@ -63,7 +63,7 @@ internal sealed class NewAppointmentForm : DialogBase
         _date.MinDate = DateTime.Today;
         _date.Value = DateTime.Today;
         var next = DateTime.Now.AddHours(1);
-        _time.Value = new TimeSpan(Math.Clamp(next.Hour, 6, 22), 0, 0);
+        _time.Value = new TimeSpan(Math.Clamp(next.Hour, PawTimePicker.Opens.Hours, PawTimePicker.Closes.Hours), 0, 0);
 
         _customer.SelectedIndexChanged += (_, _) => LoadPets();
         _pet.SelectedIndexChanged += (_, _) => LoadServices();   // the price depends on the pet's weight

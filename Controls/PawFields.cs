@@ -483,16 +483,20 @@ internal class PawSelect : PawDropField
 /// <summary>Time of day picked from a list of 15-minute slots.</summary>
 internal sealed class PawTimePicker : PawSelect
 {
+    /// <summary>Service hours: appointments can only start from 8:00 AM up to 8:00 PM.</summary>
+    public static readonly TimeSpan Opens = TimeSpan.FromHours(8);
+    public static readonly TimeSpan Closes = TimeSpan.FromHours(20);
+
     private readonly List<TimeSpan> _slots = new();
 
-    public PawTimePicker(int fromHour = 6, int toHour = 23, int stepMinutes = 15)
+    public PawTimePicker(int stepMinutes = 15)
     {
         // Typing narrows the list (for example "7:4" leaves 7:45 am and 7:45 pm), but only a time from the list can be picked, never typed text.
         Searchable = true;
         SearchPlaceholder = "Type to find a time, e.g. 7:45 pm";
         EmptyText = "No times available";
         Glyph = "";
-        for (var t = TimeSpan.FromHours(fromHour); t <= new TimeSpan(toHour, 60 - stepMinutes, 0); t += TimeSpan.FromMinutes(stepMinutes))
+        for (var t = Opens; t <= Closes; t += TimeSpan.FromMinutes(stepMinutes))
             _slots.Add(t);
         Rebuild();
         Value = TimeSpan.FromHours(9);
@@ -508,7 +512,7 @@ internal sealed class PawTimePicker : PawSelect
         Items.AddRange(_slots.Select(s => (object)Format(s)));
     }
 
-    /// <summary>The chosen time of day. A time that isn't on the 15-minute grid is added to the list.</summary>
+    /// <summary>The chosen time of day. A time outside service hours or off the 15-minute grid snaps to the nearest time in the list.</summary>
     [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public TimeSpan Value
     {
@@ -516,15 +520,10 @@ internal sealed class PawTimePicker : PawSelect
         set
         {
             var v = new TimeSpan(value.Hours, value.Minutes, 0);
-            int i = _slots.IndexOf(v);
-            if (i < 0)
-            {
-                _slots.Add(v);
-                _slots.Sort();
-                Rebuild();
-                i = _slots.IndexOf(v);
-            }
-            SelectedIndex = i;
+            int nearest = 0;
+            for (int i = 1; i < _slots.Count; i++)
+                if (Math.Abs((_slots[i] - v).Ticks) < Math.Abs((_slots[nearest] - v).Ticks)) nearest = i;
+            SelectedIndex = nearest;
         }
     }
 }
