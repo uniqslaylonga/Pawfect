@@ -35,14 +35,14 @@ internal partial class EmployeeManagementPage : UserControl
     /// <summary>The Edit link on an employee row was clicked.</summary>
     public event Action<EmployeeRepository.Row>? EditEmployeeRequested;
 
-    /// <summary>The Remove link on an employee row was clicked.</summary>
-    public event Action<EmployeeRepository.Row>? RemoveEmployeeRequested;
+    /// <summary>The Deactivate / Activate link on an employee row was clicked.</summary>
+    public event Action<EmployeeRepository.Row>? ToggleEmployeeRequested;
 
     /// <summary>The "+ Add User" button was clicked.</summary>
     public event EventHandler? AddUserRequested;
 
-    /// <summary>The Remove link on a user row was clicked.</summary>
-    public event Action<UserRepository.UserRow>? RemoveRequested;
+    /// <summary>The Deactivate / Activate link on a user row was clicked.</summary>
+    public event Action<UserRepository.UserRow>? ToggleRequested;
     public event Action<UserRepository.UserRow>? EditRequested;
 
     public EmployeeManagementPage()
@@ -245,7 +245,7 @@ internal partial class EmployeeManagementPage : UserControl
 
         grid.Controls.Add(NewActions(
             ("Edit", () => EditEmployeeRequested?.Invoke(e)),
-            ("Remove", () => RemoveEmployeeRequested?.Invoke(e))),
+            (e.Active ? "Deactivate" : "Activate", () => ToggleEmployeeRequested?.Invoke(e))),
             employeeColumnsGrid.GetColumn(employeeColActions), 0);
 
         return WrapRow(grid);
@@ -326,7 +326,7 @@ internal partial class EmployeeManagementPage : UserControl
 
         grid.Controls.Add(NewActions(
             ("Edit", () => EditRequested?.Invoke(u)),
-            ("Remove", () => RemoveRequested?.Invoke(u))),
+            (u.Active ? "Deactivate" : "Activate", () => ToggleRequested?.Invoke(u))),
             userColumnsGrid.GetColumn(userColActions), 0);
 
         return WrapRow(grid);

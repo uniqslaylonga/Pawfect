@@ -190,11 +190,56 @@ WHERE EmployeeId = @id", conn, tx);
         return true;
     }
 
-    /// <summary>Deactivates or reactivates an employee (records are kept). A groomer is also taken off, or put back on, the appointment lists.</summary>
-    public static void SetActive(int id, bool active)
+    public enum ActiveResult { Done, NotFound, LastAdmin, Self }
+
+    /// <summary>
+    /// Deactivates or reactivates an employee (records are kept). A groomer is also taken off, or put back on, the appointment lists,
+    /// and the employee's login (matched by email) is switched the same way, so a deactivated employee can't sign in.
+    /// Deactivating the last active admin, or the account that is signed in, is refused and nothing changes.
+    /// </summary>
+    public static ActiveResult SetActive(int id, bool active, string? signedInEmail)
     {
         using var conn = Open();
         using var tx = conn.BeginTransaction();
+
+        string email;
+        using (var find = new SqlCommand("SELECT Email FROM dbo.Employees WHERE EmployeeId = @id", conn, tx))
+        {
+            find.Parameters.Add("@id", SqlDbType.Int).Value = id;
+            if (find.ExecuteScalar() is not string e) return ActiveResult.NotFound;
+            email = e;
+        }
+
+        if (email.Length > 0)
+        {
+            int? userId = null; string role = ""; bool userActive = false;
+            using (var login = new SqlCommand(
+                "SELECT UserId, Role, IsActive FROM dbo.Users WHERE Email = @e AND Role IN (N'Admin', N'Employee')", conn, tx))
+            {
+                login.Parameters.Add("@e", SqlDbType.NVarChar, 256).Value = email;
+                using var r = login.ExecuteReader();
+                if (r.Read()) { userId = r.GetInt32(0); role = r.GetString(1); userActive = r.GetBoolean(2); }
+            }
+            if (userId is int uid)
+            {
+                if (!active)
+                {
+                    if (signedInEmail is not null && string.Equals(email, signedInEmail.Trim(), StringComparison.OrdinalIgnoreCase))
+                        return ActiveResult.Self;
+                    if (role == "Admin" && userActive)
+                    {
+                        using var check = new SqlCommand(
+                            "SELECT COUNT(1) FROM dbo.Users WHERE Role = 'Admin' AND IsActive = 1 AND UserId <> @id", conn, tx);
+                        check.Parameters.Add("@id", SqlDbType.Int).Value = uid;
+                        if ((int)check.ExecuteScalar()! == 0) return ActiveResult.LastAdmin;
+                    }
+                }
+                using var setUser = new SqlCommand("UPDATE dbo.Users SET IsActive = @a WHERE UserId = @id", conn, tx);
+                setUser.Parameters.Add("@a", SqlDbType.Bit).Value = active;
+                setUser.Parameters.Add("@id", SqlDbType.Int).Value = uid;
+                setUser.ExecuteNonQuery();
+            }
+        }
 
         int? groomerId = null;
         using (var cmd = new SqlCommand(
@@ -207,6 +252,7 @@ WHERE EmployeeId = @id", conn, tx);
 
         if (groomerId is int gid) SetGroomerActive(conn, tx, gid, active);
         tx.Commit();
+        return ActiveResult.Done;
     }
 
     public enum RemoveResult { Removed, NotFound, HasAppointments, LastAdmin, Self }

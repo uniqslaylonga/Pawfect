@@ -113,29 +113,31 @@ internal partial class AdminForm : Form
             }
         };
 
-        employeesPage.RemoveRequested += user =>
+        employeesPage.ToggleRequested += user =>
         {
-            if (Msg.Show(this, $"Remove the account for {user.Name} ({user.Email})?\n\nThe login is deleted for good and can't be undone. Past appointments and sales are kept, but no longer show who handled them.",
-                    "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-                return;
+            bool activate = !user.Active;
+            if (!activate)
+            {
+                if (string.Equals(user.Email, CurrentUser?.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    Msg.Show("You can't deactivate the account you are signed in with.");
+                    return;
+                }
+                if (Msg.Show(this, $"Deactivate the account for {user.Name} ({user.Email})?\n\nThey won't be able to sign in until you activate it again. Their records are kept.",
+                        "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return;
+            }
             try
             {
-                switch (UserRepository.Remove(user.Id, CurrentUser?.Email))
-                {
-                    case UserRepository.RemoveResult.Removed:
-                        AuditLog.Record(CurrentUser, "User Removed", $"Removed account {user.Email} (#{user.Id})");
-                        break;
-                    case UserRepository.RemoveResult.LastAdmin:
-                        Msg.Show("You can't remove the last active admin.");
-                        break;
-                    case UserRepository.RemoveResult.Self:
-                        Msg.Show("You can't remove the account you are signed in with.");
-                        break;
-                }
+                if (UserRepository.SetActive(user.Id, activate))
+                    AuditLog.Record(CurrentUser, activate ? "User Activated" : "User Deactivated",
+                        $"{(activate ? "Activated" : "Deactivated")} account {user.Email} (#{user.Id})");
+                else
+                    Msg.Show("You can't deactivate the last active admin.");
             }
             catch (Microsoft.Data.SqlClient.SqlException ex)
             {
-                Msg.Show("Could not remove the account: " + ex.Message);
+                Msg.Show("Could not update the account: " + ex.Message);
             }
             RefreshUsers();
             RefreshDashboard();
@@ -176,32 +178,32 @@ internal partial class AdminForm : Form
             }
         };
 
-        employeesPage.RemoveEmployeeRequested += employee =>
+        employeesPage.ToggleEmployeeRequested += employee =>
         {
-            if (Msg.Show(this, $"Remove {employee.Name} from the employee list?\n\nThis can't be undone. If they have a login account, it is deleted too, and groomers are taken off the appointment lists.",
+            bool activate = !employee.Active;
+            if (!activate &&
+                Msg.Show(this, $"Deactivate {employee.Name}?\n\nTheir record is kept. If they have a login account they won't be able to sign in, and groomers are taken off the appointment lists, until you activate them again.",
                     "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
                 return;
             try
             {
-                switch (EmployeeRepository.Remove(employee.Id, CurrentUser?.Email))
+                switch (EmployeeRepository.SetActive(employee.Id, activate, CurrentUser?.Email))
                 {
-                    case EmployeeRepository.RemoveResult.Removed:
-                        AuditLog.Record(CurrentUser, "Employee Removed", $"Removed {employee.Name} ({employee.Role}) (#{employee.Id})");
+                    case EmployeeRepository.ActiveResult.Done:
+                        AuditLog.Record(CurrentUser, activate ? "Employee Activated" : "Employee Deactivated",
+                            $"{(activate ? "Activated" : "Deactivated")} {employee.Name} ({employee.Role}) (#{employee.Id})");
                         break;
-                    case EmployeeRepository.RemoveResult.HasAppointments:
-                        Msg.Show($"{employee.Name} already has appointments, so they can't be removed.");
+                    case EmployeeRepository.ActiveResult.LastAdmin:
+                        Msg.Show("You can't deactivate the last active admin.");
                         break;
-                    case EmployeeRepository.RemoveResult.LastAdmin:
-                        Msg.Show("You can't remove the last active admin.");
-                        break;
-                    case EmployeeRepository.RemoveResult.Self:
-                        Msg.Show("You can't remove the account you are signed in with.");
+                    case EmployeeRepository.ActiveResult.Self:
+                        Msg.Show("You can't deactivate the account you are signed in with.");
                         break;
                 }
             }
             catch (Microsoft.Data.SqlClient.SqlException ex)
             {
-                Msg.Show("Could not remove the employee: " + ex.Message);
+                Msg.Show("Could not update the employee: " + ex.Message);
             }
             RefreshUsers();
             RefreshDashboard();

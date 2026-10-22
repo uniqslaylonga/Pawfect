@@ -194,7 +194,10 @@ internal static class UserRepository
             if (targetIsAdmin && (int)check.ExecuteScalar()! == 0) return false;
         }
 
-        using var cmd = new SqlCommand("UPDATE dbo.Users SET IsActive = @a WHERE UserId = @id", conn);
+        using var cmd = new SqlCommand(@"
+UPDATE dbo.Users SET IsActive = @a WHERE UserId = @id;
+IF OBJECT_ID(N'dbo.Employees', N'U') IS NOT NULL
+    UPDATE dbo.Employees SET IsActive = @a WHERE Email = (SELECT Email FROM dbo.Users WHERE UserId = @id) AND GroomerId IS NULL;", conn);
         cmd.Parameters.Add("@a", SqlDbType.Bit).Value = active;
         cmd.Parameters.Add("@id", SqlDbType.Int).Value = userId;
         cmd.ExecuteNonQuery();
