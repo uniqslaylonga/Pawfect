@@ -47,6 +47,7 @@ internal sealed class VaccinationScanForm : DialogBase
     private byte[]? _petPhotoJpeg;
 
     private readonly int? _forPetId;
+    private readonly PetProfile? _forPet;   // the details entered in the Pet Details pop-up; the card must agree with them
 
     public int? SavedPetId { get; private set; }
 
@@ -58,6 +59,11 @@ internal sealed class VaccinationScanForm : DialogBase
         _customerName = customerName;
         _forPetId = forPetId;
         _pets = EmployeeData.GetPets().Where(p => p.CustomerId == customerId).ToList();
+        if (forPetId is int petId)
+        {
+            try { _forPet = PetProfiles.GetForCustomer(customerId).FirstOrDefault(p => p.Id == petId); }
+            catch (SqlException) { }   // left null: the card then can't be checked, so ScanAsync refuses it
+        }
 
         // Landscape: card photo + pet details side by side, the vaccination table across the bottom.
         ClientSize = new Size(920, 640);
@@ -144,6 +150,22 @@ internal sealed class VaccinationScanForm : DialogBase
             box.BackColor = Color.White;
         }
         _sex.Enabled = false;
+
+        // Greyed out and unfocusable: it is obvious these are read from the card and can't be typed over.
+        foreach (var box in new[] { _name, _species, _breed, _birth, _weight })
+        {
+            box.BackColor = Theme.Subtle;
+            box.ForeColor = Theme.TextSoft;
+            box.Cursor = Cursors.Default;
+            box.GotFocus += (_, _) => BeginInvoke(() => ActiveControl = null);
+            if (box.Parent is CardPanel frame)
+            {
+                frame.FillColor = Theme.Subtle;
+                frame.Cursor = Cursors.Default;
+                frame.Click += (_, _) => ActiveControl = null;
+            }
+        }
+        SaveButton.Enabled = false;   // nothing to save until a card has been read and accepted
 
         _camera.Click += async (_, _) => await CameraAndScanAsync();
         _choose.Click += async (_, _) => await ChooseAndScanAsync();
@@ -370,6 +392,36 @@ internal sealed class VaccinationScanForm : DialogBase
             }
             int skipped = card.Vaccinations.Count - stamped.Count;
 
+            // The card must belong to this pet and this owner. Anything that differs means the card is not accepted.
+            var mismatches = new List<PetMismatch>();
+            if (_forPetId is not null)
+            {
+                if (_forPet is null)
+                {
+                    Reject("Couldn't load the pet's details to check them against the card. Please try again.");
+                    return;
+                }
+                mismatches.AddRange(PetCardMatch.Compare(_forPet, card));
+            }
+            if (PetCardMatch.CompareOwner(_customerName, card) is { } ownerProblem) mismatches.Add(ownerProblem);
+            if (mismatches.Count > 0)
+            {
+                Reject("Card not accepted: the details don't match the vaccine card.");
+                using (var dialog = new CardMismatchDialog(mismatches)) dialog.ShowDialog(this);
+                return;
+            }
+
+            // A card with any vaccine that is no longer in date is not accepted.
+            var expired = PetCardMatch.Expired(stamped);
+            if (expired.Count > 0)
+            {
+                Reject("Card not accepted: the vaccine card has expired.");
+                using (var dialog = new CardMismatchDialog(expired, "Vaccine card has expired",
+                           "Please scan a card with current vaccinations.", "EXPIRY DATE", "STATUS"))
+                    dialog.ShowDialog(this);
+                return;
+            }
+
             // The pet's picture is cut out of the PET PHOTO frame (a failure here never blocks the scan).
             byte[]? petPhoto = null;
             try { petPhoto = await Task.Run(() => PetPhotoFinder.Find(jpeg, read.Pieces)); }
@@ -385,6 +437,7 @@ internal sealed class VaccinationScanForm : DialogBase
             string status = $"Read {stamped.Count} stamped vaccination(s). Check it looks right.";
             if (skipped > 0) status += $"  {skipped} row(s) without a stamp were left out.";
             _status.Text = status;
+            SaveButton.Enabled = true;
         }
         catch (Exception ex)
         {
@@ -405,6 +458,7 @@ internal sealed class VaccinationScanForm : DialogBase
         Fill(new ScannedCard("", "", "", "", null, null, "", "", new List<ScannedVaccination>()));
         ShowPetPhoto(null);
         _status.Text = "Card not accepted.";
+        SaveButton.Enabled = false;
         ShowError(reason);
     }
 
@@ -471,7 +525,7 @@ internal sealed class VaccinationScanForm : DialogBase
         UseWaitCursor = busy;
         _choose.Enabled = !busy;
         _camera.Enabled = !busy;
-        SaveButton.Enabled = !busy;
+        SaveButton.Enabled = !busy && _cardJpeg is not null && _rows.Count > 0;
         if (busy) _status.Text = "Reading the card\u2026";
     }
 

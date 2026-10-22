@@ -461,7 +461,6 @@ internal partial class MainForm
         if (source is CustomerRecord c)
         {
             menu.AddAction("View pets", "\uE80F", MenuTone.Success, () => ViewPets(c));
-            menu.AddAction("Edit customer", "\uE70F", MenuTone.Primary, () => EditCustomer(c));
             menu.AddAction("Add pet", "\uE710", MenuTone.Success, () => AddPetTo(c.Id, c.Name));
             menu.AddAction("New appointment", "\uE787", MenuTone.Primary, () => NewAppointment(c.Id));
             if (!c.HasLogin)
@@ -472,7 +471,6 @@ internal partial class MainForm
         else if (source is PetRecord p)
         {
             menu.AddAction("View pet", "\uE80F", MenuTone.Success, () => ViewPets(p));
-            menu.AddAction("Edit pet", "\uE70F", MenuTone.Primary, () => EditPet(p));
             menu.AddDivider();
             menu.AddAction("Delete pet", "\uE74D", MenuTone.Danger, () => DeletePet(p));
         }
@@ -510,23 +508,9 @@ internal partial class MainForm
         }
     }
 
-    private void EditCustomer(CustomerRecord c)
-    {
-        using var form = new CustomerForm(c);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
-        RefreshSoon();
-    }
-
     private void AddPetTo(int customerId, string ownerName)
     {
         using var form = new PetForm(customerId, ownerName);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
-        RefreshSoon();
-    }
-
-    private void EditPet(PetRecord p)
-    {
-        using var form = new PetForm(p.CustomerId, p.OwnerName, p);
         if (form.ShowDialog(this) != DialogResult.OK) return;
         RefreshSoon();
     }

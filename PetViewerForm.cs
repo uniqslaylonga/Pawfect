@@ -27,7 +27,6 @@ internal sealed class PetViewerForm : Form
     private readonly PictureBox _cardBox = new();
     private readonly Label _vaxHeader = new();
     private readonly ListView _vaxList = new();
-    private readonly Button _editDetails;
     private readonly Dictionary<int, Image?> _thumbs = new();
 
     private List<PetProfile> _pets = new();
@@ -55,16 +54,14 @@ internal sealed class PetViewerForm : Form
         ShowInTaskbar = false;
         ClientSize = new Size(960, 780);
 
-        _editDetails = MakeButton("Edit details", 110, primary: false);
         var addPet = MakeButton("Add pet", 90, primary: false);
         var close = MakeButton("Close", 90, primary: true);
         close.DialogResult = DialogResult.Cancel;
         CancelButton = close;
 
-        _editDetails.Click += (_, _) => EditDetails();
         addPet.Click += (_, _) => AddPet();
 
-        BuildLayout(new[] { close, _editDetails, addPet });
+        BuildLayout(new[] { close, addPet });
         LoadPets(selectPetId);
     }
 
@@ -322,7 +319,6 @@ internal sealed class PetViewerForm : Form
         _listTitle.Text = _pets.Count == 1 ? "1 pet" : $"{_pets.Count} pets";
         _noPets.Visible = _pets.Count == 0;
         _top.Visible = _cardHeader.Visible = _cardBox.Visible = _vaxHeader.Visible = _vaxList.Visible = pet is not null;
-        _editDetails.Enabled = pet is not null;
 
         if (pet is null)
         {
@@ -447,15 +443,6 @@ internal sealed class PetViewerForm : Form
 
     // ------------------------------------------------------------------ actions
 
-    private void EditDetails()
-    {
-        var pet = Selected;
-        if (pet is null) return;
-        using var form = new PetDetailsForm(pet);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
-        SaveThenReload(pet.Id, () => { });   // already saved by the form; this just reloads
-    }
-
     private void AddPet()
     {
         using var form = new PetForm(_customerId, _ownerName);
@@ -487,71 +474,6 @@ internal sealed class PetViewerForm : Form
         _photoImage?.Dispose();
         _cardImage?.Dispose();
         base.OnFormClosed(e);
-    }
-}
-
-/// <summary>Edits the extra pet details: gender, birthday, weight, color and notes.</summary>
-internal sealed class PetDetailsForm : DialogBase
-{
-    private readonly PetProfile _pet;
-    private readonly PawSelect _gender = new();
-    private readonly PawDatePicker _birth = new() { AllowEmpty = true, Placeholder = "Not set" };
-    private readonly NumericUpDown _weight = new() { DecimalPlaces = 1, Minimum = 0, Maximum = 200, Increment = 0.5m };
-    private readonly TextBox _color = new() { MaxLength = 40 };
-    private readonly TextBox _notes = new() { MaxLength = 500, Multiline = true, AcceptsReturn = true, Height = 80, ScrollBars = ScrollBars.Vertical };
-
-    public PetDetailsForm(PetProfile pet) : base("Pet details", "Save", "\uE77B", pet.Name)
-    {
-        _pet = pet;
-
-        _birth.MaxDate = DateTime.Today;
-        _gender.Items.AddRange(new object[] { "Not set", "Male", "Female" });
-        _gender.SelectedIndex = pet.Gender switch { "Male" => 1, "Female" => 2, _ => 0 };
-
-        if (pet.BirthDate is DateTime b && b >= _birth.MinDate && b <= _birth.MaxDate)
-        {
-            _birth.Value = b;
-            _birth.Checked = true;
-        }
-        else
-        {
-            _birth.Checked = false;   // the tick box means "birthday is known"
-        }
-
-        _weight.Value = Math.Min(_weight.Maximum, pet.WeightKg ?? 0m);
-        _color.Text = pet.CoatColor;
-        _notes.Text = pet.Notes;
-
-        AddRow("Pet", new Label { Text = pet.Name, TextAlign = ContentAlignment.MiddleLeft, AutoSize = false, Height = 28 });
-        AddRow("Gender", _gender);
-        AddRow("Birthday", _birth);
-        AddRow("Weight (kg)", _weight);
-        AddRow("Color", _color);
-        AddRow("Notes", _notes);
-        FitHeight();
-    }
-
-    protected override void OnSaveClicked()
-    {
-        if (_birth.Checked && _birth.Value.Date > DateTime.Today)
-        {
-            ShowError("The birthday can't be in the future.");
-            return;
-        }
-
-        try
-        {
-            PetProfiles.SaveDetails(_pet.Id,
-                _gender.SelectedIndex switch { 1 => "Male", 2 => "Female", _ => "" },
-                _birth.Checked ? _birth.Value.Date : null,
-                _weight.Value > 0 ? _weight.Value : null,
-                _color.Text, _notes.Text);
-            DialogResult = DialogResult.OK;
-        }
-        catch (Exception ex) when (ex is SqlException or InvalidOperationException)
-        {
-            ShowDatabaseError(this, ex);
-        }
     }
 }
 
