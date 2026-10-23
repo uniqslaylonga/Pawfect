@@ -248,6 +248,7 @@ internal partial class AdminForm : Form
 
         // Clicking the name chip (avatar, name, role or arrow) opens "My Profile".
         Ui.MakeClickable(userChip, (_, _) => ShowProfile());
+        InitNotifications();
 
         dashboardNav.Click += (_, _) => ShowPage(AdminPage.Dashboard);
         employeesNav.Click += (_, _) => ShowPage(AdminPage.Employees);
