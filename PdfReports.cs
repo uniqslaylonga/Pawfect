@@ -207,6 +207,40 @@ internal static class PdfReports
             });
     }
 
+    /// <summary>Audit Trail / Activity Logs: the filtered (or ticked) log entries, newest first.</summary>
+    public static void ActivityLog(string path, string period, IReadOnlyList<AuditLog.Entry> rows, string preparedBy)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        var cols = new[]
+        {
+            new Col("Date & Time", 1.6f), new Col("User", 1.4f), new Col("Action", 1.5f), new Col("Module", 1.1f),
+            new Col("Description", 3.2f), new Col("Reference", 1.3f), new Col("Status", 0.9f),
+        };
+
+        Build(path, "Activity Logs", period, preparedBy, landscape: true,
+            new[]
+            {
+                ("Entries in This Report", rows.Count.ToString("N0", culture)),
+                ("Users Involved", rows.Select(r => r.Actor).Distinct().Count().ToString("N0", culture)),
+                ("Critical Actions", rows.Count(r => AuditInfo.IsCritical(r.Action)).ToString("N0", culture)),
+                ("Logins", rows.Count(r => AuditInfo.Type(r.Action) == "Login").ToString("N0", culture)),
+            },
+            body =>
+            {
+                body.Item().Element(c => DataTable(c, cols,
+                    rows.Select(r => new[]
+                    {
+                        new Cx(r.When.ToString("MMM d, yyyy h:mm tt", culture)),
+                        new Cx(r.Actor, Bold: true),
+                        new Cx(r.Action),
+                        new Cx(AuditInfo.Module(r.Action)),
+                        new Cx(r.Details),
+                        new Cx(AuditInfo.Reference(r.Details)),
+                        new Cx(AuditInfo.Status(r.Action), AuditInfo.IsFailed(r.Action) ? Hex(Theme.Danger) : Hex(Theme.Green), Bold: true),
+                    }).ToList()));
+            });
+    }
+
     // ------------------------------------------------------------------ shared layout
 
     public static void Inventory(string path, IReadOnlyList<InventoryRow> rows, string preparedBy)

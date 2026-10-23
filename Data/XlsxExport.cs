@@ -125,6 +125,92 @@ internal static class XlsxExport
         Add(zip, "xl/worksheets/sheet1.xml", sheet.ToString());
     }
 
+    /// <summary>Audit Trail / Activity Logs as a workbook: one row per entry with a real date/time column and filter buttons.</summary>
+    public static void WriteActivityLog(string path, IReadOnlyList<AuditLog.Entry> rows, string period, string preparedBy)
+    {
+        var inv = CultureInfo.InvariantCulture;
+        var sheet = new StringBuilder(32 * 1024);
+        string[] headers = { "DATE & TIME", "USER", "ACTION", "MODULE", "DESCRIPTION", "REFERENCE", "STATUS" };
+        const int header = 5;
+        int lastRow = header + Math.Max(rows.Count, 1);
+
+        sheet.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
+        sheet.Append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">");
+        sheet.Append("<sheetPr><pageSetUpPr fitToPage=\"1\"/></sheetPr>");
+        sheet.Append("<sheetViews><sheetView workbookViewId=\"0\" showGridLines=\"0\">");
+        sheet.Append($"<pane ySplit=\"{header}\" topLeftCell=\"A{header + 1}\" activePane=\"bottomLeft\" state=\"frozen\"/>");
+        sheet.Append("</sheetView></sheetViews>");
+        sheet.Append("<sheetFormatPr defaultRowHeight=\"18\"/>");
+        sheet.Append("<cols>");
+        double[] widths = { 21, 24, 24, 16, 60, 20, 12 };
+        for (int i = 0; i < widths.Length; i++)
+            sheet.Append($"<col min=\"{i + 1}\" max=\"{i + 1}\" width=\"{widths[i].ToString(inv)}\" customWidth=\"1\"/>");
+        sheet.Append("</cols>");
+        sheet.Append("<sheetData>");
+
+        Row(sheet, 1, 26, Str("A", 1, "Pawfect  -  Activity Logs", TitleCell));
+        Row(sheet, 2, 18, Str("A", 2, $"Period: {period}   |   Generated {DateTime.Now.ToString("MMM d, yyyy h:mm tt", CultureInfo.CurrentCulture)}   |   Prepared by {preparedBy}", SubtitleCell));
+        Row(sheet, 3, 18, Str("A", 3, "Entries in this report", LabelCell), Num("B", 3, rows.Count, IntCell, inv));
+
+        var head = new StringBuilder();
+        for (int c = 0; c < headers.Length; c++) head.Append(Str(Col(c), header, headers[c], HeaderCell));
+        Row(sheet, header, 24, head.ToString());
+
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            int n = header + 1 + i;
+            var cells = new StringBuilder();
+            cells.Append(Num("A", n, (decimal)r.When.ToOADate(), DateTimeCell, inv));
+            cells.Append(Str("B", n, r.Actor, TextCell));
+            cells.Append(Str("C", n, r.Action, TextCell));
+            cells.Append(Str("D", n, AuditInfo.Module(r.Action), TextCell));
+            cells.Append(Str("E", n, r.Details, TextCell));
+            cells.Append(Str("F", n, AuditInfo.Reference(r.Details), TextCell));
+            cells.Append(Str("G", n, AuditInfo.Status(r.Action), AuditInfo.IsFailed(r.Action) ? StatusBad : StatusGood));
+            Row(sheet, n, 20, cells.ToString());
+        }
+        if (rows.Count == 0)
+            Row(sheet, header + 1, 20, Str("A", header + 1, "No entries for the selected filters.", TextCell));
+
+        sheet.Append("</sheetData>");
+        sheet.Append($"<autoFilter ref=\"A{header}:G{lastRow}\"/>");
+        sheet.Append("<pageMargins left=\"0.5\" right=\"0.5\" top=\"0.6\" bottom=\"0.6\" header=\"0.3\" footer=\"0.3\"/>");
+        sheet.Append("<pageSetup orientation=\"landscape\" fitToHeight=\"0\"/>");
+        sheet.Append("</worksheet>");
+
+        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write);
+        using var zip = new ZipArchive(stream, ZipArchiveMode.Create);
+        Add(zip, "[Content_Types].xml",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+            "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>" +
+            "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+            "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+            "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+            "<Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/>" +
+            "</Types>");
+        Add(zip, "_rels/.rels",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+            "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+            "</Relationships>");
+        Add(zip, "xl/workbook.xml",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" " +
+            "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+            "<sheets><sheet name=\"Activity Logs\" sheetId=\"1\" r:id=\"rId1\"/></sheets>" +
+            "</workbook>");
+        Add(zip, "xl/_rels/workbook.xml.rels",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+            "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+            "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+            "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
+            "</Relationships>");
+        Add(zip, "xl/styles.xml", Styles);
+        Add(zip, "xl/worksheets/sheet1.xml", sheet.ToString());
+    }
+
     // ------------------------------------------------------------------ cells
 
     private static int StatusStyle(AuditBadge b) => b switch

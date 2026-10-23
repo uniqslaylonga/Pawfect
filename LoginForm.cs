@@ -110,10 +110,12 @@ internal partial class LoginForm : Form
         if (user is null)
         {
             errorLabel.Text = "Incorrect email or password.";
+            AuditLog.RecordFailedLogin(email);
             return;
         }
 
         SaveRememberedEmail(email);
+        AuditLog.Record(user, "Login", $"Signed in as {user.Role}");
         SignedInUser = user;
         DialogResult = DialogResult.OK;
         Close();

@@ -520,6 +520,7 @@ internal partial class MainForm
         {
             using var form = new NewAppointmentForm(CurrentUser?.Email ?? "", customerId);
             if (form.ShowDialog(this) != DialogResult.OK) return;
+            AuditLog.Record(CurrentUser, "Appointment Created", "Booked by staff");
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)
         {
@@ -554,6 +555,7 @@ internal partial class MainForm
         {
             using var form = new EditAppointmentForm(item);
             if (form.ShowDialog(this) != DialogResult.OK) return;
+            AuditLog.Record(CurrentUser, "Appointment Rescheduled", $"{item.CustomerName} - {item.PetName} (#{item.Id})");
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)
         {
@@ -596,6 +598,14 @@ internal partial class MainForm
         try
         {
             EmployeeData.SetAppointmentStatus(item.Id, status);
+            AuditLog.Record(CurrentUser, status switch
+            {
+                AppointmentStatus.Confirmed => "Appointment Confirmed",
+                AppointmentStatus.CheckedIn => "Appointment Checked In",
+                AppointmentStatus.Cancelled => "Appointment Cancelled",
+                AppointmentStatus.Pending => "Appointment Restored",
+                _ => "Appointment Updated",
+            }, $"{item.CustomerName} - {item.PetName} (#{item.Id})");
         }
         catch (SqlException ex)
         {
@@ -671,6 +681,7 @@ internal partial class MainForm
             sale.Appointment?.CustomerName ?? "Walk-in", billingPage.StoreAddress, billingPage.StorePhone);
 
         billingPage.ClearTransaction();
+        AuditLog.Record(CurrentUser, "Sale Completed", $"Receipt {receipt} - {sale.Appointment?.CustomerName ?? "Walk-in"}");
 
         // The sale is already saved. The receipt opens on screen; Print (or Enter) sends it to the printer.
         using (var form = new ReceiptForm(data))

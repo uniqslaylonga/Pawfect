@@ -102,6 +102,9 @@ internal partial class AdminForm : Form
         reportsPage.ViewAllReportsRequested += (_, _) => reportsPage.ResetFilters();
         reportsPage.ViewAllActivityRequested += (_, _) => ShowPage(AdminPage.Audit);
 
+        auditPage.ExportPdfRequested += (_, _) => ExportActivityLog(pdf: true);
+        auditPage.ExportExcelRequested += (_, _) => ExportActivityLog(pdf: false);
+
         employeesPage.AddUserRequested += (_, _) =>
         {
             using var dlg = new AddUserDialog();
@@ -696,10 +699,62 @@ internal partial class AdminForm : Form
 
     private void RefreshAudit()
     {
-        try { auditPage.LoadEntries(AuditLog.GetRecent()); }
+        try
+        {
+            auditPage.LoadEntries(AuditLog.GetRecent(5000));
+            var (pending, active, inactive) = AuditLog.GetCounts();
+            auditPage.SetCounts(pending, active, inactive);
+        }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
             Msg.Show("Could not load audit trail: " + ex.Message);
+        }
+    }
+
+    /// <summary>Saves the Audit Trail entries the filters show (or the ticked ones) as a PDF or an Excel workbook (.xlsx).</summary>
+    private void ExportActivityLog(bool pdf)
+    {
+        var rows = auditPage.ExportRows;
+        if (rows.Count == 0)
+        {
+            Msg.Show(this, "There is no activity to export.\n\nPick another date range or clear the filters first.",
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        string period = auditPage.PeriodText + (auditPage.HasSelection ? $"  \u00B7  {rows.Count} selected entries" : "");
+        string who = CurrentUser?.Name ?? "Admin";
+        string ext = pdf ? ".pdf" : ".xlsx";
+
+        using var dialog = new SaveFileDialog
+        {
+            Filter = pdf ? "PDF document (*.pdf)|*.pdf" : "Excel workbook (*.xlsx)|*.xlsx",
+            FileName = $"activity-logs-{DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}{ext}",
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        try
+        {
+            if (pdf) PdfReports.ActivityLog(dialog.FileName, period, rows, who);
+            else XlsxExport.WriteActivityLog(dialog.FileName, rows, period, who);
+        }
+        catch (Exception ex)
+        {
+            Msg.Show(this, (pdf ? "Couldn't create the PDF." : "Couldn't save the Excel file. If it is already open in Excel, close it and try again.") + "\n\n" + ex.Message,
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        AuditLog.Record(CurrentUser, "Report Exported", $"Activity Logs ({period}), {rows.Count} row{(rows.Count == 1 ? "" : "s")}, {(pdf ? "PDF" : "Excel")}");
+        RefreshAudit();
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+        }
+        catch
+        {
+            // The file is saved; there is just nothing installed to open it with.
         }
     }
 }
