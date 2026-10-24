@@ -30,6 +30,8 @@ internal sealed partial class AddPetForm : Form
     private int _secondsLeft;
     private bool _busy;
     private bool _fillingOtp;
+    private bool _codeVerified;         // the emailed code was right (kept so a failed account save can be retried without a new code)
+    private string? _pendingPassword;   // kiosk: the password a new customer typed on step 1, saved once the code is verified
 
     /// <summary>Set when a new pet was saved.</summary>
     public int? CreatedPetId { get; private set; }
@@ -112,6 +114,10 @@ internal sealed partial class AddPetForm : Form
         nameField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         emailField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         mobileField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
+        passwordField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
+        confirmPasswordField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
+        contactErrorLabel.TextChanged += (_, _) => SyncContactHint();   // the grey password hint and the red error share one spot
+        SyncContactHint();
         mobileField.Box.MaxLength = 20;
         mobileField.Box.KeyPress += MobileBox_KeyPress;      // no letters while typing
         mobileField.Box.TextChanged += MobileBox_TextChanged; // ...or when pasting
@@ -138,8 +144,7 @@ internal sealed partial class AddPetForm : Form
             else if (e.KeyCode == Keys.Enter)
             {
                 e.SuppressKeyPress = true;
-                if (PasswordStepVisible) SavePassword();
-                else if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
+                if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
                 else if (selectPanel.Visible) { if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
                 else if (_otpBoxes.Any(b => b.Focused) || verifyButton.Enabled) VerifyCode();
                 else SendOtp();
@@ -198,12 +203,28 @@ internal sealed partial class AddPetForm : Form
             return;
         }
 
+        // A new customer also sets a password here (a returning one already has a sign-in, so these two boxes are ignored).
+        _pendingPassword = null;
+        if (_kiosk && CustomerNeedsPassword())
+        {
+            string password = passwordField.Value;
+            string? passwordError = PasswordProblem(password, confirmPasswordField.Value);
+            if (passwordError is not null)
+            {
+                ShowContactError(passwordError);
+                (password.Length < MinPasswordLength ? passwordField : confirmPasswordField).Box.Focus();
+                return;
+            }
+            _pendingPassword = password;
+        }
+
         SetBusy(true);
         sendOtpButton.Text = "Sending…";
         try
         {
             _challenge = await EmailOtp.SendAsync(email, _ownerName.Length > 0 ? _ownerName : "there");
             ContactEmail = email;
+            _codeVerified = false;
             otpHint.Text = $"We've sent a 6-digit code to {MaskEmail(email)}.";
             otpErrorLabel.Text = "";
             contactErrorLabel.Text = "";
@@ -224,22 +245,33 @@ internal sealed partial class AddPetForm : Form
         }
     }
 
-    private void VerifyCode()
+    private async void VerifyCode()
     {
         if (_busy || _challenge is null || !verifyButton.Enabled) return;
-        try
+        if (!_codeVerified)
         {
-            EmailOtp.Verify(_challenge, string.Concat(_otpBoxes.Select(b => b.Text)));
-        }
-        catch (OtpException ex)
-        {
-            otpErrorLabel.Text = ex.Message;
-            ClearOtpBoxes();
-            _otpBoxes[0].Focus();
-            return;
+            try
+            {
+                EmailOtp.Verify(_challenge, string.Concat(_otpBoxes.Select(b => b.Text)));
+                _codeVerified = true;
+            }
+            catch (OtpException ex)
+            {
+                otpErrorLabel.Text = ex.Message;
+                ClearOtpBoxes();
+                _otpBoxes[0].Focus();
+                return;
+            }
         }
         if (_kiosk && !EnsureKioskCustomer()) return;
-        if (_kiosk && NeedsPassword()) { ShowPasswordStep(); return; }   // still step 1 (Contact): now the password page
+        if (_kiosk && _pendingPassword is not null)
+        {
+            // new customer: the account is made right after the code is right, with the password typed on this page
+            string? error = await CreateAccountAsync();
+            if (IsDisposed) return;
+            if (error is not null) { otpErrorLabel.Text = error; return; }
+            _welcomeNewAccount = true;
+        }
         ShowSelectStep();
     }
 
@@ -342,6 +374,14 @@ internal sealed partial class AddPetForm : Form
     }
 
     private void ShowContactError(string message) => contactErrorLabel.Text = message;
+
+    /// <summary>Shows the grey "At least 8 characters" hint, or the red error in the same spot when there is one.</summary>
+    private void SyncContactHint()
+    {
+        bool hasError = contactErrorLabel.Text.Length > 0;
+        contactErrorLabel.Visible = hasError;
+        passwordHint.Visible = !hasError;
+    }
 
     // ---- mobile number: digits only, 11 of them, starting with 09 (checked on Send OTP)
 
@@ -536,7 +576,6 @@ internal sealed partial class AddPetForm : Form
         selectPanel.Visible = false;
         continueButton.Visible = false;
         contactPanel.Visible = true;
-        if (_passwordPanel is not null) _passwordPanel.Visible = false;
         titleLabel.Text = "Enter Your Contact Information";
         subtitleLabel.Text = "We'll email you a 6-digit code to confirm it's you.";
         stepContact.State = StepState.Active;
@@ -549,13 +588,12 @@ internal sealed partial class AddPetForm : Form
     {
         resendTimer.Stop();
         HideVaccineStep();
-        if (_passwordPanel is not null) _passwordPanel.Visible = false;
         contactPanel.Visible = false;
         selectPanel.Visible = true;
         titleLabel.Text = "Select a Pet";
         if (_welcomeNewAccount)
         {
-            // just came from Create Your Password: say the account exists, then move on to the pet
+            // just created the account on step 1: say the account exists, then move on to the pet
             string first = _ownerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
             subtitleLabel.Text = (first.Length > 0 ? $"Welcome, {first}! " : "Welcome! ") + "Your account is ready. Choose a pet or register a new one.";
             _welcomeNewAccount = false;
@@ -569,12 +607,6 @@ internal sealed partial class AddPetForm : Form
 
     private void GoBack()
     {
-        if (PasswordStepVisible)
-        {
-            ResetContactPage();   // back to the contact page: the code has to be entered again
-            ShowContactStep();
-            return;
-        }
         if (ServiceStepVisible)
         {
             BackToVaccineStep();
@@ -607,6 +639,7 @@ internal sealed partial class AddPetForm : Form
     private void ResetContactPage()
     {
         _challenge = null;
+        _codeVerified = false;
         ClearOtpBoxes();
         foreach (var b in _otpBoxes) b.Enabled = false;
         resendLabel.Visible = false;

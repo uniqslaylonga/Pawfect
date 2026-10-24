@@ -56,6 +56,11 @@ namespace MyApp
             verifyButton = new MyApp.Controls.PrimaryButton();
             resendLabel = new System.Windows.Forms.Label();
             otpCard = new MyApp.Controls.CardPanel();
+            contactCard = new MyApp.Controls.CardPanel();
+            createPwLabel = new System.Windows.Forms.Label();
+            passwordField = new MyApp.Controls.InputField();
+            confirmPasswordField = new MyApp.Controls.InputField();
+            passwordHint = new System.Windows.Forms.Label();
             contactPanel = new System.Windows.Forms.Panel();
             tabMyPets = new MyApp.Controls.SegmentButton();
             tabAddPet = new MyApp.Controls.SegmentButton();
@@ -84,6 +89,7 @@ namespace MyApp
             resendTimer = new System.Windows.Forms.Timer(components);
             orBadge.SuspendLayout();
             otpCard.SuspendLayout();
+            contactCard.SuspendLayout();
             contactPanel.SuspendLayout();
             newPetArrow.SuspendLayout();
             newPetCard.SuspendLayout();
@@ -247,17 +253,18 @@ namespace MyApp
             // nameField
             // 
             nameField.BorderColor = Color.FromArgb(227, 233, 242);
-            nameField.CornerColor = Color.FromArgb(243, 247, 252);
+            nameField.CornerColor = Color.White;
             nameField.FillColor = Color.White;
             nameField.Glyph = "\uE77B";
-            nameField.Location = new Point(40, 20);
+            nameField.Location = new Point(20, 66);
             nameField.Margin = new Padding(0);
             nameField.Name = "nameField";
-            nameField.Padding = new Padding(10, 3, 10, 3);
+            nameField.Caption = "Full Name";
+            nameField.Padding = new Padding(8, 3, 10, 3);
             nameField.Placeholder = "Juan Dela Cruz";
-            nameField.Radius = 12;
-            nameField.Size = new Size(380, 46);
-            nameField.TabIndex = 1;
+            nameField.Radius = 14;
+            nameField.Size = new Size(174, 48);
+            nameField.TabIndex = 2;
             // 
             // emailLabel
             // 
@@ -275,17 +282,18 @@ namespace MyApp
             // emailField
             // 
             emailField.BorderColor = Color.FromArgb(227, 233, 242);
-            emailField.CornerColor = Color.FromArgb(243, 247, 252);
+            emailField.CornerColor = Color.White;
             emailField.FillColor = Color.White;
             emailField.Glyph = "\uE715";
-            emailField.Location = new Point(40, 90);
+            emailField.Location = new Point(20, 12);
             emailField.Margin = new Padding(0);
             emailField.Name = "emailField";
-            emailField.Padding = new Padding(10, 3, 10, 3);
+            emailField.Caption = "Email Address";
+            emailField.Padding = new Padding(8, 3, 10, 3);
             emailField.Placeholder = "example@email.com";
-            emailField.Radius = 12;
-            emailField.Size = new Size(380, 46);
-            emailField.TabIndex = 3;
+            emailField.Radius = 14;
+            emailField.Size = new Size(360, 48);
+            emailField.TabIndex = 1;
             // 
             // mobileLabel
             // 
@@ -303,26 +311,27 @@ namespace MyApp
             // mobileField
             // 
             mobileField.BorderColor = Color.FromArgb(227, 233, 242);
-            mobileField.CornerColor = Color.FromArgb(243, 247, 252);
+            mobileField.CornerColor = Color.White;
             mobileField.FillColor = Color.White;
             mobileField.Glyph = "\uE717";
-            mobileField.Location = new Point(40, 158);
+            mobileField.Location = new Point(206, 66);
             mobileField.Margin = new Padding(0);
             mobileField.Name = "mobileField";
-            mobileField.Padding = new Padding(10, 3, 10, 3);
+            mobileField.Caption = "Mobile (optional)";
+            mobileField.Padding = new Padding(8, 3, 10, 3);
             mobileField.Placeholder = "09XXXXXXXXX";
-            mobileField.Radius = 12;
-            mobileField.Size = new Size(380, 46);
-            mobileField.TabIndex = 5;
+            mobileField.Radius = 14;
+            mobileField.Size = new Size(174, 48);
+            mobileField.TabIndex = 3;
             // 
             // contactErrorLabel
             // 
-            contactErrorLabel.BackColor = Color.FromArgb(243, 247, 252);
+            contactErrorLabel.BackColor = Color.White;
             contactErrorLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             contactErrorLabel.ForeColor = Color.FromArgb(239, 68, 68);
-            contactErrorLabel.Location = new Point(40, 208);
+            contactErrorLabel.Location = new Point(20, 248);
             contactErrorLabel.Name = "contactErrorLabel";
-            contactErrorLabel.Size = new Size(380, 34);
+            contactErrorLabel.Size = new Size(360, 30);
             contactErrorLabel.TabIndex = 6;
             contactErrorLabel.Text = "";
             contactErrorLabel.TextAlign = ContentAlignment.TopLeft;
@@ -332,19 +341,19 @@ namespace MyApp
             // 
             sendOtpButton.BackColor = Color.White;
             sendOtpButton.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            sendOtpButton.Location = new Point(40, 246);
+            sendOtpButton.Location = new Point(20, 282);
             sendOtpButton.Name = "sendOtpButton";
             sendOtpButton.Radius = 12;
-            sendOtpButton.Size = new Size(380, 48);
+            sendOtpButton.Size = new Size(360, 42);
             sendOtpButton.TabIndex = 7;
             sendOtpButton.Text = "Send OTP  \u2192";
             // 
             // dividerLine
             // 
             dividerLine.BackColor = Color.FromArgb(227, 233, 242);
-            dividerLine.Location = new Point(449, 0);
+            dividerLine.Location = new Point(460, 0);
             dividerLine.Name = "dividerLine";
-            dividerLine.Size = new Size(1, 300);
+            dividerLine.Size = new Size(1, 334);
             dividerLine.TabIndex = 8;
             // 
             // orLabel
@@ -365,7 +374,7 @@ namespace MyApp
             orBadge.BorderColor = Color.FromArgb(227, 233, 242);
             orBadge.CornerColor = Color.FromArgb(243, 247, 252);
             orBadge.FillColor = Color.White;
-            orBadge.Location = new Point(428, 136);
+            orBadge.Location = new Point(438, 152);
             orBadge.Margin = new Padding(0);
             orBadge.Name = "orBadge";
             orBadge.Radius = 14;
@@ -377,7 +386,7 @@ namespace MyApp
             otpIcon.BackColor = Color.FromArgb(234, 242, 253);
             otpIcon.Font = new Font("Segoe MDL2 Assets", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             otpIcon.ForeColor = Color.FromArgb(58, 123, 213);
-            otpIcon.Location = new Point(24, 22);
+            otpIcon.Location = new Point(24, 20);
             otpIcon.Name = "otpIcon";
             otpIcon.Size = new Size(36, 36);
             otpIcon.TabIndex = 0;
@@ -390,7 +399,7 @@ namespace MyApp
             otpTitle.BackColor = Color.White;
             otpTitle.Font = new Font("Segoe UI", 12F, FontStyle.Bold, GraphicsUnit.Point, 0);
             otpTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            otpTitle.Location = new Point(72, 22);
+            otpTitle.Location = new Point(72, 20);
             otpTitle.Name = "otpTitle";
             otpTitle.Size = new Size(240, 36);
             otpTitle.TabIndex = 1;
@@ -403,7 +412,7 @@ namespace MyApp
             otpHint.BackColor = Color.White;
             otpHint.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             otpHint.ForeColor = Color.FromArgb(122, 136, 156);
-            otpHint.Location = new Point(24, 70);
+            otpHint.Location = new Point(24, 64);
             otpHint.Name = "otpHint";
             otpHint.Size = new Size(332, 20);
             otpHint.TabIndex = 2;
@@ -416,11 +425,11 @@ namespace MyApp
             otpBox1.BorderColor = Color.FromArgb(205, 217, 234);
             otpBox1.CornerColor = Color.White;
             otpBox1.FillColor = Color.White;
-            otpBox1.Location = new Point(24, 104);
+            otpBox1.Location = new Point(24, 96);
             otpBox1.Margin = new Padding(0);
             otpBox1.Name = "otpBox1";
             otpBox1.Radius = 10;
-            otpBox1.Size = new Size(47, 46);
+            otpBox1.Size = new Size(49, 50);
             otpBox1.TabIndex = 3;
             // 
             // otpBox2
@@ -428,11 +437,11 @@ namespace MyApp
             otpBox2.BorderColor = Color.FromArgb(205, 217, 234);
             otpBox2.CornerColor = Color.White;
             otpBox2.FillColor = Color.White;
-            otpBox2.Location = new Point(81, 104);
+            otpBox2.Location = new Point(81, 96);
             otpBox2.Margin = new Padding(0);
             otpBox2.Name = "otpBox2";
             otpBox2.Radius = 10;
-            otpBox2.Size = new Size(47, 46);
+            otpBox2.Size = new Size(49, 50);
             otpBox2.TabIndex = 4;
             // 
             // otpBox3
@@ -440,11 +449,11 @@ namespace MyApp
             otpBox3.BorderColor = Color.FromArgb(205, 217, 234);
             otpBox3.CornerColor = Color.White;
             otpBox3.FillColor = Color.White;
-            otpBox3.Location = new Point(138, 104);
+            otpBox3.Location = new Point(137, 96);
             otpBox3.Margin = new Padding(0);
             otpBox3.Name = "otpBox3";
             otpBox3.Radius = 10;
-            otpBox3.Size = new Size(47, 46);
+            otpBox3.Size = new Size(49, 50);
             otpBox3.TabIndex = 5;
             // 
             // otpBox4
@@ -452,11 +461,11 @@ namespace MyApp
             otpBox4.BorderColor = Color.FromArgb(205, 217, 234);
             otpBox4.CornerColor = Color.White;
             otpBox4.FillColor = Color.White;
-            otpBox4.Location = new Point(195, 104);
+            otpBox4.Location = new Point(194, 96);
             otpBox4.Margin = new Padding(0);
             otpBox4.Name = "otpBox4";
             otpBox4.Radius = 10;
-            otpBox4.Size = new Size(47, 46);
+            otpBox4.Size = new Size(49, 50);
             otpBox4.TabIndex = 6;
             // 
             // otpBox5
@@ -464,11 +473,11 @@ namespace MyApp
             otpBox5.BorderColor = Color.FromArgb(205, 217, 234);
             otpBox5.CornerColor = Color.White;
             otpBox5.FillColor = Color.White;
-            otpBox5.Location = new Point(252, 104);
+            otpBox5.Location = new Point(250, 96);
             otpBox5.Margin = new Padding(0);
             otpBox5.Name = "otpBox5";
             otpBox5.Radius = 10;
-            otpBox5.Size = new Size(47, 46);
+            otpBox5.Size = new Size(49, 50);
             otpBox5.TabIndex = 7;
             // 
             // otpBox6
@@ -476,11 +485,11 @@ namespace MyApp
             otpBox6.BorderColor = Color.FromArgb(205, 217, 234);
             otpBox6.CornerColor = Color.White;
             otpBox6.FillColor = Color.White;
-            otpBox6.Location = new Point(309, 104);
+            otpBox6.Location = new Point(307, 96);
             otpBox6.Margin = new Padding(0);
             otpBox6.Name = "otpBox6";
             otpBox6.Radius = 10;
-            otpBox6.Size = new Size(47, 46);
+            otpBox6.Size = new Size(49, 50);
             otpBox6.TabIndex = 8;
             // 
             // otpErrorLabel
@@ -488,9 +497,9 @@ namespace MyApp
             otpErrorLabel.BackColor = Color.White;
             otpErrorLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             otpErrorLabel.ForeColor = Color.FromArgb(239, 68, 68);
-            otpErrorLabel.Location = new Point(24, 156);
+            otpErrorLabel.Location = new Point(24, 152);
             otpErrorLabel.Name = "otpErrorLabel";
-            otpErrorLabel.Size = new Size(332, 36);
+            otpErrorLabel.Size = new Size(332, 22);
             otpErrorLabel.TabIndex = 9;
             otpErrorLabel.Text = "";
             otpErrorLabel.TextAlign = ContentAlignment.TopLeft;
@@ -501,10 +510,10 @@ namespace MyApp
             verifyButton.BackColor = Color.White;
             verifyButton.Enabled = false;
             verifyButton.Font = new Font("Segoe UI", 10.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
-            verifyButton.Location = new Point(24, 198);
+            verifyButton.Location = new Point(24, 180);
             verifyButton.Name = "verifyButton";
             verifyButton.Radius = 12;
-            verifyButton.Size = new Size(332, 44);
+            verifyButton.Size = new Size(332, 46);
             verifyButton.TabIndex = 10;
             verifyButton.Text = "Verify";
             // 
@@ -514,7 +523,7 @@ namespace MyApp
             resendLabel.Cursor = Cursors.Hand;
             resendLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             resendLabel.ForeColor = Color.FromArgb(58, 123, 213);
-            resendLabel.Location = new Point(24, 254);
+            resendLabel.Location = new Point(24, 232);
             resendLabel.Name = "resendLabel";
             resendLabel.Size = new Size(332, 22);
             resendLabel.TabIndex = 11;
@@ -541,30 +550,105 @@ namespace MyApp
             otpCard.BorderColor = Color.FromArgb(227, 233, 242);
             otpCard.CornerColor = Color.FromArgb(243, 247, 252);
             otpCard.FillColor = Color.White;
-            otpCard.Location = new Point(480, 0);
+            otpCard.Location = new Point(480, 36);
             otpCard.Margin = new Padding(0);
             otpCard.Name = "otpCard";
             otpCard.Radius = 18;
-            otpCard.Size = new Size(380, 300);
+            otpCard.Size = new Size(380, 262);
             otpCard.TabIndex = 10;
+            // 
+            // createPwLabel
+            // 
+            createPwLabel.BackColor = Color.White;
+            createPwLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            createPwLabel.ForeColor = Color.FromArgb(58, 123, 213);
+            createPwLabel.Location = new Point(20, 122);
+            createPwLabel.Name = "createPwLabel";
+            createPwLabel.Size = new Size(360, 16);
+            createPwLabel.TabIndex = 4;
+            createPwLabel.Text = "Create Password";
+            createPwLabel.TextAlign = ContentAlignment.MiddleLeft;
+            createPwLabel.UseMnemonic = false;
+            // 
+            // passwordField
+            // 
+            passwordField.BorderColor = Color.FromArgb(227, 233, 242);
+            passwordField.Caption = "Password";
+            passwordField.CornerColor = Color.White;
+            passwordField.FillColor = Color.White;
+            passwordField.Glyph = "\uE72E";
+            passwordField.IsPassword = true;
+            passwordField.Location = new Point(20, 142);
+            passwordField.Margin = new Padding(0);
+            passwordField.Name = "passwordField";
+            passwordField.Padding = new Padding(8, 3, 10, 3);
+            passwordField.Placeholder = "Enter your password";
+            passwordField.Radius = 14;
+            passwordField.Size = new Size(360, 48);
+            passwordField.TabIndex = 5;
+            // 
+            // confirmPasswordField
+            // 
+            confirmPasswordField.BorderColor = Color.FromArgb(227, 233, 242);
+            confirmPasswordField.Caption = "Confirm Password";
+            confirmPasswordField.CornerColor = Color.White;
+            confirmPasswordField.FillColor = Color.White;
+            confirmPasswordField.Glyph = "\uE72E";
+            confirmPasswordField.IsPassword = true;
+            confirmPasswordField.Location = new Point(20, 196);
+            confirmPasswordField.Margin = new Padding(0);
+            confirmPasswordField.Name = "confirmPasswordField";
+            confirmPasswordField.Padding = new Padding(8, 3, 10, 3);
+            confirmPasswordField.Placeholder = "Re-enter your password";
+            confirmPasswordField.Radius = 14;
+            confirmPasswordField.Size = new Size(360, 48);
+            confirmPasswordField.TabIndex = 6;
+            // 
+            // passwordHint
+            // 
+            passwordHint.BackColor = Color.White;
+            passwordHint.Font = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            passwordHint.ForeColor = Color.FromArgb(58, 123, 213);
+            passwordHint.Location = new Point(20, 248);
+            passwordHint.Name = "passwordHint";
+            passwordHint.Size = new Size(360, 18);
+            passwordHint.TabIndex = 7;
+            passwordHint.Text = "\u24D8  At least 8 characters";
+            passwordHint.TextAlign = ContentAlignment.MiddleLeft;
+            passwordHint.UseMnemonic = false;
+            // 
+            // contactCard
+            // 
+            contactCard.Controls.Add(sendOtpButton);
+            contactCard.Controls.Add(contactErrorLabel);
+            contactCard.Controls.Add(passwordHint);
+            contactCard.Controls.Add(confirmPasswordField);
+            contactCard.Controls.Add(passwordField);
+            contactCard.Controls.Add(createPwLabel);
+            contactCard.Controls.Add(mobileField);
+            contactCard.Controls.Add(nameField);
+            contactCard.Controls.Add(emailField);
+            contactCard.BackColor = Color.FromArgb(243, 247, 252);
+            contactCard.BorderColor = Color.FromArgb(227, 233, 242);
+            contactCard.CornerColor = Color.FromArgb(243, 247, 252);
+            contactCard.FillColor = Color.White;
+            contactCard.Location = new Point(40, 0);
+            contactCard.Margin = new Padding(0);
+            contactCard.Name = "contactCard";
+            contactCard.Radius = 18;
+            contactCard.Size = new Size(400, 334);
+            contactCard.TabIndex = 0;
             // 
             // contactPanel
             // 
             contactPanel.Controls.Add(otpCard);
             contactPanel.Controls.Add(orBadge);
             contactPanel.Controls.Add(dividerLine);
-            contactPanel.Controls.Add(sendOtpButton);
-            contactPanel.Controls.Add(contactErrorLabel);
-            contactPanel.Controls.Add(mobileField);
-            contactPanel.Controls.Add(mobileLabel);
-            contactPanel.Controls.Add(emailField);
-            contactPanel.Controls.Add(emailLabel);
-            contactPanel.Controls.Add(nameField);
-            contactPanel.Controls.Add(nameLabel);
+            contactPanel.Controls.Add(contactCard);
             contactPanel.BackColor = Color.FromArgb(243, 247, 252);
             contactPanel.Location = new Point(0, 150);
             contactPanel.Name = "contactPanel";
-            contactPanel.Size = new Size(900, 330);
+            contactPanel.Size = new Size(900, 334);
             contactPanel.TabIndex = 13;
             // 
             // tabMyPets
@@ -918,6 +1002,7 @@ namespace MyApp
             Text = "Pawfect - Add Pet";
             orBadge.ResumeLayout(false);
             otpCard.ResumeLayout(false);
+            contactCard.ResumeLayout(false);
             contactPanel.ResumeLayout(false);
             newPetArrow.ResumeLayout(false);
             newPetCard.ResumeLayout(false);
@@ -968,6 +1053,11 @@ namespace MyApp
         private MyApp.Controls.PrimaryButton verifyButton;
         private System.Windows.Forms.Label resendLabel;
         private MyApp.Controls.CardPanel otpCard;
+        private MyApp.Controls.CardPanel contactCard;
+        private System.Windows.Forms.Label createPwLabel;
+        private MyApp.Controls.InputField passwordField;
+        private MyApp.Controls.InputField confirmPasswordField;
+        private System.Windows.Forms.Label passwordHint;
         private System.Windows.Forms.Panel contactPanel;
         private MyApp.Controls.SegmentButton tabMyPets;
         private MyApp.Controls.SegmentButton tabAddPet;
