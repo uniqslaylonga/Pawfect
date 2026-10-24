@@ -100,6 +100,14 @@ internal static class PetCardMatch
         return lapsed;
     }
 
+    /// <summary>
+    /// Every card must carry an anti-rabies vaccination (a stamped row). Returns the row for the pop-up when there is none, otherwise null.
+    /// </summary>
+    public static PetMismatch? MissingRabies(IEnumerable<ScannedVaccination> rows)
+        => rows.Any(r => r.Vaccine.Contains("rabies", StringComparison.OrdinalIgnoreCase))
+            ? null
+            : new PetMismatch("Anti-Rabies", "Required", "Not on the card");
+
     /// <summary>A vaccine only protects the pet this many days after the shot was given.</summary>
     internal const int ImmunityDays = 14;
 

@@ -422,6 +422,16 @@ internal sealed class VaccinationScanForm : DialogBase
                 return;
             }
 
+            // Every card must have an anti-rabies vaccination. A card without one is not accepted.
+            if (PetCardMatch.MissingRabies(stamped) is { } noRabies)
+            {
+                Reject("Card not accepted: there is no anti-rabies vaccination on the card.");
+                using (var dialog = new CardMismatchDialog(new List<PetMismatch> { noRabies }, "Anti-rabies vaccine missing",
+                           "The card must show an anti-rabies vaccination.", "NEEDED", "ON THE CARD"))
+                    dialog.ShowDialog(this);
+                return;
+            }
+
             // Cats: a vaccine protects only 14 days after the shot. A card with a vaccine still inside that window is not accepted.
             if (PetCardMatch.IsCat(card))
             {
