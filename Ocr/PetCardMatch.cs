@@ -100,6 +100,38 @@ internal static class PetCardMatch
         return lapsed;
     }
 
+    /// <summary>A vaccine only protects the pet this many days after the shot was given.</summary>
+    internal const int ImmunityDays = 14;
+
+    /// <summary>True when the card is for a cat (the 14-day immunity rule is checked for cats).</summary>
+    internal static bool IsCat(ScannedCard card)
+        => string.Equals(NormalizeSpecies(card.Species), "Cat", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Vaccines whose 14-day immunity period is not finished yet. A vaccine passes when at least one of its records on the card was given
+    /// 14 or more days ago, so a fresh booster doesn't block a pet that was already protected. Deworming has no immunity period and is skipped.
+    /// A date that couldn't be read can't be shown to be old enough, so it counts as not done.
+    /// Rows come back as (vaccine, date given, date protected from) for the pop-up.
+    /// </summary>
+    public static List<PetMismatch> ImmunityPending(IEnumerable<ScannedVaccination> rows)
+    {
+        var today = DateTime.Today;
+        var pending = new List<PetMismatch>();
+        foreach (var group in rows.Where(r => !string.IsNullOrWhiteSpace(r.Vaccine) &&
+                                              !r.Vaccine.Contains("deworm", StringComparison.OrdinalIgnoreCase))
+                                  .GroupBy(r => r.Vaccine.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Any(r => r.Given is { } g && g.Date.AddDays(ImmunityDays) <= today)) continue;
+            var newest = group.Where(r => r.Given is not null).OrderByDescending(r => r.Given).FirstOrDefault();
+            pending.Add(newest?.Given is { } given
+                ? new PetMismatch(group.Key,
+                    given.ToString("MMM d, yyyy", CultureInfo.InvariantCulture),
+                    given.Date.AddDays(ImmunityDays).ToString("MMM d, yyyy", CultureInfo.InvariantCulture))
+                : new PetMismatch(group.Key, "\u2014", "Date not readable"));
+        }
+        return pending;
+    }
+
     // ------------------------------------------------------------------ comparisons
 
     private static string Letters(string s)

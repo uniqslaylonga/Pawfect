@@ -52,7 +52,7 @@ internal sealed partial class AddPetForm
 
         EnsureServicePanel();
         _serviceNote!.Text = weightKg is decimal kg && kg > 0
-            ? $"Prices are based on your pet's weight ({kg:0.##} kg). The final price may change with coat condition or matting."
+            ? $"Prices are based on your pet's weight ({kg:0.##} kg)."
             : "Prices may vary depending on your pet's size and condition.";
         foreach (var chip in _dayChips) chip.Checked = false;   // a fresh visit: no days picked yet
         UpdateScheduleInfo();

@@ -422,6 +422,20 @@ internal sealed class VaccinationScanForm : DialogBase
                 return;
             }
 
+            // Cats: a vaccine protects only 14 days after the shot. A card with a vaccine still inside that window is not accepted.
+            if (PetCardMatch.IsCat(card))
+            {
+                var pending = PetCardMatch.ImmunityPending(stamped);
+                if (pending.Count > 0)
+                {
+                    Reject("Card not accepted: the 14-day immunity period after vaccination is not done yet.");
+                    using (var dialog = new CardMismatchDialog(pending, "14-day immunity not complete",
+                               "Immunity takes 14 days after the shot. Try again after that.", "GIVEN ON", "PROTECTED ON"))
+                        dialog.ShowDialog(this);
+                    return;
+                }
+            }
+
             // The pet's picture is cut out of the PET PHOTO frame (a failure here never blocks the scan).
             byte[]? petPhoto = null;
             try { petPhoto = await Task.Run(() => PetPhotoFinder.Find(jpeg, read.Pieces)); }
