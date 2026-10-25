@@ -633,10 +633,12 @@ namespace MyApp
             grossTabs.Controls.Add(grossDailyTab);
             grossTabs.Controls.Add(grossWeeklyTab);
             grossTabs.Controls.Add(grossMonthlyTab);
+            grossTabs.AutoSize = true;
+            grossTabs.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             grossTabs.Dock = DockStyle.Right;
-            grossTabs.Location = new Point(210, 0);
+            grossTabs.Location = new Point(196, 0);
             grossTabs.Name = "grossTabs";
-            grossTabs.Size = new Size(204, 32);
+            grossTabs.Size = new Size(218, 32);
             grossTabs.TabIndex = 2;
             grossTabs.WrapContents = false;
             // 
