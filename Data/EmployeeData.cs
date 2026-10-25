@@ -324,6 +324,9 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
         if (cmd.ExecuteNonQuery() == 0)
             throw new InvalidOperationException(
                 "This appointment can't be changed that way any more - its status was changed by someone else, or it is completed or deleted. The list will refresh.");
+
+        if (status == AppointmentStatus.Cancelled)
+            AppointmentMailer.Notify(appointmentId, AppointmentMail.Cancelled);   // tell the customer
     }
 
     private const string OpenForChange = "N'Pending', N'Confirmed', N'CheckedIn', N'Rescheduled'";
@@ -339,8 +342,9 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
 
         int serviceId;
         int? groomerId, roomId;
+        string oldStatus;
         using (var cmd = Cmd(conn,
-            "SELECT ServiceId, GroomerId, RoomId FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK) WHERE AppointmentId = @id AND Status IN (" + OpenForChange + ")", tx))
+            "SELECT ServiceId, GroomerId, RoomId, Status FROM dbo.Appointments WITH (UPDLOCK, HOLDLOCK) WHERE AppointmentId = @id AND Status IN (" + OpenForChange + ")", tx))
         {
             P(cmd, "@id", SqlDbType.Int, appointmentId);
             using var r = cmd.ExecuteReader();
@@ -349,6 +353,7 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
             serviceId = r.GetInt32(0);
             groomerId = r.IsDBNull(1) ? null : r.GetInt32(1);
             roomId = r.IsDBNull(2) ? null : r.GetInt32(2);
+            oldStatus = r.GetString(3);
         }
 
         if (FindScheduleConflict(conn, tx, appointmentId, start, serviceId, groomerId, roomId) is { } conflict)
@@ -364,6 +369,9 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
 
         FixQueueNumberClash(conn, tx, appointmentId);
         tx.Commit();
+
+        // A request that had no schedule yet is now scheduled; one that already had a time has been moved.
+        AppointmentMailer.Notify(appointmentId, oldStatus == "Pending" ? AppointmentMail.Scheduled : AppointmentMail.Rescheduled);
     }
 
     /// <summary>
@@ -623,6 +631,16 @@ WHERE a.AppointmentId = @id
         if (FindScheduleConflict(conn, tx, appointmentId, start, serviceId, groomerId, roomId) is { } conflict)
             throw new InvalidOperationException(conflict);
 
+        // What it was before, so afterwards we know whether the customer needs an email.
+        string? oldStatus = null;
+        DateTime oldStart = default;
+        using (var cmd = Cmd(conn, "SELECT Status, StartTime FROM dbo.Appointments WHERE AppointmentId = @id", tx))
+        {
+            P(cmd, "@id", SqlDbType.Int, appointmentId);
+            using var r = cmd.ExecuteReader();
+            if (r.Read()) { oldStatus = r.GetString(0); oldStart = r.GetDateTime(1); }
+        }
+
         using (var cmd = Cmd(conn, sql, tx))
         {
             P(cmd, "@p", SqlDbType.Int, petId);
@@ -638,6 +656,13 @@ WHERE a.AppointmentId = @id
 
         FixQueueNumberClash(conn, tx, appointmentId);
         tx.Commit();
+
+        // Email the customer: the schedule was just set (request confirmed), or a booked time was moved.
+        bool timeMoved = oldStart.Ticks / TimeSpan.TicksPerMinute != start.Ticks / TimeSpan.TicksPerMinute;
+        if (confirm && (oldStatus is "Pending" or "Rescheduled"))
+            AppointmentMailer.Notify(appointmentId, AppointmentMail.Scheduled);
+        else if (timeMoved && (oldStatus is "Confirmed" or "CheckedIn"))
+            AppointmentMailer.Notify(appointmentId, AppointmentMail.Rescheduled);
     }
 
     /// <summary>Permanently deletes an appointment. Returns null on success, otherwise the reason it was refused.</summary>
@@ -1145,7 +1170,9 @@ UPDATE dbo.Appointments SET Status = N'Cancelled'
 WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confirmed', N'Rescheduled')");
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         P(cmd, "@c", SqlDbType.Int, customerId);
-        return cmd.ExecuteNonQuery() > 0;
+        bool cancelled = cmd.ExecuteNonQuery() > 0;
+        if (cancelled) AppointmentMailer.Notify(appointmentId, AppointmentMail.Cancelled);   // confirmation to the customer
+        return cancelled;
     }
 
     /// <summary>

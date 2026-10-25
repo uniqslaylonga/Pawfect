@@ -34,8 +34,8 @@ internal static class AuditLog
         => Record(actor?.Name ?? "System", actor?.Email, action, details);
 
     /// <summary>A sign-in that was refused (wrong password or unknown email). Only the typed email is stored, never the password.</summary>
-    public static void RecordFailedLogin(string email)
-        => Record(email.Length > 0 ? email : "Unknown", email, "Login Failed", "Incorrect email or password");
+    public static void RecordFailedLogin(string email, string reason = "Incorrect email or password")
+        => Record(email.Length > 0 ? email : "Unknown", email, "Login Failed", string.IsNullOrEmpty(reason) ? "Incorrect email or password" : reason);
 
     private static void Record(string actorName, string? actorEmail, string action, string details)
     {

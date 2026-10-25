@@ -180,12 +180,12 @@ internal static class EmailOtp
 
     // ------------------------------------------------------------------ settings
 
-    private sealed record SmtpSettings(string Host, int Port, string User, string Password, string From);
+    internal sealed record SmtpSettings(string Host, int Port, string User, string Password, string From);
 
     private static SmtpSettings? _settings;
     private static bool _loaded;
 
-    private static SmtpSettings? LoadSettings()
+    internal static SmtpSettings? LoadSettings()
     {
         if (_loaded && _settings is not null) return _settings;
         _settings = ReadSettings();

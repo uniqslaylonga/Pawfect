@@ -6,6 +6,9 @@ namespace MyApp;
 /// <summary>Everything that talks to the Users table.</summary>
 internal static class Auth
 {
+    /// <summary>Why the last SignIn returned null (written to the audit log to help find login problems).</summary>
+    public static string LastFailure { get; private set; } = "";
+
     /// <summary>Returns the account when the email and password are right, otherwise null. Throws SqlException if the database can't be reached.</summary>
     public static UserAccount? SignIn(string email, string password)
     {
@@ -19,15 +22,27 @@ internal static class Auth
         string name, mail, hash, roleText;
         using (var reader = cmd.ExecuteReader())
         {
-            if (!reader.Read()) return null;
+            if (!reader.Read())
+            {
+                LastFailure = $"No active user row for '{email}' on {conn.DataSource} / {conn.Database}";
+                return null;
+            }
             name = reader.GetString(0);
             mail = reader.GetString(1);
             hash = reader.GetString(2);
             roleText = reader.GetString(3);
         }
 
-        if (!PasswordHasher.Verify(password, hash)) return null;
-        if (!Enum.TryParse<UserRole>(roleText, out var role)) return null;
+        if (!PasswordHasher.Verify(password, hash))
+        {
+            LastFailure = $"Hash mismatch. Typed password length {password.Length}, stored hash length {hash.Length}, server {conn.DataSource}";
+            return null;
+        }
+        if (!Enum.TryParse<UserRole>(roleText, out var role))
+        {
+            LastFailure = $"Unreadable role '{roleText}'";
+            return null;
+        }
 
         UserRepository.RecordLogin(conn, mail);   // shows up as "Last login" in User Management
         return new UserAccount(name, mail, role);

@@ -110,7 +110,7 @@ internal partial class LoginForm : Form
         if (user is null)
         {
             errorLabel.Text = "Incorrect email or password.";
-            AuditLog.RecordFailedLogin(email);
+            AuditLog.RecordFailedLogin(email, Auth.LastFailure);
             return;
         }
 
