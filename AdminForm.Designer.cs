@@ -1615,7 +1615,7 @@ namespace MyApp
             activityTitle.Name = "activityTitle";
             activityTitle.Size = new Size(178, 34);
             activityTitle.TabIndex = 0;
-            activityTitle.Text = "Recent Activity / Audit Trail";
+            activityTitle.Text = "Recent Activity";
             activityTitle.TextAlign = ContentAlignment.MiddleLeft;
             activityTitle.UseMnemonic = false;
             // 
@@ -1642,7 +1642,8 @@ namespace MyApp
             activityLink.ForeColor = Color.FromArgb(58, 123, 213);
             activityLink.Location = new Point(206, 0);
             activityLink.Name = "activityLink";
-            activityLink.Size = new Size(62, 34);
+            activityLink.AutoEllipsis = false;
+            activityLink.Size = new Size(76, 34);
             activityLink.TabIndex = 2;
             activityLink.Text = "View All →";
             activityLink.TextAlign = ContentAlignment.MiddleRight;

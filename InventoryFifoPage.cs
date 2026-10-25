@@ -138,6 +138,17 @@ internal partial class InventoryFifoPage : UserControl
         Apply();
     }
 
+    /// <summary>Shows just the lines for one product (used when an alert on the dashboard is clicked).</summary>
+    public void ShowItem(string name)
+    {
+        categoryFilter.SelectedIndex = 0;
+        supplierFilter.SelectedIndex = 0;
+        stockStatusFilter.SelectedIndex = 0;
+        _page = 1;
+        inventorySearch.Box.Text = name;
+        Apply();
+    }
+
     /// <summary>True when there is at least one expired batch (the Alerts "View All" link then shows those first).</summary>
     public bool HasExpired => _all.Any(r => r.Expiry is DateTime e && e.Date < DateTime.Today);
 

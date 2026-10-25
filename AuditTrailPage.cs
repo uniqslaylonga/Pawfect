@@ -174,6 +174,13 @@ internal partial class AuditTrailPage : UserControl
         ApplyActivityFilter();
     }
 
+    /// <summary>Clears every filter, then searches for this text (used when a dashboard activity row is clicked).</summary>
+    public void ShowOnly(string text)
+    {
+        ResetFilters();
+        activitySearch.Box.Text = text;   // typing into the box applies the filter
+    }
+
     /// <summary>Clears the date range, drop-downs, search and quick filters.</summary>
     public void ResetFilters()
     {

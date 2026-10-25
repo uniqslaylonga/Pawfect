@@ -17,6 +17,18 @@ internal sealed class DashboardRowView : Control
     private readonly string _detail;
     private readonly string _meta;
     private readonly Color _tint;
+    private bool _hover;
+    private bool _clickable;
+
+    /// <summary>When true the row shows a hand cursor and a light highlight under the mouse; the owner handles Click.</summary>
+    public bool Clickable
+    {
+        get => _clickable;
+        set { _clickable = value; Cursor = value ? Cursors.Hand : Cursors.Default; Invalidate(); }
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hover = true; if (_clickable) Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = false; if (_clickable) Invalidate(); }
 
     public DashboardRowView(string title, string detail, string meta, Color tint)
     {
@@ -35,7 +47,7 @@ internal sealed class DashboardRowView : Control
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        using (var bg = new SolidBrush(Color.White))
+        using (var bg = new SolidBrush(_hover && _clickable ? Color.FromArgb(244, 248, 254) : Color.White))
             g.FillRectangle(bg, ClientRectangle);
         using (var line = new Pen(Theme.Border))
             g.DrawLine(line, 0, Height - 1, Width, Height - 1);

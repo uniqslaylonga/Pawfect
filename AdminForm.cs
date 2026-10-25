@@ -286,6 +286,39 @@ internal partial class AdminForm : Form
         _alertsList = AddList(alertsCard);
         _activityList = AddList(activityCard);
         Ui.MakeClickable(activityLink, (_, _) => ShowPage(AdminPage.Audit));   // "View All →"
+
+        // The mouse wheel scrolls whichever of the two lists the pointer is over (a plain panel only reacts when it has focus).
+        var wheel = new WheelScroller(this, () => new[] { _alertsList, _activityList });
+        Application.AddMessageFilter(wheel);
+        FormClosed += (_, _) => Application.RemoveMessageFilter(wheel);
+    }
+
+    /// <summary>Routes mouse-wheel turns to the dashboard list under the pointer.</summary>
+    private sealed class WheelScroller : IMessageFilter
+    {
+        private const int WM_MOUSEWHEEL = 0x020A;
+        private readonly Form _form;
+        private readonly Func<Panel?[]> _lists;
+
+        public WheelScroller(Form form, Func<Panel?[]> lists) { _form = form; _lists = lists; }
+
+        public bool PreFilterMessage(ref Message m)
+        {
+            if (m.Msg != WM_MOUSEWHEEL || !ReferenceEquals(Form.ActiveForm, _form)) return false;
+
+            var pointer = Cursor.Position;
+            foreach (var list in _lists())
+            {
+                if (list is null || !list.IsHandleCreated || !list.Visible || !list.VerticalScroll.Visible) continue;
+                if (!list.RectangleToScreen(list.ClientRectangle).Contains(pointer)) continue;
+
+                int delta = (short)((m.WParam.ToInt64() >> 16) & 0xFFFF);   // 120 per notch, positive = wheel up
+                int offset = -list.AutoScrollPosition.Y;
+                list.AutoScrollPosition = new Point(0, Math.Max(0, offset - delta * DashboardRowView.RowHeight / 120));
+                return true;
+            }
+            return false;
+        }
     }
 
     private enum GrossPeriod { Daily, Weekly, Monthly }
@@ -308,6 +341,7 @@ internal partial class AdminForm : Form
     /// <summary>Rebuilds a list; with no rows it hides the list and shows the card's empty-state message instead.</summary>
     private static void FillList(Panel list, EmptyState empty, IReadOnlyList<DashboardRowView> rows)
     {
+        int keepScroll = -list.AutoScrollPosition.Y;   // the dashboard refreshes now and then: stay where the admin scrolled to
         list.SuspendLayout();
         foreach (var old in list.Controls.OfType<DashboardRowView>().ToList())
         {
@@ -321,8 +355,8 @@ internal partial class AdminForm : Form
             rows[i].Dock = DockStyle.Top;
             list.Controls.Add(rows[i]);
         }
-        list.AutoScrollPosition = Point.Empty;
         list.ResumeLayout(true);
+        list.AutoScrollPosition = new Point(0, keepScroll);
 
         list.Visible = rows.Count > 0;
         empty.Visible = rows.Count == 0;
@@ -513,7 +547,7 @@ internal partial class AdminForm : Form
             _snapshot = AdminStats.GetSnapshot();
             ApplySnapshot(_snapshot);
             ApplyAlerts(AdminStats.GetAlerts());
-            ApplyActivity(AuditLog.GetRecent(8));
+            ApplyActivity(AuditLog.GetRecent(30));
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
@@ -585,28 +619,53 @@ internal partial class AdminForm : Form
     {
         if (_alertsList is null) return;
 
-        var rows = alerts.Select(a => new DashboardRowView(a.Title, a.Detail, a.Meta, a.Kind switch
+        var rows = alerts.Select(a =>
         {
-            AlertKind.OutOfStock => Theme.Danger,
-            AlertKind.LowStock => Theme.Orange,
-            AlertKind.Waiting => Theme.Primary,
-            _ => Theme.Purple,
-        })).ToList();
+            var row = new DashboardRowView(a.Title, a.Detail, a.Meta, a.Kind switch
+            {
+                AlertKind.OutOfStock => Theme.Danger,
+                AlertKind.LowStock => Theme.Orange,
+                AlertKind.Waiting => Theme.Primary,
+                _ => Theme.Purple,
+            });
+            if (AlertAction(a) is { } open)
+            {
+                row.Clickable = true;
+                row.Click += (_, _) => open();
+            }
+            return row;
+        }).ToList();
 
         FillList(_alertsList, alertsEmpty, rows);
     }
+
+    /// <summary>What clicking an alert does: stock alerts open that product in Inventory, the others open the page that shows them.</summary>
+    private Action? AlertAction(DashAlert a) => a.Kind switch
+    {
+        AlertKind.OutOfStock or AlertKind.LowStock when a.Meta == "Product" => () => { ShowPage(AdminPage.Inventory); inventoryPage.ShowItem(a.Title); },
+        AlertKind.Waiting => () => ShowPage(AdminPage.Audit),     // its "Pending" tile counts the requests waiting
+        AlertKind.Reversed => () => ShowPage(AdminPage.Reports),  // sales audit log
+        _ => null,
+    };
 
     private void ApplyActivity(List<AuditLog.Entry> entries)
     {
         if (_activityList is null) return;
 
         var culture = System.Globalization.CultureInfo.CurrentCulture;
-        var rows = entries.Select(e => new DashboardRowView(
-            e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
-            e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
-            (e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) || e.Action.Contains("Removed", StringComparison.OrdinalIgnoreCase)) ? Theme.Danger
-            : e.Action.Contains("Created", StringComparison.OrdinalIgnoreCase) ? Theme.Green
-            : Theme.Primary)).ToList();
+        var rows = entries.Select(e =>
+        {
+            var row = new DashboardRowView(
+                e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
+                e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
+                (e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) || e.Action.Contains("Removed", StringComparison.OrdinalIgnoreCase)) ? Theme.Danger
+                : e.Action.Contains("Created", StringComparison.OrdinalIgnoreCase) ? Theme.Green
+                : Theme.Primary);
+            row.Clickable = true;
+            // Opens the Audit Trail showing just this entry (its full text is there, the row only has room for part of it).
+            row.Click += (_, _) => { ShowPage(AdminPage.Audit); auditPage.ShowOnly(e.Details.Length > 0 ? e.Details : e.Action); };
+            return row;
+        }).ToList();
 
         FillList(_activityList, activityEmpty, rows);
     }
