@@ -224,21 +224,52 @@ internal sealed class LineChart : ChartBase
     }
 }
 
-/// <summary>Grouped bar chart (Revenue Overview). One group per x label, one bar per series.</summary>
+/// <summary>Grouped bar chart (Revenue Overview). One group per x label, one bar per series. Hover a month to see its totals.</summary>
 internal sealed class BarChart : ChartBase
 {
     private List<string> _labels = new();
     private List<BarSeries> _series = new();
+    private int _hot = -1;
+    private Rectangle _plot;
+    private double _axisMax = 1;
 
     /// <summary>Draws one group of bars per label, one bar in each series' colour.</summary>
     public void SetData(IReadOnlyList<string> labels, IEnumerable<BarSeries> series)
     {
         _labels = labels.ToList();
         _series = series.ToList();
+        _hot = -1;
         Invalidate();
     }
 
     public void Clear() => SetData(Array.Empty<string>(), Array.Empty<BarSeries>());
+
+    private double ValueAt(BarSeries s, int i) => i < s.Values.Count ? s.Values[i] : 0;
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        int hot = -1;
+        if (_labels.Count > 0 && _plot.Width > 0 && e.X >= _plot.Left && e.X <= _plot.Right &&
+            e.Y >= _plot.Top && e.Y <= _plot.Bottom + 26)
+            hot = Math.Clamp((int)((e.X - _plot.Left) / ((float)_plot.Width / _labels.Count)), 0, _labels.Count - 1);
+
+        if (hot != _hot)
+        {
+            _hot = hot;
+            Invalidate();
+        }
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_hot != -1)
+        {
+            _hot = -1;
+            Invalidate();
+        }
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -248,36 +279,109 @@ internal sealed class BarChart : ChartBase
         double top = _series.Count == 0 ? 0 : _series.Max(s => s.Values.Count == 0 ? 0 : s.Values.Max());
         if (_labels.Count == 0 || top <= 0)
         {
+            _plot = Rectangle.Empty;
             DrawEmpty(g);
             return;
         }
 
-        double axisMax = NiceMax(top, out int steps);
-        var plot = PlotAreaFor(GutterFor(axisMax));
-        if (plot.Width < 40 || plot.Height < 40) return;
+        _axisMax = NiceMax(top, out int steps);
+        _plot = PlotAreaFor(GutterFor(_axisMax));
+        if (_plot.Width < 40 || _plot.Height < 40) return;
 
-        DrawAxes(g, plot, axisMax, steps, _labels);
+        DrawAxes(g, _plot, _axisMax, steps, _labels);
 
-        float slot = (float)plot.Width / _labels.Count;
+        float slot = (float)_plot.Width / _labels.Count;
         const float gap = 3f;
         float barW = Math.Min(16f, slot / (_series.Count + 1.5f));
         float groupW = barW * _series.Count + gap * Math.Max(0, _series.Count - 1);
 
+        // A soft band behind the month under the mouse.
+        if (_hot >= 0)
+        {
+            using var band = new SolidBrush(Theme.Subtle);
+            g.FillRectangle(band, _plot.Left + _hot * slot, _plot.Top, slot, _plot.Height);
+            using var grid = new Pen(Theme.Border);
+            g.DrawLine(grid, _plot.Left + _hot * slot, _plot.Bottom, _plot.Left + (_hot + 1) * slot, _plot.Bottom);
+        }
+
+        float hotTop = _plot.Bottom;
+        float hotLeft = 0, hotRight = 0;
         for (int i = 0; i < _labels.Count; i++)
         {
-            float x = plot.Left + i * slot + (slot - groupW) / 2f;
+            float x = _plot.Left + i * slot + (slot - groupW) / 2f;
+            if (i == _hot) { hotLeft = x; hotRight = x + groupW; }
             foreach (var s in _series)
             {
-                double v = i < s.Values.Count ? s.Values[i] : 0;
+                double v = ValueAt(s, i);
                 if (v > 0)
                 {
-                    float h = Math.Max(1f, (float)(v / axisMax * plot.Height));
-                    using var path = Ui.RoundRect(new RectangleF(x, plot.Bottom - h, barW, h), 3);
+                    float h = Math.Max(1f, (float)(v / _axisMax * _plot.Height));
+                    if (i == _hot) hotTop = Math.Min(hotTop, _plot.Bottom - h);
+                    using var path = Ui.RoundRect(new RectangleF(x, _plot.Bottom - h, barW, h), 3);
                     using var brush = new SolidBrush(s.Tint);
                     g.FillPath(brush, path);
                 }
                 x += barW + gap;
             }
         }
+
+        if (_hot >= 0) DrawTooltip(g, _hot, hotLeft, hotRight, hotTop);
+    }
+
+    /// <summary>Month name, each series' amount and the month's total, in the same dark style as the line chart's tooltip.</summary>
+    private void DrawTooltip(Graphics g, int index, float groupLeft, float groupRight, float barsTop)
+    {
+        var titleFont = Theme.Face(7.5f);
+        var rowFont = Theme.Face(8f);
+        var totalFont = Theme.Face(9f, FontStyle.Bold);
+
+        var rows = _series.Select(s => (s.Name, Peso(ValueAt(s, index)), s.Tint)).ToList();
+        string totalText = Peso(_series.Sum(s => ValueAt(s, index)));
+
+        const TextFormatFlags measure = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+        Size M(string t, Font f) => TextRenderer.MeasureText(t, f, new Size(int.MaxValue, int.MaxValue), measure);
+
+        int nameW = rows.Count == 0 ? 0 : rows.Max(r => M(r.Name, rowFont).Width);
+        int valueW = Math.Max(rows.Count == 0 ? 0 : rows.Max(r => M(r.Item2, rowFont).Width), M(totalText, totalFont).Width);
+        int w = Math.Max(M(_labels[index], titleFont).Width + 4, 12 + nameW + 14 + valueW) + 22;
+        int h = 8 + 14 + rows.Count * 16 + 6 + 20 + 6;
+
+        // Above the bars; when they reach the top of the chart, beside the month instead.
+        float x = Math.Clamp((groupLeft + groupRight) / 2f - w / 2f, 0, Math.Max(0, Width - w));
+        float y = barsTop - h - 10;
+        if (y < 0)
+        {
+            y = Math.Max(0, _plot.Top + 2);
+            x = groupLeft - w - 10 >= 0 ? groupLeft - w - 10 : Math.Min(groupRight + 10, Math.Max(0, Width - w));
+        }
+
+        using (var path = Ui.RoundRect(new RectangleF(x, y, w, h), 6))
+        using (var back = new SolidBrush(Theme.Text))
+            g.FillPath(back, path);
+
+        const TextFormatFlags left = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
+                                     TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+        const TextFormatFlags right = TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
+                                      TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+        var soft = Color.FromArgb(190, 200, 214);
+        int ix = (int)x + 11, iw = w - 22, iy = (int)y + 8;
+
+        TextRenderer.DrawText(g, _labels[index], titleFont, new Rectangle(ix, iy, iw, 14), soft, left);
+        iy += 14;
+        foreach (var (name, value, tint) in rows)
+        {
+            using (var dot = new SolidBrush(tint))
+                g.FillEllipse(dot, ix, iy + 4, 8, 8);
+            TextRenderer.DrawText(g, name, rowFont, new Rectangle(ix + 14, iy, iw - 14, 16), soft, left);
+            TextRenderer.DrawText(g, value, rowFont, new Rectangle(ix, iy, iw, 16), Color.White, right);
+            iy += 16;
+        }
+
+        iy += 3;
+        using (var line = new Pen(Color.FromArgb(70, 255, 255, 255)))
+            g.DrawLine(line, ix, iy, ix + iw, iy);
+        iy += 3;
+        TextRenderer.DrawText(g, "Total", totalFont, new Rectangle(ix, iy, iw, 20), Color.White, left);
+        TextRenderer.DrawText(g, totalText, totalFont, new Rectangle(ix, iy, iw, 20), Color.White, right);
     }
 }

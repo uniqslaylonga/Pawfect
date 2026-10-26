@@ -302,6 +302,12 @@ internal partial class AdminForm : Form
         revenueSubtitle.Text = "Services vs. retail gross revenue (₱), last 6 months";
         dailyLegend.Text = "Services";
         weeklyLegend.Text = "Retail";
+        // The designer sized these for "Daily" / "Weekly", which cut "Services" down to "Servic": fit each label to its text.
+        foreach (var legend in new[] { dailyLegend, weeklyLegend })
+            legend.Width = TextRenderer.MeasureText(legend.Text, legend.Font, new Size(int.MaxValue, int.MaxValue),
+                TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Width + 8;
+        revenueLegend.Width = dailyDot.Width + dailyLegend.Width + dailyLegend.Margin.Horizontal +
+                              weeklyDot.Width + weeklyLegend.Width + weeklyLegend.Margin.Horizontal + 6;   // as wide as its content, so the title keeps the rest
         monthlyDot.Visible = false;
         monthlyLegend.Visible = false;
 
