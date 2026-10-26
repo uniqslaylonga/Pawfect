@@ -66,6 +66,28 @@ CREATE TABLE dbo.StockBatches
     QtyRemaining INT           NOT NULL,
     CreatedAt    DATETIME2     NOT NULL CONSTRAINT DF_StockBatches_CreatedAt DEFAULT SYSUTCDATETIME()
 );",
+            // An older StockBatches table may already exist without the newer columns: add whatever is missing.
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'BatchNo') IS NULL
+    ALTER TABLE dbo.StockBatches ADD BatchNo NVARCHAR(40) NOT NULL CONSTRAINT DF_StockBatches_BatchNo DEFAULT N'OPENING';",
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'Supplier') IS NULL
+    ALTER TABLE dbo.StockBatches ADD Supplier NVARCHAR(100) NULL;",
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'ReceivedDate') IS NULL
+    ALTER TABLE dbo.StockBatches ADD ReceivedDate DATE NOT NULL CONSTRAINT DF_StockBatches_ReceivedDate DEFAULT CAST(SYSDATETIME() AS DATE);",
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'ExpiryDate') IS NULL
+    ALTER TABLE dbo.StockBatches ADD ExpiryDate DATE NULL;",
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'QtyReceived') IS NULL
+    ALTER TABLE dbo.StockBatches ADD QtyReceived INT NOT NULL CONSTRAINT DF_StockBatches_QtyReceived DEFAULT 0;",
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'QtyRemaining') IS NULL
+    ALTER TABLE dbo.StockBatches ADD QtyRemaining INT NOT NULL CONSTRAINT DF_StockBatches_QtyRemaining DEFAULT 0;",
+            @"
+IF OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'CreatedAt') IS NULL
+    ALTER TABLE dbo.StockBatches ADD CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_StockBatches_CreatedAt2 DEFAULT SYSUTCDATETIME();",
             @"
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StockBatches_Product' AND object_id = OBJECT_ID(N'dbo.StockBatches'))
     CREATE INDEX IX_StockBatches_Product ON dbo.StockBatches (ProductId, ReceivedDate, BatchId) INCLUDE (QtyRemaining);",

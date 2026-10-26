@@ -106,7 +106,7 @@ internal static class ReportsData
 SELECT
   CASE WHEN OBJECT_ID(N'dbo.Transactions', N'U') IS NULL THEN 0 ELSE 1 END,
   CASE WHEN OBJECT_ID(N'dbo.TransactionLines', N'U') IS NULL THEN 0 ELSE 1 END,
-  CASE WHEN OBJECT_ID(N'dbo.StockBatches', N'U') IS NULL THEN 0 ELSE 1 END,
+  CASE WHEN OBJECT_ID(N'dbo.StockBatches', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'QtyReceived') IS NOT NULL AND COL_LENGTH(N'dbo.StockBatches', N'QtyRemaining') IS NOT NULL THEN 1 ELSE 0 END,
   CASE WHEN COL_LENGTH(N'dbo.Products', N'UnitCost') IS NULL THEN 0 ELSE 1 END,
   CASE WHEN COL_LENGTH(N'dbo.Transactions', N'StockDeducted') IS NULL THEN 0 ELSE 1 END,
   CASE WHEN COL_LENGTH(N'dbo.Products', N'QtyOnHand') IS NULL THEN 0 ELSE 1 END,
