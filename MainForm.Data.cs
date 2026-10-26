@@ -79,9 +79,6 @@ internal partial class MainForm
         lookupPage.ExportPetsRequested += (_, _) => ExportPets();
 
         addCustomerTile.Click += (_, _) => AddCustomer();
-        updateInventoryTile.Click += (_, _) => Msg.Show(this,
-            "Stock levels and batches are managed by an admin (Inventory & FIFO).\n\nYou can sell products from Counter POS & Billing.",
-            "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
         generateReportTile.Click += (_, _) => ExportTodaySales();
     }
 

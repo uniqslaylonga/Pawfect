@@ -140,7 +140,6 @@ namespace MyApp
             quickGrid = new TableLayoutPanel();
             viewAppointmentsTile = new MyApp.Controls.ActionTile();
             addCustomerTile = new MyApp.Controls.ActionTile();
-            updateInventoryTile = new MyApp.Controls.ActionTile();
             generateReportTile = new MyApp.Controls.ActionTile();
             quickHeader = new Panel();
             quickTitle = new Label();
@@ -1930,8 +1929,8 @@ namespace MyApp
             quickGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             quickGrid.Controls.Add(viewAppointmentsTile, 0, 0);
             quickGrid.Controls.Add(addCustomerTile, 1, 0);
-            quickGrid.Controls.Add(updateInventoryTile, 0, 1);
-            quickGrid.Controls.Add(generateReportTile, 1, 1);
+            quickGrid.Controls.Add(generateReportTile, 0, 1);
+            quickGrid.SetColumnSpan(generateReportTile, 2);
             quickGrid.Dock = DockStyle.Fill;
             quickGrid.Location = new Point(16, 46);
             quickGrid.Margin = new Padding(0);
@@ -1968,29 +1967,16 @@ namespace MyApp
             addCustomerTile.TabIndex = 1;
             addCustomerTile.Text = "Add Customer";
             // 
-            // updateInventoryTile
-            // 
-            updateInventoryTile.BackColor = Color.White;
-            updateInventoryTile.Dock = DockStyle.Fill;
-            updateInventoryTile.Font = new Font("Segoe UI", 8.5F);
-            updateInventoryTile.Glyph = "";
-            updateInventoryTile.Location = new Point(0, 62);
-            updateInventoryTile.Margin = new Padding(0, 0, 8, 0);
-            updateInventoryTile.Name = "updateInventoryTile";
-            updateInventoryTile.Size = new Size(146, 63);
-            updateInventoryTile.TabIndex = 2;
-            updateInventoryTile.Text = "Update Inventory";
-            // 
             // generateReportTile
             // 
             generateReportTile.BackColor = Color.White;
             generateReportTile.Dock = DockStyle.Fill;
             generateReportTile.Font = new Font("Segoe UI", 8.5F);
             generateReportTile.Glyph = "";
-            generateReportTile.Location = new Point(154, 62);
+            generateReportTile.Location = new Point(0, 62);
             generateReportTile.Margin = new Padding(0);
             generateReportTile.Name = "generateReportTile";
-            generateReportTile.Size = new Size(154, 63);
+            generateReportTile.Size = new Size(308, 63);
             generateReportTile.TabIndex = 3;
             generateReportTile.Text = "Generate Report";
             // 
@@ -2578,7 +2564,6 @@ namespace MyApp
         private System.Windows.Forms.TableLayoutPanel quickGrid;
         private MyApp.Controls.ActionTile viewAppointmentsTile;
         private MyApp.Controls.ActionTile addCustomerTile;
-        private MyApp.Controls.ActionTile updateInventoryTile;
         private MyApp.Controls.ActionTile generateReportTile;
         private System.Windows.Forms.Panel quickHeader;
         private System.Windows.Forms.Label quickTitle;
