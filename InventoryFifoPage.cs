@@ -196,9 +196,14 @@ internal partial class InventoryFifoPage : UserControl
              r.BatchNo.Contains(q, StringComparison.OrdinalIgnoreCase) ||
              r.Supplier.Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
 
-        int pages = Math.Max(1, (int)Math.Ceiling(shown.Count / (double)PageSize));
+        // "All Categories" lists every category one after another (grouped, A-Z), 10 lines per page, so the pager works.
+        if (category is null)
+            shown = shown.OrderBy(r => r.Category, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+        int pageSize = PageSize;
+        int pages = Math.Max(1, (int)Math.Ceiling(shown.Count / (double)pageSize));
         _page = Math.Clamp(_page, 1, pages);
-        var slice = shown.Skip((_page - 1) * PageSize).Take(PageSize).ToList();
+        var slice = shown.Skip((_page - 1) * pageSize).Take(pageSize).ToList();
 
         inventoryRows.SuspendLayout();
         ClearRows(inventoryRows, inventoryEmpty);
@@ -217,8 +222,10 @@ internal partial class InventoryFifoPage : UserControl
 
         inventoryShowing.Text = shown.Count == 0
             ? "Showing 0 products"
-            : $"Showing {(_page - 1) * PageSize + 1} to {(_page - 1) * PageSize + slice.Count} of {shown.Count} entries";
+            : $"Showing {(_page - 1) * pageSize + 1} to {(_page - 1) * pageSize + slice.Count} of {shown.Count} entries";
         inventoryPageChip.Text = _page.ToString(CultureInfo.CurrentCulture);
+        inventoryPrevPage.Enabled = _page > 1;
+        inventoryNextPage.Enabled = _page < pages;
 
         ApplyTiles(today);
         ApplyLists(today);

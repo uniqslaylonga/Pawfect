@@ -411,6 +411,17 @@ internal sealed class VaccinationScanForm : DialogBase
                 return;
             }
 
+            // Dates that can't be true (a shot "given" in the future, or before the pet was born) mean the card is not accepted.
+            var wrongDates = PetCardMatch.WrongDates(card, stamped);
+            if (wrongDates.Count > 0)
+            {
+                Reject("Card not accepted: the card has wrong dates.");
+                using (var dialog = new CardMismatchDialog(wrongDates, "Vaccine card has wrong dates",
+                           "A vaccination can't be dated in the future or before birth.", "DATE ON CARD", "PROBLEM"))
+                    dialog.ShowDialog(this);
+                return;
+            }
+
             // A card with any vaccine that is no longer in date is not accepted.
             var expired = PetCardMatch.Expired(stamped);
             if (expired.Count > 0)

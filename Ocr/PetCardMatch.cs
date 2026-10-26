@@ -80,6 +80,30 @@ internal static class PetCardMatch
     }
 
     /// <summary>
+    /// Dates on the card that cannot be true: a vaccination "given" in the future, one dated before the pet was born,
+    /// or a birthdate that hasn't happened yet. A card with any of these is not accepted (retake the photo or ask the clinic to correct it).
+    /// Rows come back as (vaccine, date on the card, problem) for the pop-up. A date that couldn't be read is not judged here.
+    /// </summary>
+    public static List<PetMismatch> WrongDates(ScannedCard card, IEnumerable<ScannedVaccination> rows)
+    {
+        var today = DateTime.Today;
+        var wrong = new List<PetMismatch>();
+        if (card.BirthDate is { } birth && birth.Date > today)
+            wrong.Add(new PetMismatch("Birthdate", Day(birth), "In the future"));
+        foreach (var row in rows.Where(r => !string.IsNullOrWhiteSpace(r.Vaccine)))
+        {
+            if (row.Given is not { } given) continue;
+            if (given.Date > today)
+                wrong.Add(new PetMismatch(row.Vaccine.Trim(), Day(given), "In the future"));
+            else if (card.BirthDate is { } born && given.Date < born.Date)
+                wrong.Add(new PetMismatch(row.Vaccine.Trim(), Day(given), "Before birth"));
+        }
+        return wrong;
+    }
+
+    private static string Day(DateTime d) => d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+
+    /// <summary>
     /// Vaccines on the card that are no longer in date. Each vaccine is judged by its newest record, so an old shot that was already
     /// renewed on the same card doesn't count. An expiry date that couldn't be read can't be shown to be current, so it counts as lapsed.
     /// Rows come back as (vaccine, expiry date, status) for the pop-up.

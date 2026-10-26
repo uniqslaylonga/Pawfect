@@ -155,9 +155,17 @@ internal partial class ServiceCatalogPage : UserControl
              s.Category.Contains(q, StringComparison.OrdinalIgnoreCase) ||
              (s.Description ?? "").Contains(q, StringComparison.OrdinalIgnoreCase))).ToList();
 
-        int pages = Math.Max(1, (int)Math.Ceiling(shown.Count / (double)PageSize));
+        // "All Categories" lists every category one after another (grouped), 10 services per page, so the pager works.
+        if (category is null)
+        {
+            var order = categoryFilter.Items.ToList();   // drop-down order: Grooming, Health & Wellness, ...
+            shown = shown.OrderBy(s => { int i = order.IndexOf(s.Category); return i < 0 ? int.MaxValue : i; }).ToList();
+        }
+
+        int pageSize = PageSize;
+        int pages = Math.Max(1, (int)Math.Ceiling(shown.Count / (double)pageSize));
         _page = Math.Clamp(_page, 1, pages);
-        var slice = shown.Skip((_page - 1) * PageSize).Take(PageSize).ToList();
+        var slice = shown.Skip((_page - 1) * pageSize).Take(pageSize).ToList();
 
         serviceRows.SuspendLayout();
         ClearRows(serviceRows, serviceEmpty);
@@ -176,8 +184,10 @@ internal partial class ServiceCatalogPage : UserControl
 
         serviceShowing.Text = shown.Count == 0
             ? "Showing 0 services"
-            : $"Showing {(_page - 1) * PageSize + 1} to {(_page - 1) * PageSize + slice.Count} of {shown.Count} services";
+            : $"Showing {(_page - 1) * pageSize + 1} to {(_page - 1) * pageSize + slice.Count} of {shown.Count} services";
         servicePageChip.Text = _page.ToString(CultureInfo.CurrentCulture);
+        servicePrevPage.Enabled = _page > 1;
+        serviceNextPage.Enabled = _page < pages;
 
         ApplyTiles();
         ApplyCategories();
