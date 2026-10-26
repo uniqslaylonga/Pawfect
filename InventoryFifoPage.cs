@@ -61,7 +61,13 @@ internal partial class InventoryFifoPage : UserControl
         gridViewToggle.Click += (_, _) => SetView(list: false);
 
         inventorySearch.Box.TextChanged += (_, _) => { _page = 1; Apply(); };
-        categoryFilter.SelectedIndexChanged += (_, _) => { _page = 1; Apply(); };
+        categoryFilter.SelectedIndexChanged += (_, _) =>
+        {
+            // Choosing "All Categories" really shows everything: leftover search text / status / supplier are cleared too.
+            if (categoryFilter.SelectedIndex == 0) ClearOtherFilters();
+            _page = 1;
+            Apply();
+        };
         stockStatusFilter.SelectedIndexChanged += (_, _) => { _page = 1; Apply(); };
         supplierFilter.SelectedIndexChanged += (_, _) => { _page = 1; Apply(); };
         inventoryPrevPage.Click += (_, _) => { _page--; Apply(); };
@@ -109,6 +115,21 @@ internal partial class InventoryFifoPage : UserControl
         supplierFilter.SetItems(new[] { "All Suppliers" }.Concat(Distinct(rows.Select(r => r.Supplier))));
 
         Apply();
+    }
+
+    private bool _clearing;
+
+    private void ClearOtherFilters()
+    {
+        if (_clearing) return;
+        _clearing = true;
+        try
+        {
+            inventorySearch.Box.Text = "";
+            supplierFilter.SelectedIndex = 0;
+            stockStatusFilter.SelectedIndex = 0;
+        }
+        finally { _clearing = false; }
     }
 
     private static IEnumerable<string> Distinct(IEnumerable<string> values) =>

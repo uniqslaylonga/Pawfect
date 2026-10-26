@@ -67,7 +67,13 @@ internal partial class ServiceCatalogPage : UserControl
         gridViewToggle.Click += (_, _) => SetView(list: false);
 
         serviceSearch.Box.TextChanged += (_, _) => { _page = 1; Apply(); };
-        categoryFilter.SelectedIndexChanged += (_, _) => { _page = 1; Apply(); };
+        categoryFilter.SelectedIndexChanged += (_, _) =>
+        {
+            // Choosing "All Categories" really shows everything: leftover search text / size / status are cleared too.
+            if (categoryFilter.SelectedIndex == 0) ClearOtherFilters();
+            _page = 1;
+            Apply();
+        };
         sizeFilter.SelectedIndexChanged += (_, _) => { _page = 1; Apply(); };
         statusFilter.SelectedIndexChanged += (_, _) => { _page = 1; Apply(); };
         servicePrevPage.Click += (_, _) => { _page--; Apply(); };
@@ -106,7 +112,30 @@ internal partial class ServiceCatalogPage : UserControl
     {
         _all = services;
         _bookings = bookings;
+
+        // The four standard categories, plus any other category that exists in the data, so nothing is left out of the drop-down.
+        var known = new[] { "Grooming", "Health & Wellness", "Add-ons", "Others" };
+        var extra = services.Select(s => s.Category).Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Except(known, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.CurrentCultureIgnoreCase);
+        categoryFilter.SetItems(new[] { "All Categories" }.Concat(known).Concat(extra));
+
         Apply();
+    }
+
+    private bool _clearing;
+
+    private void ClearOtherFilters()
+    {
+        if (_clearing) return;
+        _clearing = true;
+        try
+        {
+            serviceSearch.Box.Text = "";
+            sizeFilter.SelectedIndex = 0;
+            statusFilter.SelectedIndex = 0;
+        }
+        finally { _clearing = false; }
     }
 
     private int BookingsOf(ServiceRepository.ServiceRow s) => _bookings.TryGetValue(s.Id, out var b) ? b.Total : 0;
