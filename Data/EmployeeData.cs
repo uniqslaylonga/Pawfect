@@ -42,6 +42,7 @@ internal static class EmployeeData
         var conn = new SqlConnection(Database.ConnectionString);
         conn.Open();
         EnsureQueueColumn(conn);
+        ProductSchema.Ensure(conn);          // Products.Code etc., for databases built from a different script
         ServicePricing.EnsureSchema(conn);   // Services.Species / MinKg / MaxKg for weight-based prices
         return conn;
     }

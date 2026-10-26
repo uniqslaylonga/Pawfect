@@ -36,6 +36,7 @@ internal static class InventoryData
 
     private static void EnsureSchema(SqlConnection conn)
     {
+        ProductSchema.Ensure(conn);   // Code / Name / Category / Price / IsActive, if this database lacks them
         if (_schemaChecked) return;
 
         string[] steps =
