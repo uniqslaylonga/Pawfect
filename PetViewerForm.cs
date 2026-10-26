@@ -343,7 +343,6 @@ internal sealed class PetViewerForm : Form
             ("Gender", Or(pet.Gender)),
             ("Birthday", BirthdayText(pet.BirthDate)),
             ("Weight", pet.WeightKg is decimal kg ? $"{kg:0.##} kg" : "Not set"),
-            ("Color", Or(pet.CoatColor)),
             ("Notes", Or(pet.Notes)),
         });
     }
@@ -445,10 +444,9 @@ internal sealed class PetViewerForm : Form
 
     private void AddPet()
     {
-        using var form = new PetForm(_customerId, _ownerName);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
+        if (StaffPetFlow.AddPet(this, _customerId, _ownerName) is not int newPetId) return;
         PetsChanged = true;
-        SaveThenReload(form.CreatedPetId ?? 0, () => { });
+        SaveThenReload(newPetId, () => { });
     }
 
     private void SaveThenReload(int keepPetId, Action save)

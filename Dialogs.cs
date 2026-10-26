@@ -180,7 +180,7 @@ internal abstract class DialogBase : Form
             MessageBoxButtons.OK, MessageBoxIcon.Error);
 }
 
-/// <summary>Adds a customer (and optionally their first pet), or edits an existing customer.</summary>
+/// <summary>Adds a customer, or edits an existing customer. Pets are added afterwards with Add pet (details + card scan).</summary>
 internal sealed class CustomerForm : DialogBase
 {
     private readonly CustomerRecord? _existing;
@@ -188,15 +188,12 @@ internal sealed class CustomerForm : DialogBase
     private readonly TextBox _phone = new();
     private readonly TextBox _email = new();
     private readonly TextBox _address = new();
-    private readonly TextBox _petName = new();
-    private readonly TextBox _petSpecies = new();
-    private readonly TextBox _petBreed = new();
 
     public int? CreatedCustomerId { get; private set; }
 
     public CustomerForm(CustomerRecord? existing = null)
         : base(existing is null ? "Add Customer" : "Edit Customer", "Save", "\uE77B",
-              existing is null ? "Enter the owner's details (and a first pet, if you like)" : "Update the owner's details")
+              existing is null ? "Enter the owner's details" : "Update the owner's details")
     {
         _existing = existing;
 
@@ -208,15 +205,7 @@ internal sealed class CustomerForm : DialogBase
         AddRow("Email", _email);
         AddRow("Address", _address);
 
-        if (existing is null)
-        {
-            AddRow("First pet", _petName);
-            AddRow("Species", _petSpecies);
-            AddRow("Breed", _petBreed);
-            _petName.PlaceholderText = "Optional";
-            _petSpecies.PlaceholderText = "e.g. Dog, Cat";
-        }
-        else
+        if (existing is not null)
         {
             _name.Text = existing.Name;
             _phone.Text = existing.Phone;
@@ -244,8 +233,7 @@ internal sealed class CustomerForm : DialogBase
         {
             if (_existing is null)
             {
-                CreatedCustomerId = EmployeeData.AddCustomer(_name.Text, _phone.Text, _email.Text, _address.Text,
-                    _petName.Text, _petSpecies.Text, _petBreed.Text);
+                CreatedCustomerId = EmployeeData.AddCustomer(_name.Text, _phone.Text, _email.Text, _address.Text);
             }
             else
             {

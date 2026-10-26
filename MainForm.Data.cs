@@ -571,8 +571,7 @@ internal partial class MainForm
 
     private void AddPetTo(int customerId, string ownerName)
     {
-        using var form = new PetForm(customerId, ownerName);
-        if (form.ShowDialog(this) != DialogResult.OK) return;
+        if (StaffPetFlow.AddPet(this, customerId, ownerName) is null) return;
         RefreshSoon();
     }
 
