@@ -16,6 +16,8 @@ internal sealed class AddStockDialog : DialogBase
 
     /// <summary>What was added, e.g. "Added 12 x Dog Shampoo (P0001) in batch B20261021-001. Now 20 in stock." Written to the audit log.</summary>
     public string? Summary { get; private set; }
+    /// <summary>The product that received stock, for the audit log reference.</summary>
+    public int ProductId { get; private set; }
 
     public AddStockDialog(int? productId = null)
         : base("Update Stock", "Add Stock", "\uE719", "Record a delivery as a new batch")
@@ -73,6 +75,7 @@ internal sealed class AddStockDialog : DialogBase
         try
         {
             var (now, batchNo) = InventoryData.ReceiveBatch(product.Id, quantity, batchBox.Text, supplierBox.Text, received, expiry);
+            ProductId = product.Id;
             Summary = $"Added {quantity} x {product.Name} ({product.Code}) in batch {batchNo}. Now {now} in stock.";
             DialogResult = DialogResult.OK;
         }

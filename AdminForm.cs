@@ -59,7 +59,7 @@ internal partial class AdminForm : Form
             using var dlg = new ProductDialog();
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                AuditLog.Record(CurrentUser, "Product Created", $"Added product {dlg.SavedName}");
+                AuditLog.Record(CurrentUser, "Product Created", $"Added product {dlg.SavedName} (#{dlg.SavedId})");
                 RefreshInventory();
                 RefreshDashboard();
             }
@@ -116,7 +116,7 @@ internal partial class AdminForm : Form
             using var dlg = new AddUserDialog();
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                AuditLog.Record(CurrentUser, "User Created", $"Created account {dlg.CreatedEmail}");
+                AuditLog.Record(CurrentUser, "User Created", $"Created account {dlg.CreatedEmail} (#{dlg.CreatedId})");
                 RefreshUsers();
                 RefreshDashboard();
             }
@@ -168,9 +168,9 @@ internal partial class AdminForm : Form
             using var dlg = new EmployeeDialog();
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                AuditLog.Record(CurrentUser, "Employee Created", $"Added {dlg.SavedName} ({dlg.SavedRole})");
+                AuditLog.Record(CurrentUser, "Employee Created", $"Added {dlg.SavedName} ({dlg.SavedRole}) (#{dlg.SavedId})");
                 if (dlg.CreatedLoginEmail is { } login)
-                    AuditLog.Record(CurrentUser, "User Created", $"Created account {login}");
+                    AuditLog.Record(CurrentUser, "User Created", $"Created account {login} (#{dlg.CreatedLoginId})");
                 RefreshUsers();
                 RefreshDashboard();
             }
@@ -223,7 +223,7 @@ internal partial class AdminForm : Form
             using var dlg = new ServiceDialog();
             if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                AuditLog.Record(CurrentUser, "Service Created", $"Added service {dlg.SavedName}");
+                AuditLog.Record(CurrentUser, "Service Created", $"Added service {dlg.SavedName} (#{dlg.SavedId})");
                 RefreshServices();
             }
         };
@@ -485,7 +485,7 @@ internal partial class AdminForm : Form
             using var dlg = new AddStockDialog(productId);
             if (dlg.ShowDialog(this) == DialogResult.OK && dlg.Summary is { } summary)
             {
-                AuditLog.Record(CurrentUser, "Stock Added", summary);
+                AuditLog.Record(CurrentUser, "Stock Added", $"{summary} (Product #{dlg.ProductId})");
                 RefreshInventory();
                 RefreshDashboard();
                 Msg.Show(this, summary, "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);

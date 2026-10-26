@@ -328,7 +328,7 @@ internal static class ServiceRepository
     }
 
     /// <summary>Throws SqlException 2627/2601 if this name and size already exist.</summary>
-    public static void Add(string name, string category, string size, string? description, decimal price, int minutes,
+    public static int Add(string name, string category, string size, string? description, decimal price, int minutes,
         string species = "Both", decimal? minKg = null, decimal? maxKg = null)
     {
         using var conn = new SqlConnection(Database.ConnectionString);
@@ -337,9 +337,9 @@ internal static class ServiceRepository
 
         using var cmd = new SqlCommand(
             "INSERT INTO dbo.Services (Name, Category, Size, Description, Price, DurationMinutes, Species, MinKg, MaxKg) " +
-            "VALUES (@n, @c, @s, @d, @p, @m, @sp, @min, @max)", conn);
+            "OUTPUT INSERTED.ServiceId VALUES (@n, @c, @s, @d, @p, @m, @sp, @min, @max)", conn);
         Fill(cmd, name, category, size, description, price, minutes, species, minKg, maxKg);
-        cmd.ExecuteNonQuery();
+        return (int)cmd.ExecuteScalar()!;
     }
 
     /// <summary>Throws SqlException 2627/2601 if this name and size are taken.</summary>

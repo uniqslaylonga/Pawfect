@@ -585,7 +585,7 @@ internal partial class MainForm
         {
             using var form = new NewAppointmentForm(CurrentUser?.Email ?? "", customerId);
             if (form.ShowDialog(this) != DialogResult.OK) return;
-            AuditLog.Record(CurrentUser, "Appointment Created", "Booked by staff");
+            AuditLog.Record(CurrentUser, "Appointment Created", $"Booked by staff (#{form.CreatedAppointmentId})");
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)
         {

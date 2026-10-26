@@ -16,6 +16,8 @@ internal sealed class ProductDialog : DialogBase
 
     /// <summary>Name of the saved product, so AdminForm can write it to the audit log.</summary>
     public string? SavedName { get; private set; }
+    /// <summary>The product's id, for the audit log reference.</summary>
+    public int SavedId { get; private set; }
 
     public ProductDialog(InventoryProduct? existing = null)
         : base(existing == null ? "Add Product" : "Edit Product", "Save", "\uE7B8",
@@ -55,9 +57,12 @@ internal sealed class ProductDialog : DialogBase
         try
         {
             if (_existing == null)
-                InventoryData.AddProduct(codeBox.Text, nameBox.Text, categoryBox.Text, priceBox.Value, cost, reorder);
+                SavedId = InventoryData.AddProduct(codeBox.Text, nameBox.Text, categoryBox.Text, priceBox.Value, cost, reorder);
             else
+            {
+                SavedId = _existing.Id;
                 InventoryData.UpdateProduct(_existing.Id, codeBox.Text, nameBox.Text, categoryBox.Text, priceBox.Value, cost, reorder);
+            }
 
             SavedName = $"{nameBox.Text.Trim()} ({codeBox.Text.Trim()})";
             DialogResult = DialogResult.OK;

@@ -21,6 +21,9 @@ internal sealed class EmployeeDialog : DialogBase
 
     /// <summary>The email of the login created together with the employee, or null when none was made.</summary>
     public string? CreatedLoginEmail { get; private set; }
+    public int CreatedLoginId { get; private set; }
+    /// <summary>The employee's id, for the audit log reference.</summary>
+    public int SavedId { get; private set; }
 
     public EmployeeDialog(EmployeeRepository.Row? existing = null)
         : base(existing is null ? "Add Employee" : "Edit Employee", "Save", "\uE77B",
@@ -106,7 +109,7 @@ internal sealed class EmployeeDialog : DialogBase
             if (makeLogin)
             {
                 // Admin employees get an Admin login; everyone else signs in as Employee. Done first so a taken email stops the save.
-                try { Auth.CreateUser(name, email, password, role == "Admin" ? UserRole.Admin : UserRole.Employee); }
+                try { CreatedLoginId = Auth.CreateUser(name, email, password, role == "Admin" ? UserRole.Admin : UserRole.Employee); }
                 catch (SqlException ex) when (ex.Number is 2627 or 2601)
                 {
                     ShowError("That email already has a login. Clear the password to add the employee without one.");
@@ -116,13 +119,14 @@ internal sealed class EmployeeDialog : DialogBase
             }
 
             if (_existing is null)
-                EmployeeRepository.Add(name, role, departmentBox.Text, email, phoneBox.Text);
+                SavedId = EmployeeRepository.Add(name, role, departmentBox.Text, email, phoneBox.Text);
             else if (!EmployeeRepository.Update(_existing.Id, name, role, departmentBox.Text, email, phoneBox.Text))
             {
                 ShowError("That employee no longer exists.");
                 return;
             }
 
+            if (_existing is not null) SavedId = _existing.Id;
             SavedName = name;
             SavedRole = role;
             DialogResult = DialogResult.OK;

@@ -210,14 +210,15 @@ ORDER BY p.Name, b.ReceivedDate, b.BatchId", conn);
     // ------------------------------------------------------------------ products
 
     /// <summary>Throws SqlException 2627/2601 if the product code already exists.</summary>
-    public static void AddProduct(string code, string name, string category, decimal price, decimal? unitCost, int reorderLevel)
+    public static int AddProduct(string code, string name, string category, decimal price, decimal? unitCost, int reorderLevel)
     {
         using var conn = Open();
         using var cmd = new SqlCommand(@"
 INSERT INTO dbo.Products (Code, Name, Category, Price, UnitCost, ReorderLevel, QtyOnHand, CreatedAt)
+OUTPUT INSERTED.ProductId
 VALUES (@code, @name, @cat, @price, @cost, @reorder, 0, SYSUTCDATETIME())", conn);
         Fill(cmd, code, name, category, price, unitCost, reorderLevel);
-        cmd.ExecuteNonQuery();
+        return (int)cmd.ExecuteScalar()!;
     }
 
     /// <summary>Throws SqlException 2627/2601 if the product code is taken by another product.</summary>

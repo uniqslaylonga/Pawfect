@@ -72,7 +72,7 @@ internal sealed class RoomManagementPage : UserControl
         using var dlg = new RoomEditDialog();
         if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
         Reload();
-        Changed?.Invoke(this, ("Room Added", $"Added room {dlg.SavedName}"));
+        Changed?.Invoke(this, ("Room Added", $"Added room {dlg.SavedName} (#{dlg.SavedId})"));
     }
 
     private void Edit(RoomRow row)
@@ -80,7 +80,7 @@ internal sealed class RoomManagementPage : UserControl
         using var dlg = new RoomEditDialog(row);
         if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
         Reload();
-        Changed?.Invoke(this, ("Room Updated", $"Room \"{row.Name}\" is now \"{dlg.SavedName}\""));
+        Changed?.Invoke(this, ("Room Updated", $"Room \"{row.Name}\" is now \"{dlg.SavedName}\" (#{row.Id})"));
     }
 
     private void Toggle(RoomRow row)
@@ -103,7 +103,7 @@ internal sealed class RoomManagementPage : UserControl
             return;
         }
         Reload();
-        Changed?.Invoke(this, ($"Room {(activate ? "Activated" : "Deactivated")}", $"Room \"{row.Name}\""));
+        Changed?.Invoke(this, ($"Room {(activate ? "Activated" : "Deactivated")}", $"Room \"{row.Name}\" (#{row.Id})"));
     }
 
 }
@@ -422,6 +422,7 @@ internal sealed class RoomEditDialog : DialogBase
 
     /// <summary>The name as saved, for the audit log.</summary>
     public string? SavedName { get; private set; }
+    public int SavedId { get; private set; }
 
     public RoomEditDialog(RoomRow? existing = null)
         : base(existing is null ? "Add Room" : "Edit Room", "Save", "",
@@ -454,8 +455,8 @@ internal sealed class RoomEditDialog : DialogBase
                 return;
             }
 
-            if (_existing is null) RoomScheduleRepository.Add(name);
-            else RoomScheduleRepository.Rename(_existing.Id, name);
+            if (_existing is null) SavedId = RoomScheduleRepository.Add(name);
+            else { RoomScheduleRepository.Rename(_existing.Id, name); SavedId = _existing.Id; }
 
             SavedName = name;
             DialogResult = DialogResult.OK;
@@ -795,12 +796,12 @@ ORDER BY a.StartTime";
         return (int)cmd.ExecuteScalar()! > 0;
     }
 
-    public static void Add(string name)
+    public static int Add(string name)
     {
         using var conn = Open();
-        using var cmd = new SqlCommand("INSERT INTO dbo.Rooms (Name) VALUES (@n)", conn);
+        using var cmd = new SqlCommand("INSERT INTO dbo.Rooms (Name) OUTPUT INSERTED.RoomId VALUES (@n)", conn);
         cmd.Parameters.Add("@n", System.Data.SqlDbType.NVarChar, 60).Value = name.Trim();
-        cmd.ExecuteNonQuery();
+        return (int)cmd.ExecuteScalar()!;
     }
 
     public static void Rename(int id, string name)

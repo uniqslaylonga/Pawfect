@@ -22,6 +22,8 @@ internal sealed class ServiceDialog : DialogBase
 
     /// <summary>Name of the saved service, so AdminForm can write it to the audit log.</summary>
     public string? SavedName { get; private set; }
+    /// <summary>The service's id, for the audit log reference.</summary>
+    public int SavedId { get; private set; }
 
     public ServiceDialog(ServiceRepository.ServiceRow? existing = null)
         : base(existing == null ? "Add Service" : "Edit Service", "Save", "\uE70F",
@@ -83,9 +85,12 @@ internal sealed class ServiceDialog : DialogBase
         try
         {
             if (_existing == null)
-                ServiceRepository.Add(nameBox.Text, category, size, descBox.Text, priceBox.Value, (int)minutesBox.Value, species, minKg, maxKg);
+                SavedId = ServiceRepository.Add(nameBox.Text, category, size, descBox.Text, priceBox.Value, (int)minutesBox.Value, species, minKg, maxKg);
             else
+            {
                 ServiceRepository.Update(_existing.Id, nameBox.Text, category, size, descBox.Text, priceBox.Value, (int)minutesBox.Value, species, minKg, maxKg);
+                SavedId = _existing.Id;
+            }
 
             SavedName = $"{nameBox.Text.Trim()} ({size})";
             DialogResult = DialogResult.OK;

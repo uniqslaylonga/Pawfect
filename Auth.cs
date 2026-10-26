@@ -59,17 +59,17 @@ internal static class Auth
     }
 
     /// <summary>Adds an account. Throws SqlException (number 2627 or 2601) if the email is already used.</summary>
-    public static void CreateUser(string name, string email, string password, UserRole role)
+    public static int CreateUser(string name, string email, string password, UserRole role)
     {
         using var conn = new SqlConnection(Database.ConnectionString);
         conn.Open();
 
         using var cmd = new SqlCommand(
-            "INSERT INTO dbo.Users (FullName, Email, PasswordHash, Role) VALUES (@name, @email, @hash, @role)", conn);
+            "INSERT INTO dbo.Users (FullName, Email, PasswordHash, Role) OUTPUT INSERTED.UserId VALUES (@name, @email, @hash, @role)", conn);
         cmd.Parameters.Add("@name", SqlDbType.NVarChar, 100).Value = name.Trim();
         cmd.Parameters.Add("@email", SqlDbType.NVarChar, 256).Value = email.Trim();
         cmd.Parameters.Add("@hash", SqlDbType.NVarChar, 200).Value = PasswordHasher.Hash(password);
         cmd.Parameters.Add("@role", SqlDbType.NVarChar, 10).Value = role.ToString();
-        cmd.ExecuteNonQuery();
+        return (int)cmd.ExecuteScalar()!;
     }
 }

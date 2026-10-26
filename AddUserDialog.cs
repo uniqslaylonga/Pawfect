@@ -13,6 +13,7 @@ internal sealed class AddUserDialog : DialogBase
     private readonly PawSelect roleBox = new();
 
     public string? CreatedEmail { get; private set; }
+    public int CreatedId { get; private set; }
 
     public AddUserDialog() : base("Add User", "Save", "\uE77B", "Create a login for an employee or admin")
     {
@@ -41,7 +42,7 @@ internal sealed class AddUserDialog : DialogBase
 
         try
         {
-            Auth.CreateUser(nameBox.Text, emailBox.Text, passwordBox.Text, Roles[roleBox.SelectedIndex]);
+            CreatedId = Auth.CreateUser(nameBox.Text, emailBox.Text, passwordBox.Text, Roles[roleBox.SelectedIndex]);
             CreatedEmail = emailBox.Text.Trim();
             DialogResult = DialogResult.OK;
         }
