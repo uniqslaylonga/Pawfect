@@ -14,6 +14,10 @@ internal partial class MainForm
     private bool _dbErrorShown;
     private List<AppointmentItem> _pendingToday = new();
     private List<AppointmentItem> _waiting = new();   // every appointment waiting to be confirmed, on any day (bell + Alerts card)
+    private List<StaffAlert> _stockAlerts = new();    // no stock, low stock, expired and near-expiry (re-read at most every 20 seconds)
+    private DateTime _stockAlertsAt = DateTime.MinValue;
+    private List<StaffAlert> _alerts = new();         // everything the Alerts card and the bell list
+    private string? _alertsSignature;
     private System.Windows.Forms.Timer? _alertTimer;
     private int _pendingFilter;   // 0 = All, 1 = Walk-in, 2 = Appointment, 3 = Add-on
 
@@ -60,20 +64,7 @@ internal partial class MainForm
             ShowPage(Page.Appointments);
             appointmentsPage.ShowPending();
         };
-        alertsLink.Click += (_, _) =>
-        {
-            // Same items as the bell: appointments waiting to be confirmed.
-            if (_waiting.Count > 0)
-            {
-                ShowPage(Page.Appointments);
-                appointmentsPage.ShowPending();
-                return;
-            }
-            Msg.Show(this,
-                "No alerts right now.\n\nLow-stock, near-expiry and approval alerts will be listed here once they are available. " +
-                "Stock levels and batches are managed by an admin (Inventory & FIFO).",
-                "Alerts", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        };
+        alertsLink.Click += (_, _) => ShowAllAlerts();
 
         // Dashboard "pending requests" tabs. Only booked appointments exist, so Walk-in and Add-on stay empty.
         allTab.Click += (_, _) => { _pendingFilter = 0; ShowPendingList(); };
@@ -126,6 +117,7 @@ internal partial class MainForm
 
             lookupPage.SetData(EmployeeData.GetCustomers(), EmployeeData.GetPets());
 
+            _stockAlertsAt = DateTime.MinValue;   // stock may have changed (a sale, a delivery): read it again
             ApplyDashboard(EmployeeData.GetDashboardStats(), appointments);
             _dbErrorShown = false;
         }
@@ -216,7 +208,8 @@ internal partial class MainForm
             .Where(a => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
             .OrderBy(a => a.Start).ToList();
 
-        FillList(_scheduleList, scheduleEmpty, today);
+        FillList(_scheduleList, scheduleEmpty, today,
+            item => BeginInvoke(() => ShowAppointmentDetails(item)));   // let the click finish first: the dialog can reload the list
         _pendingToday = pending;
         ShowPendingList();
         SetWaiting(appointments);
@@ -273,14 +266,29 @@ internal partial class MainForm
         pendingEmpty.Visible = items.Count == 0;
     }
 
-    /// <summary>Updates the bell dot and the Alerts card with every appointment still waiting to be confirmed (any day).</summary>
+    /// <summary>
+    /// Updates the bell dot and the Alerts card: out of stock, expired, low stock and near-expiry items, then every
+    /// appointment still waiting for approval (any day). Stock is re-read at most every 20 seconds.
+    /// </summary>
     private void SetWaiting(IEnumerable<AppointmentItem> appointments)
     {
         _waiting = appointments
             .Where(a => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
             .OrderBy(a => a.Start).ToList();
-        notificationButton.ShowDot = _waiting.Count > 0;
-        FillAlertsList(_waiting);
+
+        if (DateTime.UtcNow - _stockAlertsAt > TimeSpan.FromSeconds(20))
+        {
+            try
+            {
+                _stockAlerts = StaffAlerts.GetStockAlerts();
+                _stockAlertsAt = DateTime.UtcNow;
+            }
+            catch (SqlException) { }   // keep the last stock alerts; the approvals below still update
+        }
+
+        _alerts = StaffAlerts.Combine(_stockAlerts, _waiting);
+        notificationButton.ShowDot = _alerts.Count > 0;
+        FillAlertsList(_alerts);
     }
 
     private string? _lastSignature;
@@ -324,10 +332,15 @@ internal partial class MainForm
             ? start.ToString("h:mm tt", CultureInfo.CurrentCulture)
             : start.ToString("MMM d, h:mm tt", CultureInfo.CurrentCulture);
 
-    /// <summary>Fills the dashboard "Alerts" card with the same items the bell shows (appointments waiting to be confirmed).</summary>
-    private void FillAlertsList(List<AppointmentItem> items)
+    /// <summary>Fills the dashboard "Alerts" card. Every row opens its alert (the appointment, or the stock details).</summary>
+    private void FillAlertsList(List<StaffAlert> items)
     {
         if (_alertsList is null) return;
+
+        // This runs every few seconds: leave the rows (and the scroll position) alone unless the alerts changed.
+        string signature = StaffAlerts.Signature(items);
+        if (signature == _alertsSignature) return;
+        _alertsSignature = signature;
 
         _alertsList.SuspendLayout();
         foreach (var old in _alertsList.Controls.OfType<AlertRowView>().ToList())
@@ -336,16 +349,13 @@ internal partial class MainForm
             old.Dispose();
         }
 
-        // Rows are docked to the top, so add them last-to-first to keep the earliest on top.
+        // Rows are docked to the top, so add them last-to-first to keep the first alert on top.
         for (int i = items.Count - 1; i >= 0; i--)
         {
-            var row = new AlertRowView(items[i]) { Dock = DockStyle.Top };
-            // Let the click finish first: switching pages reloads the dashboard and disposes this row.
-            row.Click += (_, _) => BeginInvoke(() =>
-            {
-                ShowPage(Page.Appointments);
-                appointmentsPage.ShowPending();
-            });
+            var alert = items[i];
+            var row = new AlertRowView(alert) { Dock = DockStyle.Top };
+            // Let the click finish first: the dialog can reload the dashboard and dispose this row.
+            row.Click += (_, _) => BeginInvoke(() => ShowAlert(alert));
             _alertsList.Controls.Add(row);
         }
         _alertsList.AutoScrollPosition = Point.Empty;
@@ -355,46 +365,99 @@ internal partial class MainForm
         alertsEmpty.Visible = items.Count == 0;
     }
 
+    /// <summary>An approval opens its appointment; a stock alert explains what is wrong and who handles it.</summary>
+    private void ShowAlert(StaffAlert alert)
+    {
+        if (alert.Appointment is { } appointment)
+        {
+            ShowAppointmentDetails(appointment);
+            return;
+        }
+
+        string advice = alert.Kind switch
+        {
+            StaffAlertKind.OutOfStock => "It can't be sold from Counter POS & Billing until it is restocked.",
+            StaffAlertKind.Expired => "Take these units off the shelf. They should not be sold or used.",
+            StaffAlertKind.NearExpiry => "Sell or use the oldest units first.",
+            _ => "It is running low, so it may need to be reordered soon.",
+        };
+        Msg.Show(this,
+            $"{alert.Title}\n{alert.Detail}\n\n{advice}\n\nStock levels and batches are managed by an admin (Inventory & FIFO), so let them know.",
+            alert.Tag, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    }
+
+    /// <summary>The Alerts card's "View All": every alert in one list; picking one opens it.</summary>
+    private void ShowAllAlerts()
+    {
+        if (_alerts.Count == 0)
+        {
+            Msg.Show(this,
+                "No alerts right now.\n\nItems with no stock, low stock, near-expiry batches and appointments waiting for approval will be listed here.",
+                "Alerts", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        using var form = new AlertsForm(_alerts);
+        if (form.ShowDialog(this) != DialogResult.OK || form.Picked is not { } picked) return;
+        ShowAlert(picked);
+    }
+
     private void ShowNotifications()
     {
         const int width = 340;
         var menu = PawMenu.Create(width);
 
-        if (_waiting.Count == 0)
+        if (_alerts.Count == 0)
         {
-            menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications") { MenuWidth = width - 12, SubText = "Nothing waiting for you" });
+            menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications") { MenuWidth = width - 12, SubText = "Nothing needs your attention" });
             menu.AddDivider();
-            menu.Items.Add(new PawMenuItem(MenuKind.Empty, "You're all caught up") { MenuWidth = width - 12, SubText = "No appointments need confirming." });
+            menu.Items.Add(new PawMenuItem(MenuKind.Empty, "You're all caught up") { MenuWidth = width - 12, SubText = "No stock alerts or appointments to approve." });
         }
         else
         {
             menu.Items.Add(new PawMenuItem(MenuKind.Header, "Notifications")
             {
                 MenuWidth = width - 12,
-                SubText = $"{_waiting.Count} appointment(s) need confirming",
-                Badge = _waiting.Count.ToString(CultureInfo.CurrentCulture),
+                SubText = _alerts.Count == 1 ? "1 thing needs your attention" : $"{_alerts.Count} things need your attention",
+                Badge = _alerts.Count.ToString(CultureInfo.CurrentCulture),
             });
             menu.AddDivider();
 
-            foreach (var a in _waiting.Take(6))
+            foreach (var alert in _alerts.Take(6))
             {
-                var row = new PawMenuItem(MenuKind.Notification, $"{a.CustomerName} - {a.PetName}")
+                PawMenuItem row;
+                if (alert.Appointment is { } a)
                 {
-                    MenuWidth = width - 12,
-                    Glyph = a.PetName.Trim().Length > 0 ? a.PetName.Trim()[..1].ToUpperInvariant() : "?",
-                    SubText = $"{a.Service}  \u2022  {WhenText(a.Start)}",
-                    Status = a.Status,
-                };
-                row.Click += (_, _) => ShowPage(Page.Appointments);
+                    row = new PawMenuItem(MenuKind.Notification, alert.Title)
+                    {
+                        MenuWidth = width - 12,
+                        Glyph = a.PetName.Trim().Length > 0 ? a.PetName.Trim()[..1].ToUpperInvariant() : "?",
+                        SubText = alert.Detail,
+                        Status = a.Status,
+                    };
+                }
+                else
+                {
+                    bool bad = alert.Kind is StaffAlertKind.OutOfStock or StaffAlertKind.Expired;
+                    row = new PawMenuItem(MenuKind.Action, alert.Title)
+                    {
+                        MenuWidth = width - 12,
+                        Glyph = alert.Kind == StaffAlertKind.NearExpiry ? "\uE121" : bad && alert.Kind == StaffAlertKind.OutOfStock ? "\uE783" : "\uE7BA",
+                        Tone = bad ? MenuTone.Danger : MenuTone.Warning,
+                        SubText = alert.Detail,
+                    };
+                }
+                var target = alert;
+                row.Click += (_, _) => BeginInvoke(() => ShowAlert(target));
                 menu.Items.Add(row);
             }
 
-            if (_waiting.Count > 6)
-                menu.Items.Add(new PawMenuItem(MenuKind.Caption, $"+ {_waiting.Count - 6} more") { MenuWidth = width - 12 });
+            if (_alerts.Count > 6)
+                menu.Items.Add(new PawMenuItem(MenuKind.Caption, $"+ {_alerts.Count - 6} more") { MenuWidth = width - 12 });
 
             menu.AddDivider();
-            var open = new PawMenuItem(MenuKind.Button, "Open appointments") { MenuWidth = width - 12 };
-            open.Click += (_, _) => ShowPage(Page.Appointments);
+            var open = new PawMenuItem(MenuKind.Button, "View all alerts") { MenuWidth = width - 12 };
+            open.Click += (_, _) => BeginInvoke(() => ShowAllAlerts());
             menu.Items.Add(open);
         }
 
@@ -425,7 +488,7 @@ internal partial class MainForm
         }
     }
 
-    private static void FillList(Panel? host, EmptyState empty, List<AppointmentItem> items)
+    private static void FillList(Panel? host, EmptyState empty, List<AppointmentItem> items, Action<AppointmentItem>? open = null)
     {
         if (host is null) return;
 
@@ -436,7 +499,12 @@ internal partial class MainForm
             old.Dispose();
         }
         for (int i = items.Count - 1; i >= 0; i--)
-            host.Controls.Add(new UpcomingItemView(items[i]) { Dock = DockStyle.Top });
+        {
+            var item = items[i];
+            var row = new UpcomingItemView(item) { Dock = DockStyle.Top, Clickable = open is not null };
+            if (open is not null) row.Click += (_, _) => open(item);
+            host.Controls.Add(row);
+        }
         host.AutoScrollPosition = Point.Empty;
         host.ResumeLayout(true);
 

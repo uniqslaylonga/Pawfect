@@ -1,11 +1,11 @@
 using System.Drawing.Drawing2D;
-using System.Globalization;
 
 namespace MyApp.Controls;
 
 /// <summary>
-/// One row of the dashboard "Alerts" card. It shows the same thing as a row in the bell dropdown:
-/// an appointment that is waiting to be confirmed (pet avatar, customer - pet, service and time, status badge).
+/// One row of the dashboard "Alerts" card: a round icon (or the pet's initial for an approval request), the title,
+/// a detail line and a coloured tag on the right (Out of stock, Expired, Low stock, Near expiry, Approval).
+/// Rows show a hand cursor and a highlight under the mouse; the owner handles Click.
 /// </summary>
 internal sealed class AlertRowView : Control
 {
@@ -19,9 +19,9 @@ internal sealed class AlertRowView : Control
 
     private bool _hover;
 
-    public AlertRowView(AppointmentItem item)
+    public AlertRowView(StaffAlert alert)
     {
-        Item = item;
+        Alert = alert;
         SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         BackColor = Color.White;
         Height = RowHeight;
@@ -29,16 +29,24 @@ internal sealed class AlertRowView : Control
         TabStop = false;
     }
 
-    public AppointmentItem Item { get; }
+    public StaffAlert Alert { get; }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
     protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
 
-    /// <summary>"9:00 AM" for today, "Oct 14, 9:00 AM" for another day.</summary>
-    private static string When(DateTime start)
-        => start.Date == DateTime.Today
-            ? start.ToString("h:mm tt", CultureInfo.CurrentCulture)
-            : start.ToString("MMM d, h:mm tt", CultureInfo.CurrentCulture);
+    private static readonly Color Amber = Color.FromArgb(199, 122, 10);
+    private static readonly Color AmberSoft = Color.FromArgb(254, 243, 224);
+    private static readonly Color RedSoft = Color.FromArgb(253, 233, 233);
+
+    /// <summary>Icon colour, soft background and icon glyph for each kind of alert.</summary>
+    private static (Color Fore, Color Soft, string Glyph) Look(StaffAlertKind kind) => kind switch
+    {
+        StaffAlertKind.OutOfStock => (Theme.Danger, RedSoft, "\uE783"),
+        StaffAlertKind.Expired => (Theme.Danger, RedSoft, "\uE7BA"),
+        StaffAlertKind.LowStock => (Amber, AmberSoft, "\uE7BA"),
+        StaffAlertKind.NearExpiry => (Amber, AmberSoft, "\uE121"),
+        _ => (Amber, AmberSoft, ""),   // approval: shows the pet's initial instead
+    };
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -50,31 +58,38 @@ internal sealed class AlertRowView : Control
         using (var line = new Pen(Theme.Border))
             g.DrawLine(line, 0, Height - 1, Width, Height - 1);
 
-        // Pet avatar, same look as the Pending Requests rows and the bell dropdown.
-        var avatar = new Rectangle(4, (Height - 36) / 2, 36, 36);
-        using (var b = new SolidBrush(Color.FromArgb(254, 243, 224)))
-            g.FillEllipse(b, avatar);
-        string pet = Item.PetName.Trim();
-        TextRenderer.DrawText(g, pet.Length > 0 ? pet[..1].ToUpperInvariant() : "?", Theme.Face(10f, FontStyle.Bold),
-            avatar, Color.FromArgb(199, 122, 10), CenterFlags);
+        var (fore, soft, glyph) = Look(Alert.Kind);
 
-        // Status badge on the right ("Waiting" for a request that still needs confirming).
-        bool waiting = Item.Status == AppointmentStatus.Pending;
-        string label = waiting ? "Waiting" : AppointmentStatusStyle.Label(Item.Status);
-        var (fore, fill, _) = AppointmentStatusStyle.Pill(waiting ? AppointmentStatus.Completed : Item.Status);
+        // Round icon on the left; approvals show the pet's initial like the Pending Requests rows and the bell.
+        var avatar = new Rectangle(4, (Height - 36) / 2, 36, 36);
+        using (var b = new SolidBrush(soft))
+            g.FillEllipse(b, avatar);
+        if (Alert.Kind == StaffAlertKind.Approval)
+        {
+            string pet = Alert.Appointment?.PetName.Trim() ?? "";
+            TextRenderer.DrawText(g, pet.Length > 0 ? pet[..1].ToUpperInvariant() : "?", Theme.Face(10f, FontStyle.Bold),
+                avatar, fore, CenterFlags);
+        }
+        else
+        {
+            TextRenderer.DrawText(g, glyph, Theme.GlyphFont(11f), avatar, fore, CenterFlags);
+        }
+
+        // Tag on the right.
+        var (tagFore, tagFill) = Alert.Kind == StaffAlertKind.Approval ? (Theme.Primary, Theme.PrimarySoft) : (fore, soft);
         var pillFont = Theme.Face(7.5f, FontStyle.Bold);
-        int pillW = TextRenderer.MeasureText(label, pillFont).Width + 16;
+        int pillW = TextRenderer.MeasureText(Alert.Tag, pillFont).Width + 16;
         var pill = new Rectangle(Width - pillW - 4, (Height - 20) / 2, pillW, 20);
         using (var path = Ui.RoundRect(new RectangleF(pill.X, pill.Y, pill.Width, pill.Height), 10))
-        using (var b = new SolidBrush(fill))
+        using (var b = new SolidBrush(tagFill))
             g.FillPath(b, path);
-        TextRenderer.DrawText(g, label, pillFont, pill, fore, CenterFlags);
+        TextRenderer.DrawText(g, Alert.Tag, pillFont, pill, tagFore, CenterFlags);
 
         int textX = avatar.Right + 10;
         int textW = Math.Max(20, pill.X - 8 - textX);
-        TextRenderer.DrawText(g, $"{Item.CustomerName} - {Item.PetName}", Theme.Face(9f, FontStyle.Bold),
+        TextRenderer.DrawText(g, Alert.Title, Theme.Face(9f, FontStyle.Bold),
             new Rectangle(textX, 9, textW, 18), Theme.Text, LineFlags);
-        TextRenderer.DrawText(g, $"{Item.Service}  \u2022  {When(Item.Start)}",
-            Theme.Face(8f), new Rectangle(textX, 28, textW, 16), Theme.Muted, LineFlags);
+        TextRenderer.DrawText(g, Alert.Detail, Theme.Face(8f),
+            new Rectangle(textX, 28, textW, 16), Theme.Muted, LineFlags);
     }
 }

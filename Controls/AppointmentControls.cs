@@ -497,10 +497,27 @@ internal sealed class UpcomingItemView : Control
 
     public AppointmentItem Item { get; }
 
+    private bool _clickable;
+    private bool _hover;
+
+    /// <summary>When true the row shows a hand cursor and a light highlight under the mouse; the owner handles Click.</summary>
+    public bool Clickable
+    {
+        get => _clickable;
+        set { _clickable = value; Cursor = value ? Cursors.Hand : Cursors.Default; Invalidate(); }
+    }
+
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); _hover = true; if (_clickable) Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); _hover = false; if (_clickable) Invalidate(); }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+
+        if (_clickable && _hover)
+            using (var bg = new SolidBrush(Theme.Subtle))
+                g.FillRectangle(bg, ClientRectangle);
 
         TextRenderer.DrawText(g, Item.Start.ToString("h:mm tt", CultureInfo.CurrentCulture), Theme.Face(8.5f, FontStyle.Bold),
             new Rectangle(0, 0, 62, Height), Theme.Primary, LineFlags);
