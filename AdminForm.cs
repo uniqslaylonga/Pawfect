@@ -101,6 +101,12 @@ internal partial class AdminForm : Form
         reportsPage.ExportExcelRequested += (_, _) => ExportAudit(pdf: false);
         reportsPage.ViewAllReportsRequested += (_, _) => reportsPage.ResetFilters();
         reportsPage.ViewAllActivityRequested += (_, _) => ShowPage(AdminPage.Audit);
+        reportsPage.ActivityRequested += e =>
+        {
+            // Same as the dashboard: open the Audit Trail showing just this entry.
+            ShowPage(AdminPage.Audit);
+            auditPage.ShowOnly(e.Details.Length > 0 ? e.Details : e.Action);
+        };
 
         auditPage.ExportPdfRequested += (_, _) => ExportActivityLog(pdf: true);
         auditPage.ExportExcelRequested += (_, _) => ExportActivityLog(pdf: false);
@@ -709,7 +715,7 @@ internal partial class AdminForm : Form
             var query = reportsPage.BuildQuery();
             var report = ReportsData.Load(query.Current, query.CompareNow, query.ComparePrev, query.Tab);
             reportsPage.ShowData(report, query.CompareLabel);
-            reportsPage.SetRecentActivity(AuditLog.GetRecent(8));
+            reportsPage.SetRecentActivity(AuditLog.GetRecent(30));
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
@@ -761,7 +767,7 @@ internal partial class AdminForm : Form
         }
 
         AuditLog.Record(CurrentUser, "Report Exported", $"{ReportsData.Title(tab)} ({period}), {rows.Count} row{(rows.Count == 1 ? "" : "s")}, {(pdf ? "PDF" : "Excel")}");
-        try { reportsPage.SetRecentActivity(AuditLog.GetRecent(8)); }
+        try { reportsPage.SetRecentActivity(AuditLog.GetRecent(30)); }
         catch (Microsoft.Data.SqlClient.SqlException) { }
 
         try

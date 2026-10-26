@@ -98,7 +98,7 @@ internal partial class AuditTrailPage : UserControl
         }
         _syncing = false;
 
-        SetRecentActivity(entries.Take(8).ToList());
+        SetRecentActivity(entries.Take(30).ToList());
         ApplyActivityFilter();
     }
 
@@ -486,15 +486,24 @@ internal partial class AuditTrailPage : UserControl
             _recentList = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, Visible = false };
             recentActivityCard.Controls.Add(_recentList);
             _recentList.BringToFront();   // below the card's header, filling what is left
+            _recentList.MouseEnter += (_, _) => _recentList.Focus();
         }
 
         var culture = CultureInfo.CurrentCulture;
-        var rows = entries.Select(e => new DashboardRowView(
-            e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
-            e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
-            AuditInfo.IsCritical(e.Action) ? Theme.Danger
-            : AuditInfo.Type(e.Action) == "Created" ? Theme.Green
-            : Theme.Primary)).ToList();
+        var rows = entries.Select(e =>
+        {
+            var row = new DashboardRowView(
+                e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
+                e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
+                AuditInfo.IsCritical(e.Action) ? Theme.Danger
+                : AuditInfo.Type(e.Action) == "Created" ? Theme.Green
+                : Theme.Primary);
+            row.Clickable = true;
+            // Narrows the activity table on the left to just this entry (the row only has room for part of its text).
+            row.Click += (_, _) => ShowOnly(e.Details.Length > 0 ? e.Details : e.Action);
+            row.MouseEnter += (_, _) => _recentList?.Focus();   // so the mouse wheel scrolls the list while the pointer is over a row
+            return row;
+        }).ToList();
 
         _recentList.SuspendLayout();
         foreach (var old in _recentList.Controls.OfType<DashboardRowView>().ToList())

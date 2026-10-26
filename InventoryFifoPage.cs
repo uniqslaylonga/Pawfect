@@ -55,6 +55,7 @@ internal partial class InventoryFifoPage : UserControl
         OnClick(generateReportTile, (_, _) => GenerateReportRequested?.Invoke(this, EventArgs.Empty));
         alertsLink.Click += (_, _) => ViewAllAlertsRequested?.Invoke(this, EventArgs.Empty);
         lowStockLink.Click += (_, _) => ViewAllLowStockRequested?.Invoke(this, EventArgs.Empty);
+        Ui.MakeClickable(invLowStockTile, (_, _) => ViewAllLowStockRequested?.Invoke(this, EventArgs.Empty));   // the "Low Stock Items" tile
 
         listViewToggle.Click += (_, _) => SetView(list: true);
         gridViewToggle.Click += (_, _) => SetView(list: false);
@@ -303,11 +304,11 @@ internal partial class InventoryFifoPage : UserControl
             var expiry = r.Expiry!.Value.Date;
             int days = (expiry - today).Days;
             if (expiry < today)
-                alerts.Add(new DashboardRowView(r.Name, $"Batch {r.BatchNo} expired {Day(expiry)}", $"{r.BatchQty} left", Theme.Danger));
+                alerts.Add(Clickable(new DashboardRowView(r.Name, $"Batch {r.BatchNo} expired {Day(expiry)}", $"{r.BatchQty} left", Theme.Danger), r.Name));
             else if (days <= InventoryData.NearExpiryDays)
-                alerts.Add(new DashboardRowView(r.Name,
+                alerts.Add(Clickable(new DashboardRowView(r.Name,
                     days == 0 ? $"Batch {r.BatchNo} expires today" : $"Batch {r.BatchNo} expires in {days} day{(days == 1 ? "" : "s")}",
-                    $"{r.BatchQty} left", Theme.Orange));
+                    $"{r.BatchQty} left", Theme.Orange), r.Name));
         }
         FillList(alertsList, alertsEmpty, alerts);
 
@@ -315,11 +316,19 @@ internal partial class InventoryFifoPage : UserControl
         var low = _all.GroupBy(r => r.ProductId).Select(g => g.First())
             .Where(p => p.ReorderLevel > 0 && p.QtyOnHand <= p.ReorderLevel)
             .OrderBy(p => p.QtyOnHand).ThenBy(p => p.Name)
-            .Select(p => new DashboardRowView(p.Name,
+            .Select(p => Clickable(new DashboardRowView(p.Name,
                 p.QtyOnHand <= 0 ? $"Out of stock (reorder level {p.ReorderLevel})" : $"{p.QtyOnHand} left (reorder at {p.ReorderLevel})",
-                p.Code, p.QtyOnHand <= 0 ? Theme.Danger : Theme.Orange))
+                p.Code, p.QtyOnHand <= 0 ? Theme.Danger : Theme.Orange), p.Name))
             .ToList();
         FillList(lowStockList, lowStockEmpty, low);
+    }
+
+    /// <summary>Makes a side-list row clickable: it narrows the table to that product.</summary>
+    private DashboardRowView Clickable(DashboardRowView row, string productName)
+    {
+        row.Clickable = true;
+        row.Click += (_, _) => ShowItem(productName);
+        return row;
     }
 
     /// <summary>Rebuilds a side list; with no rows it hides the list and shows the card's empty-state message instead.</summary>

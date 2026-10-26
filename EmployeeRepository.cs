@@ -52,6 +52,26 @@ IF OBJECT_ID(N'dbo.Groomers', N'U') IS NULL
         IsActive  BIT          NOT NULL CONSTRAINT DF_Groomers_IsActive DEFAULT 1
     );", conn);
         cmd.ExecuteNonQuery();
+
+        // A database made by an older build already has dbo.Employees, but without the newer columns (Role, Department,
+        // Phone, GroomerId ...). The CREATE above skips it, so add whatever is missing. Each column is its own batch.
+        string[] columns =
+        {
+            "Role NVARCHAR(20) NOT NULL CONSTRAINT DF_Employees_Role DEFAULT N'Cashier'",
+            "Department NVARCHAR(60) NOT NULL CONSTRAINT DF_Employees_Department2 DEFAULT N''",
+            "Email NVARCHAR(256) NOT NULL CONSTRAINT DF_Employees_Email2 DEFAULT N''",
+            "Phone NVARCHAR(30) NOT NULL CONSTRAINT DF_Employees_Phone2 DEFAULT N''",
+            "GroomerId INT NULL",
+            "IsActive BIT NOT NULL CONSTRAINT DF_Employees_IsActive2 DEFAULT 1",
+            "CreatedAt DATETIME2 NOT NULL CONSTRAINT DF_Employees_CreatedAt2 DEFAULT SYSDATETIME()",
+        };
+        foreach (var definition in columns)
+        {
+            string name = definition[..definition.IndexOf(' ')];
+            using var add = new SqlCommand(
+                $"IF COL_LENGTH(N'dbo.Employees', N'{name}') IS NULL ALTER TABLE dbo.Employees ADD {definition};", conn);
+            add.ExecuteNonQuery();
+        }
         _tableChecked = true;
     }
 

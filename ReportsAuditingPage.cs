@@ -16,6 +16,9 @@ internal partial class ReportsAuditingPage : UserControl
     public event EventHandler? ViewAllReportsRequested;
     public event EventHandler? ViewAllActivityRequested;
 
+    /// <summary>A row in the Recent Audit Activity card was clicked.</summary>
+    public event Action<AuditLog.Entry>? ActivityRequested;
+
     /// <summary>Raised whenever the tab, a filter or the date range changed and the table must be loaded again.</summary>
     public event EventHandler? RefreshRequested;
 
@@ -572,15 +575,23 @@ internal partial class ReportsAuditingPage : UserControl
             _activityList = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White, Visible = false };
             recentActivityCard.Controls.Add(_activityList);
             _activityList.BringToFront();   // below the card's header, filling what is left
+            _activityList.MouseEnter += (_, _) => _activityList.Focus();
         }
 
         var culture = CultureInfo.CurrentCulture;
-        var rows = entries.Select(e => new DashboardRowView(
-            e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
-            e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
-            (e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) || e.Action.Contains("Removed", StringComparison.OrdinalIgnoreCase)) ? Theme.Danger
-            : e.Action.Contains("Created", StringComparison.OrdinalIgnoreCase) ? Theme.Green
-            : Theme.Primary)).ToList();
+        var rows = entries.Select(e =>
+        {
+            var row = new DashboardRowView(
+                e.Action, e.Details.Length > 0 ? $"{e.Actor} · {e.Details}" : e.Actor,
+                e.When.Date == DateTime.Today ? e.When.ToString("h:mm tt", culture) : e.When.ToString("MMM d", culture),
+                (e.Action.Contains("Deactivated", StringComparison.OrdinalIgnoreCase) || e.Action.Contains("Removed", StringComparison.OrdinalIgnoreCase)) ? Theme.Danger
+                : e.Action.Contains("Created", StringComparison.OrdinalIgnoreCase) ? Theme.Green
+                : Theme.Primary);
+            row.Clickable = true;
+            row.Click += (_, _) => ActivityRequested?.Invoke(e);
+            row.MouseEnter += (_, _) => _activityList?.Focus();   // so the mouse wheel scrolls the list while the pointer is over a row
+            return row;
+        }).ToList();
 
         _activityList.SuspendLayout();
         foreach (var old in _activityList.Controls.OfType<DashboardRowView>().ToList())
