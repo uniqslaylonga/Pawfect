@@ -40,7 +40,15 @@ internal sealed class InputField : CardPanel
 
         _toggle = Ui.Text("Show", 8.5f, Theme.Primary, Color.White, FontStyle.Bold, ContentAlignment.MiddleRight);
         _toggle.Dock = DockStyle.Right;
-        _toggle.Width = 44;
+        // Width follows the text (see FitToggle) so "Show" / "Hide" never wraps at 125% / 150% scaling or when the full-screen
+        // scaler enlarges the font. It must NOT be AutoSize: an auto-sized docked label shrinks to its text height and sticks to
+        // the top of the field instead of being centred. Fixed height + MiddleRight keeps it vertically centred at any size.
+        _toggle.AutoSize = false;
+        _toggle.Padding = new Padding(6, 0, 4, 0);
+        _toggle.FontChanged += (_, _) => FitToggle();
+        _toggle.PaddingChanged += (_, _) => FitToggle();
+        _toggle.SizeChanged += (_, _) => FitToggle();   // the full-screen scaler sets bounds directly; never let it end up too narrow
+        FitToggle();
         _toggle.Cursor = Cursors.Hand;
         _toggle.Visible = false;
         _toggle.Click += (_, _) =>
@@ -55,6 +63,16 @@ internal sealed class InputField : CardPanel
 
         _box.Enter += (_, _) => BorderColor = Theme.Primary;
         _box.Leave += (_, _) => BorderColor = Theme.Border;
+    }
+
+    /// <summary>Sizes the Show/Hide toggle to the wider of its two words at the current font, plus its padding.</summary>
+    private void FitToggle()
+    {
+        const TextFormatFlags flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+        int text = Math.Max(TextRenderer.MeasureText("Show", _toggle.Font, Size.Empty, flags).Width,
+                            TextRenderer.MeasureText("Hide", _toggle.Font, Size.Empty, flags).Width);
+        int width = text + _toggle.Padding.Horizontal + 8;
+        if (_toggle.Width < width) _toggle.Width = width;
     }
 
     [Category("Pawfect"), Description("Icon character from the Segoe MDL2 Assets font.")]

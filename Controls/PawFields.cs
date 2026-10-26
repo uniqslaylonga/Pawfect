@@ -100,6 +100,7 @@ internal sealed class PawCheckBox : CheckBox
         ForeColor = Theme.Text;
         AutoSize = false;
         Height = 28;
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
     }
 
     protected override void OnCheckedChanged(EventArgs e) { Invalidate(); base.OnCheckedChanged(e); }
@@ -112,12 +113,14 @@ internal sealed class PawCheckBox : CheckBox
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var back = new SolidBrush(Parent?.BackColor ?? Color.White))
+        using (var back = new SolidBrush(BackColor.A == 255 ? BackColor : Parent is { BackColor.A: 255 } ? Parent.BackColor : Color.White))
             g.FillRectangle(back, ClientRectangle);
 
-        const int box = 18;
+        // The box follows the font (18 px at 9 pt / 100 %), so it grows with the text on a scaled or full-screen layout.
+        int box = Math.Max(18, (int)Math.Round(Font.Height * 1.2));
+        int gap = (int)Math.Round(box * 0.55);
         var r = new RectangleF(1.5f, (Height - box) / 2f, box - 1, box - 1);
-        using (var path = Ui.RoundRect(r, 5))
+        using (var path = Ui.RoundRect(r, Math.Max(5, box * 5 / 18)))
         {
             if (Checked)
             {
@@ -135,12 +138,12 @@ internal sealed class PawCheckBox : CheckBox
 
         if (Checked)
         {
-            TextRenderer.DrawText(g, "", Theme.GlyphFont(8f), Rectangle.Round(r), Color.White,
+            TextRenderer.DrawText(g, "", Theme.GlyphFont(FullScreen.Pt(8f * box / 18f)), Rectangle.Round(r), Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
                 TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
         }
 
-        TextRenderer.DrawText(g, Text, Font, new Rectangle(box + 10, 0, Width - box - 10, Height), ForeColor,
+        TextRenderer.DrawText(g, Text, Font, new Rectangle(box + gap, 0, Math.Max(0, Width - box - gap), Height), ForeColor,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis |
             TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
     }
@@ -355,7 +358,7 @@ internal abstract class PawDropField : Control
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var back = new SolidBrush(Parent?.BackColor ?? Color.White))
+        using (var back = new SolidBrush(BackColor.A == 255 ? BackColor : Parent is { BackColor.A: 255 } ? Parent.BackColor : Color.White))
             g.FillRectangle(back, ClientRectangle);
 
         bool active = Enabled && (_open || Focused);

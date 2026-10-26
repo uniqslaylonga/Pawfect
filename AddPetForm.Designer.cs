@@ -676,11 +676,11 @@ namespace MyApp
             // 
             newPetPaw.BackColor = Color.FromArgb(250, 252, 255);
             newPetPaw.FillColor = Color.FromArgb(250, 252, 255);
-            newPetPaw.Location = new Point(110, 30);
+            newPetPaw.Location = new Point(26, 34);
             newPetPaw.Name = "newPetPaw";
             newPetPaw.PawColor = Color.FromArgb(96, 165, 250);
             newPetPaw.Radius = 10;
-            newPetPaw.Size = new Size(40, 40);
+            newPetPaw.Size = new Size(44, 44);
             newPetPaw.TabStop = false;
             // 
             // newPetTitle
@@ -688,12 +688,12 @@ namespace MyApp
             newPetTitle.BackColor = Color.FromArgb(250, 252, 255);
             newPetTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
             newPetTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            newPetTitle.Location = new Point(0, 84);
+            newPetTitle.Location = new Point(94, 33);
             newPetTitle.Name = "newPetTitle";
-            newPetTitle.Size = new Size(260, 24);
+            newPetTitle.Size = new Size(132, 24);
             newPetTitle.TabIndex = 1;
             newPetTitle.Text = "New Pet?";
-            newPetTitle.TextAlign = ContentAlignment.MiddleCenter;
+            newPetTitle.TextAlign = ContentAlignment.MiddleLeft;
             newPetTitle.UseMnemonic = false;
             // 
             // newPetHint
@@ -701,12 +701,12 @@ namespace MyApp
             newPetHint.BackColor = Color.FromArgb(250, 252, 255);
             newPetHint.Font = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             newPetHint.ForeColor = Color.FromArgb(122, 136, 156);
-            newPetHint.Location = new Point(0, 110);
+            newPetHint.Location = new Point(94, 59);
             newPetHint.Name = "newPetHint";
-            newPetHint.Size = new Size(260, 22);
+            newPetHint.Size = new Size(138, 20);
             newPetHint.TabIndex = 2;
             newPetHint.Text = "Add your pet's details.";
-            newPetHint.TextAlign = ContentAlignment.MiddleCenter;
+            newPetHint.TextAlign = ContentAlignment.MiddleLeft;
             newPetHint.UseMnemonic = false;
             // 
             // newPetArrowLabel
@@ -727,11 +727,12 @@ namespace MyApp
             newPetArrow.BorderColor = Color.FromArgb(96, 165, 250);
             newPetArrow.CornerColor = Color.FromArgb(250, 252, 255);
             newPetArrow.FillColor = Color.FromArgb(96, 165, 250);
-            newPetArrow.Location = new Point(116, 152);
+            newPetArrow.Anchor = AnchorStyles.Top | AnchorStyles.Right;   // stays in the corner when the tile is stretched to fill the row
+            newPetArrow.Location = new Point(206, 8);
             newPetArrow.Margin = new Padding(0);
             newPetArrow.Name = "newPetArrow";
-            newPetArrow.Radius = 14;
-            newPetArrow.Size = new Size(28, 28);
+            newPetArrow.Radius = 13;
+            newPetArrow.Size = new Size(26, 26);
             newPetArrow.TabIndex = 3;
             // 
             // newPetCard
@@ -746,10 +747,10 @@ namespace MyApp
             newPetCard.Cursor = Cursors.Hand;
             newPetCard.FillColor = Color.FromArgb(250, 252, 255);
             newPetCard.Location = new Point(0, 0);
-            newPetCard.Margin = new Padding(0, 0, 20, 20);
+            newPetCard.Margin = new Padding(0, 0, 16, 16);
             newPetCard.Name = "newPetCard";
             newPetCard.Radius = 14;
-            newPetCard.Size = new Size(260, 200);
+            newPetCard.Size = new Size(240, 112);
             newPetCard.TabIndex = 0;
             // 
             // petsFlow
@@ -1085,4 +1086,4 @@ namespace MyApp
         private MyApp.Controls.PrimaryButton continueButton;
         private System.Windows.Forms.Timer resendTimer;
     }
-}
+}

@@ -28,7 +28,7 @@ namespace MyApp
             emailField = new MyApp.Controls.InputField();
             passwordLabel = new Label();
             passwordField = new MyApp.Controls.InputField();
-            rememberCheck = new CheckBox();
+            rememberCheck = new MyApp.Controls.PawCheckBox();
             errorLabel = new Label();
             signInButton = new MyApp.Controls.PrimaryButton();
             signUpPrompt = new Label();
@@ -192,14 +192,13 @@ namespace MyApp
             // 
             // rememberCheck
             // 
-            rememberCheck.AutoSize = true;
             rememberCheck.BackColor = Color.White;
             rememberCheck.Cursor = Cursors.Hand;
             rememberCheck.Font = new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
             rememberCheck.ForeColor = Color.FromArgb(68, 83, 106);
-            rememberCheck.Location = new Point(40, 314);
+            rememberCheck.Location = new Point(40, 312);
             rememberCheck.Name = "rememberCheck";
-            rememberCheck.Size = new Size(104, 19);
+            rememberCheck.Size = new Size(160, 26);
             rememberCheck.TabIndex = 2;
             rememberCheck.Text = "Remember me";
             rememberCheck.UseVisualStyleBackColor = false;
@@ -395,7 +394,7 @@ namespace MyApp
         private MyApp.Controls.InputField emailField;
         private System.Windows.Forms.Label passwordLabel;
         private MyApp.Controls.InputField passwordField;
-        private System.Windows.Forms.CheckBox rememberCheck;
+        private MyApp.Controls.PawCheckBox rememberCheck;
         private System.Windows.Forms.Label errorLabel;
         private MyApp.Controls.PrimaryButton signInButton;
         private System.Windows.Forms.Label signUpPrompt;

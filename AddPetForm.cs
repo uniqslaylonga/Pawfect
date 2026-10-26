@@ -110,6 +110,7 @@ internal sealed partial class AddPetForm : Form
         }
         backButton.Click += (_, _) => GoBack();
         resendTimer.Tick += (_, _) => TickResend();
+        petsFlow.SizeChanged += (_, _) => FitPetTiles();
 
         nameField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
         emailField.Box.TextChanged += (_, _) => contactErrorLabel.Text = "";
@@ -497,6 +498,38 @@ internal sealed partial class AddPetForm : Form
             _petCards.Add(card);
         }
         if (_petCards.Count == 1) ChooseCard(_petCards[0]);
+        FitPetTiles();
+    }
+
+    private bool _fittingTiles;
+
+    /// <summary>Stretches the pet tiles (and the "New Pet?" tile) so each row of three spans the whole list, flush with the tabs above.</summary>
+    private void FitPetTiles()
+    {
+        if (_fittingTiles || petsFlow.Controls.Count == 0 || petsFlow.ClientSize.Width <= 0) return;
+        _fittingTiles = true;
+        try
+        {
+            const int cols = 3;
+            var tiles = petsFlow.Controls.Cast<Control>().ToList();
+            int gap = tiles[0].Margin.Bottom;                      // the gap between tiles (scaled with the screen)
+            int rowHeight = tiles[0].Height + gap;
+            int rows = (tiles.Count + cols - 1) / cols;
+            bool scrolls = rows * rowHeight > petsFlow.Height;     // with a scrollbar the tiles share what is left of the width
+            int avail = petsFlow.Width - (scrolls ? SystemInformation.VerticalScrollBarWidth : 0);
+            int w = (avail - gap * (cols - 1)) / cols;
+            if (w < 50) return;
+
+            petsFlow.SuspendLayout();
+            for (int i = 0; i < tiles.Count; i++)
+            {
+                var t = tiles[i];
+                t.Width = w;
+                t.Margin = new Padding(0, 0, i % cols == cols - 1 ? 0 : gap, gap);   // last tile of a row: no gap on the right
+            }
+            petsFlow.ResumeLayout(true);
+        }
+        finally { _fittingTiles = false; }
     }
 
     private void ChooseCard(PetCard card)

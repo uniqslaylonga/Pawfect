@@ -150,7 +150,9 @@ internal static class StampVerifier
                                         p.CenterY >= top && p.CenterY <= bottom && StampText.IsMatch(p.Text));
             if (text) { rows.Add(new StampRow(givens[i], true, "text")); continue; }
 
-            bool ink = pixels is not null && HasInk(pixels, new Rectangle(
+            // Second card layout: the heading bar is dark teal and can reach below the heading text; it is not stamp ink.
+            if (pixels is not null) top = SkipHeadingBar(pixels, (int)colLeft + 6, (int)(colRight - colLeft) - 12, (int)top, (int)bottom);
+            bool ink = pixels is not null && bottom - top > 20 && HasInk(pixels, new Rectangle(
                 (int)colLeft + 6, (int)top, (int)(colRight - colLeft) - 12, (int)(bottom - top)));
             rows.Add(new StampRow(givens[i], ink, ink ? "ink" : "none"));
         }
@@ -174,6 +176,28 @@ internal static class StampVerifier
             if (match.Stamped) kept.Add(row);
         }
         return kept;
+    }
+
+    /// <summary>Moves the top of the cell down past a dark teal / dark blue-green band (the table heading) that the cell's top edge may still touch.</summary>
+    private static double SkipHeadingBar(PixelGrid px, int left, int width, int top, int bottom)
+    {
+        var area = px.Clip(new Rectangle(left, top, width, Math.Max(0, bottom - top)));
+        if (area.Width < 30) return top;
+        int limit = Math.Min(area.Bottom, area.Top + area.Height / 2);
+        int y = area.Top;
+        for (; y < limit; y++)
+        {
+            int teal = 0, total = 0;
+            for (int x = area.Left; x < area.Right; x += 2)
+            {
+                px.Get(x, y, out int r, out int g, out int b);
+                total++;
+                // teal: green and blue both well ahead of red and dark (blue ink is not: its green is close to its red)
+                if (g - r >= 45 && b - r >= 45 && (r + g + b) / 3 < 150) teal++;
+            }
+            if (teal < total * 0.4) break;
+        }
+        return y > area.Top ? y + 2 : top;
     }
 
     /// <summary>A stamp is a lot of coloured ink spread over the cell; an empty cell has almost none.</summary>
@@ -214,7 +238,8 @@ internal static class StampVerifier
 /// <summary>Cuts the pet's picture out of the framed "PET PHOTO" box printed on the card.</summary>
 internal static class PetPhotoFinder
 {
-    private static readonly Regex Label = new(@"pet\s*photo", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    // "PET PHOTO" on the first card layout, "PATIENT PHOTO" on the second.
+    private static readonly Regex Label = new(@"(?:pet|patient)\s*photo", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>Returns the pet's picture as a small JPEG, or null when the "PET PHOTO" box can't be found.</summary>
     public static byte[]? Find(byte[] jpeg, IReadOnlyList<OcrPiece> pieces)
@@ -246,9 +271,76 @@ internal static class PetPhotoFinder
         region = px.Clip(region);
         if (region.Width < 40 || region.Height < 40) return null;
 
-        var photo = Trim(px, region);
+        var photo = StripColouredFrame(px, Trim(px, region));
         try { return CardImage.CropJpeg(jpeg, photo, 480); }
         catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException or ExternalException) { return null; }
+    }
+
+    /// <summary>
+    /// The second card layout frames the photo in a thick green border (and a thin white one inside it). Takes the crop in until
+    /// both are gone, so only the pet is left. A crop with no green border (the first layout) is returned unchanged.
+    /// </summary>
+    private static Rectangle StripColouredFrame(PixelGrid px, Rectangle crop)
+    {
+        static bool IsGreen(PixelGrid p, int x, int y)
+        {
+            p.Get(x, y, out int r, out int g, out int b);
+            return g - r >= 18 && g - b >= 12 && (r + g + b) / 3 < 205;
+        }
+        static bool IsWhite(PixelGrid p, int x, int y)
+        {
+            p.Get(x, y, out int r, out int g, out int b);
+            return (r + g + b) / 3 > 215 && Math.Max(r, Math.Max(g, b)) - Math.Min(r, Math.Min(g, b)) < 35;
+        }
+        double Share(Rectangle c, int side, Func<PixelGrid, int, int, bool> test)
+        {
+            int hit = 0, total = 0;
+            if (side is 0 or 2)   // top / bottom edge
+            {
+                int y = side == 0 ? c.Top : c.Bottom - 1;
+                for (int x = c.Left; x < c.Right; x += 2) { total++; if (test(px, x, y)) hit++; }
+            }
+            else                  // left / right edge
+            {
+                int x = side == 1 ? c.Left : c.Right - 1;
+                for (int y = c.Top; y < c.Bottom; y += 2) { total++; if (test(px, x, y)) hit++; }
+            }
+            return total == 0 ? 0 : hit / (double)total;
+        }
+        Rectangle Step(Rectangle c, int side) => side switch
+        {
+            0 => Rectangle.FromLTRB(c.Left, c.Top + 1, c.Right, c.Bottom),
+            1 => Rectangle.FromLTRB(c.Left + 1, c.Top, c.Right, c.Bottom),
+            2 => Rectangle.FromLTRB(c.Left, c.Top, c.Right, c.Bottom - 1),
+            _ => Rectangle.FromLTRB(c.Left, c.Top, c.Right - 1, c.Bottom),
+        };
+
+        crop = px.Clip(crop);
+        var r0 = crop;
+        int maxX = r0.Width / 4, maxY = r0.Height / 4;
+        bool found = false;
+
+        // 1. green border: each side moves in while it is mostly green
+        for (int side = 0; side < 4; side++)
+        {
+            int limit = side is 0 or 2 ? maxY : maxX;
+            for (int n = 0; n < limit && crop.Width > 40 && crop.Height > 40 && Share(crop, side, IsGreen) >= 0.6; n++)
+            {
+                crop = Step(crop, side);
+                found = true;
+            }
+        }
+        if (!found) return r0;
+
+        // 2. the thin white border inside it, then a small safety margin
+        for (int side = 0; side < 4; side++)
+        {
+            int limit = Math.Max(4, (side is 0 or 2 ? maxY : maxX) / 3);
+            for (int n = 0; n < limit && crop.Width > 40 && crop.Height > 40 && Share(crop, side, IsWhite) >= 0.7; n++)
+                crop = Step(crop, side);
+        }
+        crop = Rectangle.Inflate(crop, -2, -2);
+        return crop.Width < 30 || crop.Height < 30 ? r0 : crop;
     }
 
     /// <summary>Finds the picture inside the frame: the biggest block of rows and columns that is not blank paper.</summary>

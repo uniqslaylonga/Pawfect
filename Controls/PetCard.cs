@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 
 namespace MyApp.Controls;
 
-/// <summary>Selectable pet tile: round avatar, name and "Dog • Golden Retriever" underneath, a tick when chosen.</summary>
+/// <summary>Selectable pet tile: round avatar on the left, name and "Dog • Golden Retriever" beside it, a tick when chosen.</summary>
 internal sealed class PetCard : Control
 {
     private static readonly Dictionary<float, Font> EmojiFonts = new();
@@ -25,8 +25,9 @@ internal sealed class PetCard : Control
         SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         BackColor = Theme.Bg;
         Cursor = Cursors.Hand;
-        Size = new Size(260, 200);
-        Margin = new Padding(0, 0, 20, 20);
+        // 240 x 112 with a 16 px gap: three tiles per row and two full rows (six tiles) fit the 820 x 262 My Pets list without scrolling.
+        Size = new Size(240, 112);
+        Margin = new Padding(0, 0, 16, 16);
     }
 
     [Category("Pawfect"), Description("Second line under the name, e.g. Dog • Golden Retriever.")]
@@ -56,33 +57,37 @@ internal sealed class PetCard : Control
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        // Laid out for a 260 x 200 tile; everything grows with the tile when the screen is bigger.
-        float k = Math.Max(0.5f, Math.Min(Width / 260f, Height / 200f));
+        // Laid out for a 240 x 112 tile; everything grows with the tile when the screen is bigger.
+        float k = Math.Max(0.5f, Math.Min(Width / 240f, Height / 112f));
         int S(float v) => (int)Math.Round(v * k);
 
         var rect = new RectangleF(1, 1, Width - 3, Height - 3);
-        using (var path = Ui.RoundRect(rect, S(14)))
+        using (var path = Ui.RoundRect(rect, S(12)))
         {
             using (var fill = new SolidBrush(Color.White)) g.FillPath(fill, path);
             using var pen = new Pen(_selected ? Color.FromArgb(37, 99, 235) : _hover ? Color.FromArgb(160, 196, 245) : Theme.Border, _selected ? 2f : 1f);
             g.DrawPath(pen, path);
         }
 
-        int d = S(92);
-        var avatar = new Rectangle((Width - d) / 2, S(24), d, d);
+        // avatar on the left, vertically centred; name and detail stacked to its right
+        int d = S(64);
+        var avatar = new Rectangle(S(16), (Height - d) / 2, d, d);
         using (var b = new SolidBrush(Color.FromArgb(240, 246, 255))) g.FillEllipse(b, avatar);
         using (var pen = new Pen(Theme.Border)) g.DrawEllipse(pen, avatar);
-        TextRenderer.DrawText(g, Emoji(), EmojiAt(28f * k), avatar, Theme.Text,
+        TextRenderer.DrawText(g, Emoji(), EmojiAt(20f * k), avatar, Theme.Text,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
 
-        TextRenderer.DrawText(g, Text, Theme.Face(FullScreen.Pt(10.5f * k), FontStyle.Bold), new Rectangle(S(18), S(138), Width - S(36), S(22)), Theme.Text,
+        int tx = avatar.Right + S(14);
+        int tw = Width - tx - S(14);
+        int top = (Height - S(46)) / 2;
+        TextRenderer.DrawText(g, Text, Theme.Face(FullScreen.Pt(10.5f * k), FontStyle.Bold), new Rectangle(tx, top, tw, S(24)), Theme.Text,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-        TextRenderer.DrawText(g, _detail, Theme.Face(FullScreen.Pt(8f * k)), new Rectangle(S(18), S(162), Width - S(36), S(18)), Theme.Muted,
+        TextRenderer.DrawText(g, _detail, Theme.Face(FullScreen.Pt(8f * k)), new Rectangle(tx, top + S(26), tw, S(20)), Theme.Muted,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
 
         if (_selected)
         {
-            var tick = new Rectangle(Width - S(36), S(12), S(22), S(22));
+            var tick = new Rectangle(Width - S(32), S(8), S(20), S(20));
             using (var b = new SolidBrush(Color.FromArgb(37, 99, 235))) g.FillEllipse(b, tick);
             TextRenderer.DrawText(g, "", Theme.GlyphFont(FullScreen.Pt(8f * k)), tick, Color.White,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
