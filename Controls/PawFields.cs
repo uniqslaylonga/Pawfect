@@ -483,23 +483,25 @@ internal class PawSelect : PawDropField
 /// <summary>Time of day picked from a list of 15-minute slots.</summary>
 internal sealed class PawTimePicker : PawSelect
 {
-    /// <summary>Service hours: appointments can only start from 8:00 AM up to 8:00 PM.</summary>
-    public static readonly TimeSpan Opens = TimeSpan.FromHours(8);
-    public static readonly TimeSpan Closes = TimeSpan.FromHours(20);
+    /// <summary>Service hours set in Service Catalog Management > Set Time Slots (default 8:00 AM up to 8:00 PM).</summary>
+    public static TimeSpan Opens { get { ServiceHours.EnsureLoaded(); return ServiceHours.Opens; } }
+    public static TimeSpan Closes { get { ServiceHours.EnsureLoaded(); return ServiceHours.Closes; } }
 
     private readonly List<TimeSpan> _slots = new();
 
-    public PawTimePicker(int stepMinutes = 15)
+    public PawTimePicker(int stepMinutes = 0)
     {
+        ServiceHours.EnsureLoaded();
+        if (stepMinutes <= 0) stepMinutes = ServiceHours.StepMinutes;
         // Typing narrows the list (for example "7:4" leaves 7:45 am and 7:45 pm), but only a time from the list can be picked, never typed text.
         Searchable = true;
         SearchPlaceholder = "Type to find a time, e.g. 7:45 pm";
         EmptyText = "No times available";
         Glyph = "";
-        for (var t = Opens; t <= Closes; t += TimeSpan.FromMinutes(stepMinutes))
+        for (var t = ServiceHours.Opens; t <= ServiceHours.Closes; t += TimeSpan.FromMinutes(stepMinutes))
             _slots.Add(t);
         Rebuild();
-        Value = TimeSpan.FromHours(9);
+        Value = ServiceHours.Opens + TimeSpan.FromHours(1);
     }
 
     protected override int VisibleRows => 7;

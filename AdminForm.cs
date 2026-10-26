@@ -222,6 +222,23 @@ internal partial class AdminForm : Form
             }
         };
 
+        servicesPage.ManagePricingRequested += (_, _) =>
+        {
+            using var dlg = new ManagePricingDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                AuditLog.Record(CurrentUser, "Service Prices Updated", $"Changed the price of {dlg.ChangedCount} service(s)");
+                RefreshServices();
+            }
+        };
+
+        servicesPage.SetTimeSlotsRequested += (_, _) =>
+        {
+            using var dlg = new TimeSlotsDialog();
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+                AuditLog.Record(CurrentUser, "Time Slots Updated", $"Service hours set to {dlg.SavedSummary}");
+        };
+
         servicesPage.EditServiceRequested += service =>
         {
             using var dlg = new ServiceDialog(service);

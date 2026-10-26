@@ -370,6 +370,26 @@ internal static class ServiceRepository
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>Saves several prices in one transaction (Manage Pricing).</summary>
+    public static void UpdatePrices(IEnumerable<(int Id, decimal Price)> changes)
+    {
+        using var conn = new SqlConnection(Database.ConnectionString);
+        conn.Open();
+
+        using var tx = conn.BeginTransaction();
+        foreach (var (id, price) in changes)
+        {
+            using var cmd = new SqlCommand("UPDATE dbo.Services SET Price = @p WHERE ServiceId = @id", conn, tx);
+            var p = cmd.Parameters.Add("@p", SqlDbType.Decimal);
+            p.Precision = 10;
+            p.Scale = 2;
+            p.Value = price;
+            cmd.Parameters.Add("@id", SqlDbType.Int).Value = id;
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
     private static void Fill(SqlCommand cmd, string name, string category, string size, string? description, decimal price, int minutes,
         string species, decimal? minKg, decimal? maxKg)
     {
