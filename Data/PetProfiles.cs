@@ -33,7 +33,8 @@ IF COL_LENGTH('dbo.Pets', 'Gender')          IS NULL ALTER TABLE dbo.Pets ADD Ge
 IF COL_LENGTH('dbo.Pets', 'BirthDate')       IS NULL ALTER TABLE dbo.Pets ADD BirthDate       DATE           NULL;
 IF COL_LENGTH('dbo.Pets', 'WeightKg')        IS NULL ALTER TABLE dbo.Pets ADD WeightKg        DECIMAL(5,2)   NULL;
 IF COL_LENGTH('dbo.Pets', 'CoatColor')       IS NULL ALTER TABLE dbo.Pets ADD CoatColor       NVARCHAR(40)   NULL;
-IF COL_LENGTH('dbo.Pets', 'Notes')           IS NULL ALTER TABLE dbo.Pets ADD Notes           NVARCHAR(500)  NULL;", conn);
+IF COL_LENGTH('dbo.Pets', 'Notes')           IS NULL ALTER TABLE dbo.Pets ADD Notes           NVARCHAR(500)  NULL;
+IF COL_LENGTH('dbo.Pets', 'VaccineRevalidate') IS NULL ALTER TABLE dbo.Pets ADD VaccineRevalidate BIT NOT NULL CONSTRAINT DF_Pets_VaccineRevalidate DEFAULT 0;", conn);
         cmd.ExecuteNonQuery();
         _columnsChecked = true;
     }
@@ -79,6 +80,35 @@ ORDER BY p.Name, p.PetId";
         using var r = cmd.ExecuteReader();
         if (!r.Read()) return (null, null);
         return (r.IsDBNull(0) ? null : (byte[])r.GetValue(0), r.IsDBNull(1) ? null : (byte[])r.GetValue(1));
+    }
+
+    /// <summary>
+    /// Two cheap flags about a pet's vaccine record, without loading the card picture: whether a card is on file, and whether the pet's
+    /// details were edited after its vaccine was accepted so that the card has to be validated again (see <see cref="SetNeedsRevalidation"/>).
+    /// </summary>
+    public static (bool HasCard, bool Revalidate) GetVaccineFlags(int petId)
+    {
+        using var conn = Open();
+        using var cmd = new SqlCommand(
+            "SELECT CASE WHEN DATALENGTH(VaccinationCard) > 0 THEN 1 ELSE 0 END, VaccineRevalidate FROM dbo.Pets WHERE PetId = @id", conn);
+        cmd.Parameters.Add("@id", SqlDbType.Int).Value = petId;
+        using var r = cmd.ExecuteReader();
+        if (!r.Read()) return (false, false);
+        return (r.GetInt32(0) == 1, r.GetBoolean(1));
+    }
+
+    /// <summary>
+    /// Marks the pet as needing its vaccine card validated again (true), or clears the mark (false). It is set when a customer edits a pet
+    /// whose vaccine was already accepted, and cleared when a card is scanned and accepted (PetVaccinations.SaveScan).
+    /// </summary>
+    public static void SetNeedsRevalidation(int petId, bool value)
+    {
+        using var conn = Open();
+        using var cmd = new SqlCommand("UPDATE dbo.Pets SET VaccineRevalidate = @v WHERE PetId = @id AND IsActive = 1", conn);
+        cmd.Parameters.Add("@v", SqlDbType.Bit).Value = value;
+        cmd.Parameters.Add("@id", SqlDbType.Int).Value = petId;
+        if (cmd.ExecuteNonQuery() == 0)
+            throw new InvalidOperationException("That pet no longer exists.");
     }
 
     public static void SavePhoto(int petId, byte[]? image) => SaveImage(petId, "PhotoImage", image);

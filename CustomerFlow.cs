@@ -55,6 +55,14 @@ internal static class CustomerFlow
                 return;
             }
 
+            // A pet edited after its vaccine was accepted has to have the card validated again before it can be booked.
+            if (PetProfiles.GetVaccineFlags(petId).Revalidate)
+            {
+                Msg.Show(null, "This pet's details were changed after its vaccine was accepted, so the vaccine card has to be validated again.\n\nPlease scan the vaccine card again.",
+                    "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             var service = ServicePricing.Find(serviceName, petId);   // the service priced for this pet's weight
             if (service is null)
             {

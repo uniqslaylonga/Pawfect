@@ -82,7 +82,8 @@ SET Gender          = CASE WHEN @g = N'' THEN Gender ELSE @g END,
     BirthDate       = ISNULL(@b, BirthDate),
     WeightKg        = ISNULL(@w, WeightKg),
     VaccinationCard = ISNULL(@img, VaccinationCard),
-    PhotoImage      = ISNULL(@photo, PhotoImage)
+    PhotoImage      = ISNULL(@photo, PhotoImage),
+    VaccineRevalidate = 0   -- a card was just accepted, so the validate-again mark is cleared
 WHERE PetId = @id", conn, tx))
         {
             details.Parameters.Add("@g", SqlDbType.NVarChar, 10).Value = gender.Trim();
@@ -144,6 +145,19 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PetVaccinations
         var clearance = PetCardMatch.ImmunityClearance(rows.Select(r =>
             new ScannedVaccination(r.Given, r.Vaccine ?? "", r.WeightKg, r.BatchNo ?? "", r.Expires)));
         return clearance.Unreadable ? null : clearance.Date;
+    }
+
+    /// <summary>
+    /// True when the pet's vaccine is accepted and still good: a card is on file, every vaccine on it is in date, and the pet's details
+    /// haven't been edited since (an edit means the card has to be validated again). A customer can't edit such a pet unless they
+    /// agree to validate the vaccine again. Same reading of the card as AddPetForm's vaccine step (a card with no readable rows counts as good).
+    /// </summary>
+    public static bool IsAccepted(int petId)
+    {
+        var (hasCard, revalidate) = PetProfiles.GetVaccineFlags(petId);
+        if (!hasCard || revalidate) return false;
+        var rows = GetForPet(petId);
+        return rows.Count == 0 || !AnyLapsed(rows);
     }
 
     public static List<PetVaccinationRecord> GetForPet(int petId)

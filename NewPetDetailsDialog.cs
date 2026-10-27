@@ -36,6 +36,15 @@ internal sealed class NewPetDetailsDialog : Form
     private readonly ChoiceTile _female = new("Female", radio: false);
     private readonly Label _error = new();
 
+    // A pet whose vaccine is already accepted is shown read-only. The customer can still choose to edit it, but then the vaccine card has
+    // to be validated again (the pet is marked, and the vaccine step asks for a new scan before any booking).
+    private readonly bool _locked;
+    private bool _unlocked;
+    private readonly Label _lockNote = new();
+    private PawButton _save = null!;
+    private PawButton _edit = null!;
+    private Label _sub = null!;
+
     public int PetId { get; private set; }
     public string PetName { get; private set; } = "";
 
@@ -45,6 +54,11 @@ internal sealed class NewPetDetailsDialog : Form
         Icon = AppIcon.Value;
         _customerId = customerId;
         _existing = existing;
+        if (existing is not null)
+        {
+            try { _locked = PetVaccinations.IsAccepted(existing.Id); }
+            catch (SqlException) { _locked = true; }   // can't tell: stay on the safe side and lock (Edit Details still works, with the warning)
+        }
 
         Font = Theme.Face(9f);
         BackColor = Color.White;
@@ -110,13 +124,22 @@ internal sealed class NewPetDetailsDialog : Form
         _error.BackColor = Color.White;
         _error.Font = Theme.Face(8.5f, FontStyle.Bold);
 
+        _lockNote.SetBounds(x1, 440, 520, 20);
+        _lockNote.ForeColor = Theme.Muted;
+        _lockNote.BackColor = Color.White;
+        _lockNote.Font = Theme.Face(8.5f);
+        _lockNote.Text = "To change these details, the vaccine card has to be validated again.";
+        _lockNote.Visible = _locked;
+
         var cancel = new PawButton { Text = "Cancel", Kind = PawButtonKind.Outline, Size = new Size(120, 40), Location = new Point(x1, 464) };
-        var save = new PawButton { Text = "Save Pet", Kind = PawButtonKind.Primary, Size = new Size(140, 40), Location = new Point(410, 464) };
+        _edit = new PawButton { Text = "Edit Details", Kind = PawButtonKind.Outline, Size = new Size(140, 40), Location = new Point(260, 464), Visible = _locked };
+        _save = new PawButton { Text = _locked ? "Continue" : "Save Pet", Kind = PawButtonKind.Primary, Size = new Size(140, 40), Location = new Point(410, 464) };
         cancel.Click += (_, _) => DialogResult = DialogResult.Cancel;
-        save.Click += (_, _) => SavePet();
+        _edit.Click += (_, _) => UnlockForEdit();
+        _save.Click += (_, _) => SavePet();
         CancelButton = cancel;
 
-        Controls.AddRange(new Control[] { _name, _dog, _cat, _breed, _weight, _age, _male, _female, _notes, _error, cancel, save });
+        Controls.AddRange(new Control[] { _name, _dog, _cat, _breed, _weight, _age, _male, _female, _notes, _error, _lockNote, cancel, _edit, _save });
 
         // species / gender behave like groups
         _dog.Click += (_, _) => PickSpecies(dog: true);
@@ -128,7 +151,8 @@ internal sealed class NewPetDetailsDialog : Form
         _weight.Box.KeyPress += (_, e) => { if (!char.IsControl(e.KeyChar) && !char.IsDigit(e.KeyChar) && e.KeyChar != '.' && e.KeyChar != ',') e.Handled = true; };
 
         if (existing is not null) Prefill(existing);
-        Shown += (_, _) => _name.Box.Focus();
+        if (_locked) SetReadOnly(true);
+        Shown += (_, _) => { if (_locked) _save.Focus(); else _name.Box.Focus(); };
 
         FullScreen.Apply(this, centerContent: true);   // full screen; the 580 x 510 form is scaled up and centred
     }
@@ -158,11 +182,13 @@ internal sealed class NewPetDetailsDialog : Form
             AutoSize = true,
             Location = new Point(88, 20),
         };
-        var sub = new Label
+        _sub = new Label
         {
-            Text = _existing is null ? "Please answer a few quick questions about your pet." : $"Check {_existing.Name}'s details before continuing.",
+            Text = _existing is null ? "Please answer a few quick questions about your pet."
+                : _locked ? $"{PetNameRules.Short(_existing.Name, 14)}'s vaccine is already accepted, so the details are locked."
+                : $"Check {_existing.Name}'s details before continuing.",
             Font = Theme.Face(8.5f),
-            ForeColor = Theme.Muted,
+            ForeColor = _locked ? Theme.Green : Theme.Muted,
             BackColor = Color.White,
             AutoSize = true,
             Location = new Point(88, 50),
@@ -171,7 +197,7 @@ internal sealed class NewPetDetailsDialog : Form
         Controls.Add(badge);
         Controls.Add(close);
         Controls.Add(title);
-        Controls.Add(sub);
+        Controls.Add(_sub);
     }
 
     /// <summary>The round person icon in the header (a control, so it scales with the rest of the form).</summary>
@@ -250,8 +276,51 @@ internal sealed class NewPetDetailsDialog : Form
     private static DateTime BirthFromAgeIndex(int index)
         => index == 0 ? DateTime.Today.AddMonths(-6) : DateTime.Today.AddYears(-index);
 
+    /// <summary>Shows or hides the lock: read-only text boxes, and the pickers can't be changed.</summary>
+    private void SetReadOnly(bool readOnly)
+    {
+        foreach (var field in new[] { _name, _weight, _notes })
+        {
+            field.Box.ReadOnly = readOnly;
+            field.Box.ForeColor = readOnly ? Theme.Muted : Theme.Text;
+        }
+        foreach (Control c in new Control[] { _dog, _cat, _male, _female, _breed, _age })
+        {
+            c.Enabled = !readOnly;
+            if (c is ChoiceTile) c.Cursor = readOnly ? Cursors.Default : Cursors.Hand;
+        }
+    }
+
+    /// <summary>"Edit Details" on a locked pet: after the customer agrees to validate the vaccine again, the fields open up.</summary>
+    private void UnlockForEdit()
+    {
+        if (_existing is null) return;
+        var answer = Msg.Show(this,
+            $"{PetNameRules.Short(_existing.Name)}'s vaccine is already accepted.\n\nIf you change the details, the vaccine card has to be validated again before you can book. Edit anyway?",
+            "Pawfect", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+        if (answer != DialogResult.Yes) return;
+
+        _unlocked = true;
+        SetReadOnly(false);
+        _edit.Visible = false;
+        _lockNote.Visible = false;
+        _save.Text = "Save Pet";
+        _sub.Text = "Make your changes. The vaccine card will be validated again.";
+        _sub.ForeColor = Theme.Muted;
+        _name.Box.Focus();
+    }
+
     private void SavePet()
     {
+        // Vaccine already accepted and the customer didn't ask to edit: Continue carries on with the pet exactly as it is.
+        if (_locked && !_unlocked)
+        {
+            PetId = _existing!.Id;
+            PetName = _existing.Name;
+            DialogResult = DialogResult.OK;
+            return;
+        }
+
         string name = _name.Box.Text.Trim();
         if (name.Length == 0) { Fail("Enter your pet's name.", _name.Box); return; }
         if (!PetNameRules.IsValid(name)) { Fail(PetNameRules.Hint, _name.Box); return; }
@@ -271,6 +340,13 @@ internal sealed class NewPetDetailsDialog : Form
 
         try
         {
+            // The vaccine was accepted and the customer chose to edit and save: any edit at all needs the card validated again,
+            // so mark the pet for re-validation first. If anything after this
+            // fails, the pet is held for a new scan rather than left edited with its old approval.
+            // Checked again right now (not just when the form opened), so it holds whatever the form showed.
+            if (_existing is not null && PetVaccinations.IsAccepted(_existing.Id))
+                PetProfiles.SetNeedsRevalidation(_existing.Id, true);
+
             if (_existing is null) PetId = EmployeeData.AddPet(_customerId, name, species, breed);
             else { PetId = _existing.Id; EmployeeData.UpdatePet(PetId, name, species, breed); }
 

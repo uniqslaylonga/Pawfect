@@ -10,12 +10,13 @@ namespace MyApp;
 /// <item><b>Missing</b> - new pet, or no card on file yet: amber banner, "Scan Your Pet's Vaccine Card".</item>
 /// <item><b>Expired</b> - a card is on file but none of its vaccinations is still in date: red banner, "Scan Updated Vaccine Card".</item>
 /// <item><b>Valid</b> - a card is on file and still good: green banner and "No need to scan!".</item>
+/// <item><b>Revalidate</b> - the pet was edited after its vaccine was accepted: amber banner, the card must be scanned again.</item>
 /// </list>
 /// It is built in code so the Visual Studio designer file stays untouched.
 /// </summary>
 internal sealed partial class AddPetForm
 {
-    private enum VaccineState { Missing, Expired, Valid }
+    private enum VaccineState { Missing, Expired, Valid, Revalidate }
 
     private enum BannerKind { Warning, Danger, Success }
 
@@ -107,6 +108,13 @@ internal sealed partial class AddPetForm
                 _vaccineInfoText!.Text = "Use the updated vaccine card with the current date.";
                 break;
 
+            case VaccineState.Revalidate:
+                SetBanner(BannerKind.Warning, $"{PetNameRules.Short(petName)}'s details were changed. The vaccine card must be validated again.");
+                titleLabel.Text = "Validate Vaccine Card Again";
+                subtitleLabel.Text = "Please scan the vaccine card again to continue.";
+                _vaccineInfoText!.Text = "Place the vaccine card in the frame and make sure it's clear and readable.";
+                break;
+
             default:
                 SetBanner(BannerKind.Warning, isNew
                     ? "This pet is new to our system. A valid vaccine card is required before proceeding to grooming."
@@ -174,6 +182,7 @@ internal sealed partial class AddPetForm
     /// </summary>
     private static VaccineState GetVaccineState(int petId)
     {
+        if (PetProfiles.GetVaccineFlags(petId).Revalidate) return VaccineState.Revalidate;   // edited after it was accepted: scan again
         var rows = PetVaccinations.GetForPet(petId);
         if (rows.Count == 0) return VaccineState.Valid;
         return PetVaccinations.AnyLapsed(rows) ? VaccineState.Expired : VaccineState.Valid;   // one expired vaccine is enough to stop
