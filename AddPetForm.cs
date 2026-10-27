@@ -12,6 +12,7 @@ namespace MyApp;
 internal sealed partial class AddPetForm : Form
 {
     private readonly TextBox[] _otpBoxes;
+    private readonly PawSelect _speciesSelect = new() { Placeholder = "Select Dog or Cat", Glyph = "\uE8EC" };   // species is a Dog/Cat choice, never typed text
     private int _customerId;
     private string _ownerName = "";
     private readonly string _loginEmail = "";
@@ -124,7 +125,16 @@ internal sealed partial class AddPetForm : Form
         mobileField.Box.TextChanged += MobileBox_TextChanged; // ...or when pasting
         petNameField.Box.TextChanged += (_, _) => petErrorLabel.Text = "";
         petNameField.Box.MaxLength = 60;
-        speciesField.Box.MaxLength = 30;
+        // Species: only Dog or Cat can be chosen (same rule as the Pet Details pop-up). The old text box stays in the designer file but is hidden.
+        speciesField.Visible = false;
+        _speciesSelect.Items.Add("Dog");
+        _speciesSelect.Items.Add("Cat");
+        _speciesSelect.Name = "speciesSelect";
+        _speciesSelect.Bounds = speciesField.Bounds;
+        _speciesSelect.TabIndex = speciesField.TabIndex;
+        _speciesSelect.SelectedIndexChanged += (_, _) => petErrorLabel.Text = "";
+        speciesField.Parent!.Controls.Add(_speciesSelect);
+        _speciesSelect.BringToFront();
         breedField.Box.MaxLength = 60;
 
         foreach (var box in _otpBoxes)
@@ -589,9 +599,15 @@ internal sealed partial class AddPetForm : Form
             petNameField.Box.Focus();
             return;
         }
+        if (_speciesSelect.SelectedItem is not { } species)
+        {
+            petErrorLabel.Text = "Choose Dog or Cat. Pawfect only accepts dogs and cats.";
+            _speciesSelect.Focus();
+            return;
+        }
         try
         {
-            CreatedPetId = EmployeeData.AddPet(_customerId, petNameField.Value, speciesField.Value, breedField.Value);
+            CreatedPetId = EmployeeData.AddPet(_customerId, petNameField.Value, species, breedField.Value);
             DialogResult = DialogResult.OK;
         }
         catch (Exception ex) when (ex is SqlException or InvalidOperationException)

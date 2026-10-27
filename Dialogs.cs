@@ -255,7 +255,7 @@ internal sealed class PetForm : DialogBase
     private readonly int _customerId;
     private readonly PetRecord? _existing;
     private readonly TextBox _name = new();
-    private readonly TextBox _species = new();
+    private readonly PawSelect _species = new() { Placeholder = "Select Dog or Cat" };
     private readonly TextBox _breed = new();
 
     public int? CreatedPetId { get; private set; }
@@ -269,12 +269,14 @@ internal sealed class PetForm : DialogBase
         AddRow("Pet name *", _name);
         AddRow("Species", _species);
         AddRow("Breed", _breed);
-        _species.PlaceholderText = "e.g. Dog, Cat";
+        _species.Items.Add("Dog");
+        _species.Items.Add("Cat");
 
         if (existing is not null)
         {
             _name.Text = existing.Name;
-            _species.Text = existing.Species;
+            _species.SelectedIndex = existing.Species.Contains("dog", StringComparison.OrdinalIgnoreCase) ? 0
+                : existing.Species.Contains("cat", StringComparison.OrdinalIgnoreCase) ? 1 : -1;   // an old free-text species must be re-picked
             _breed.Text = existing.Breed;
         }
         FitHeight();
@@ -283,15 +285,16 @@ internal sealed class PetForm : DialogBase
     protected override void OnSaveClicked()
     {
         if (string.IsNullOrWhiteSpace(_name.Text)) { ShowError("Enter the pet's name."); return; }
+        if (_species.SelectedItem is not { } species) { ShowError("Choose Dog or Cat. Pawfect only accepts dogs and cats."); return; }
         try
         {
             if (_existing is null)
             {
-                CreatedPetId = EmployeeData.AddPet(_customerId, _name.Text, _species.Text, _breed.Text);
+                CreatedPetId = EmployeeData.AddPet(_customerId, _name.Text, species, _breed.Text);
             }
             else
             {
-                EmployeeData.UpdatePet(_existing.Id, _name.Text, _species.Text, _breed.Text);
+                EmployeeData.UpdatePet(_existing.Id, _name.Text, species, _breed.Text);
                 CreatedPetId = _existing.Id;
             }
             DialogResult = DialogResult.OK;

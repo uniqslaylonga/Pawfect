@@ -736,6 +736,17 @@ internal partial class MainForm
             RefreshSoon();   // reload so the catalog shows the real counts; the cart is kept
             return;
         }
+        catch (ExpiredStockException ex)
+        {
+            string fix = ex.IsSupply
+                ? "Restock that supply with a new batch (or remove the expired one), then bill the service again."
+                : "Remove it from the cart, or restock it with a new batch first.";
+            Msg.Show(this,
+                $"{ex.ItemName} is past its expiry date: {ex.Usable:0.###} usable, {ex.Expired:0.###} expired, {ex.Needed:0.###} needed.\n\n{fix} Nothing was saved.",
+                "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            RefreshSoon();
+            return;
+        }
         catch (SqlException ex)
         {
             ShowDbError("save the sale", ex);

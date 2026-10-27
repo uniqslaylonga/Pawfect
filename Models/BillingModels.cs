@@ -22,6 +22,26 @@ internal sealed class InsufficientStockException : Exception
     public int Requested { get; }
 }
 
+/// <summary>Thrown by <c>EmployeeData.SaveSale</c> when the only stock left of a product or a grooming supply is past its expiry date. Nothing is saved.</summary>
+internal sealed class ExpiredStockException : Exception
+{
+    public ExpiredStockException(string itemName, decimal expired, decimal usable, decimal needed, bool isSupply = false)
+        : base($"{itemName}: only expired stock is left ({usable:0.###} usable, {expired:0.###} expired, {needed:0.###} needed).")
+    {
+        ItemName = itemName;
+        Expired = expired;
+        Usable = usable;
+        Needed = needed;
+        IsSupply = isSupply;
+    }
+
+    public string ItemName { get; }
+    public decimal Expired { get; }
+    public decimal Usable { get; }
+    public decimal Needed { get; }
+    public bool IsSupply { get; }
+}
+
 /// <summary>A grooming / care service that can be billed. Pass these to <c>BillingPage.SetServices</c>.</summary>
 /// <param name="Detail">Small grey text under the name, e.g. "Dog \u00b7 up to 5 kg" when the same service has one price per weight band.</param>
 internal sealed record ServiceOffering(int Id, string Name, decimal Price, string Detail = "");

@@ -299,8 +299,11 @@ VALUES (@p, @no, @sup, @rec, @exp, @q, @q)", conn, tx))
     }
 
     /// <summary>
-    /// FIFO: takes units out of the oldest batches first. Called by Counter POS inside the sale's own transaction, right after
-    /// the product total was reduced. Does nothing if batches were never set up.
+    /// FIFO, earliest expiry first: takes units out of the batch that expires soonest (batches with no expiry date go last, ties go to
+    /// the oldest delivery). A batch past its expiry date is never used. Called by Counter POS inside the sale's own transaction, right
+    /// after the product total was reduced. Does nothing if batches were never set up.
+    /// Throws <see cref="ExpiredStockException"/> when the units that are still in date are not enough and expired stock is the reason,
+    /// so the sale is not saved.
     /// </summary>
     internal static void ConsumeFifo(SqlConnection conn, SqlTransaction tx, int productId, int quantity)
     {
@@ -309,13 +312,33 @@ VALUES (@p, @no, @sup, @rec, @exp, @q, @q)", conn, tx))
             if (Convert.ToInt32(exists.ExecuteScalar(), CultureInfo.InvariantCulture) == 0) return;
         }
 
-        var batches = new List<(int Id, int Qty)>();
+        var today = DateTime.Today;
+        var batches = new List<(int Id, int Qty)>();   // batches still in date, in the order they will be used
+        int expiredUnits = 0;
         using (var cmd = new SqlCommand(
-            "SELECT BatchId, QtyRemaining FROM dbo.StockBatches WHERE ProductId = @p AND QtyRemaining > 0 ORDER BY ReceivedDate, BatchId", conn, tx))
+            "SELECT BatchId, QtyRemaining, ExpiryDate FROM dbo.StockBatches WHERE ProductId = @p AND QtyRemaining > 0 " +
+            "ORDER BY CASE WHEN ExpiryDate IS NULL THEN 1 ELSE 0 END, ExpiryDate, ReceivedDate, BatchId", conn, tx))
         {
             cmd.Parameters.Add("@p", SqlDbType.Int).Value = productId;
             using var r = cmd.ExecuteReader();
-            while (r.Read()) batches.Add((r.GetInt32(0), r.GetInt32(1)));
+            while (r.Read())
+            {
+                int qty = r.GetInt32(1);
+                if (!r.IsDBNull(2) && r.GetDateTime(2).Date < today) expiredUnits += qty;
+                else batches.Add((r.GetInt32(0), qty));
+            }
+        }
+
+        int usable = batches.Sum(b => b.Qty);
+        if (usable < quantity && expiredUnits > 0)
+        {
+            string name = "This product";
+            using (var look = new SqlCommand("SELECT Name FROM dbo.Products WHERE ProductId = @p", conn, tx))
+            {
+                look.Parameters.Add("@p", SqlDbType.Int).Value = productId;
+                if (look.ExecuteScalar() is string found) name = found;
+            }
+            throw new ExpiredStockException(name, expiredUnits, usable, quantity);
         }
 
         int left = quantity;

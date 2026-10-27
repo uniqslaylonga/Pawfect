@@ -179,8 +179,18 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
         return id;
     }
 
+    /// <summary>Pawfect only accepts dogs and cats. Returns "Dog" or "Cat" (any capitalisation is accepted); anything else is refused.</summary>
+    private static string CheckSpecies(string species)
+    {
+        string kind = species.Trim();
+        if (kind.Equals("Dog", StringComparison.OrdinalIgnoreCase)) return "Dog";
+        if (kind.Equals("Cat", StringComparison.OrdinalIgnoreCase)) return "Cat";
+        throw new InvalidOperationException("Pawfect only accepts dogs and cats.");
+    }
+
     private static int InsertPet(SqlConnection conn, SqlTransaction tx, int customerId, string name, string species, string breed)
     {
+        species = CheckSpecies(species);
         using var cmd = Cmd(conn,
             "INSERT INTO dbo.Pets (CustomerId, Name, Species, Breed) OUTPUT INSERTED.PetId VALUES (@c, @n, @s, @b)", tx);
         P(cmd, "@c", SqlDbType.Int, customerId);
@@ -559,7 +569,7 @@ END", tx);
         using var cmd = Cmd(conn,
             "UPDATE dbo.Pets SET Name = @n, Species = @s, Breed = @b WHERE PetId = @id AND IsActive = 1");
         P(cmd, "@n", SqlDbType.NVarChar, name.Trim(), 60);
-        P(cmd, "@s", SqlDbType.NVarChar, species.Trim(), 30);
+        P(cmd, "@s", SqlDbType.NVarChar, CheckSpecies(species), 30);
         P(cmd, "@b", SqlDbType.NVarChar, breed.Trim(), 60);
         P(cmd, "@id", SqlDbType.Int, petId);
         if (cmd.ExecuteNonQuery() == 0)
@@ -976,6 +986,11 @@ VALUES (@t, @kind, @service, @product, @name, @detail, @price, @qty)", tx);
             }
             throw new InsufficientStockException(shortName, have, wanted);
         }
+
+        // Grooming supplies: every service sold uses up the supplies set for it (dbo.ServiceConsumables), earliest-expiry batch first.
+        // Expired batches are never used; if only expired stock is left the exception rolls the whole sale back.
+        var serviceUses = sale.Lines.Where(l => l.Kind == CartLineKind.Service).Select(l => (l.SourceId, l.Quantity)).ToList();
+        if (serviceUses.Count > 0) ConsumableData.ConsumeForServices(conn, tx, serviceUses);
 
         if (appointmentId is int id)
         {
