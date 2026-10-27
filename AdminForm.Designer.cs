@@ -127,10 +127,6 @@ namespace MyApp
             topBar = new MyApp.Controls.EdgePanel();
             pageTitle = new Label();
             pageSubtitle = new Label();
-            searchBox = new MyApp.Controls.CardPanel();
-            searchHost = new Panel();
-            searchTextBox = new TextBox();
-            searchIcon = new Label();
             notificationButton = new MyApp.Controls.IconButton();
             userChip = new Panel();
             userAvatar = new MyApp.Controls.IconBadge();
@@ -197,8 +193,6 @@ namespace MyApp
             activityCard.SuspendLayout();
             activityHeader.SuspendLayout();
             topBar.SuspendLayout();
-            searchBox.SuspendLayout();
-            searchHost.SuspendLayout();
             userChip.SuspendLayout();
             sidebar.SuspendLayout();
             navPanel.SuspendLayout();
@@ -233,7 +227,7 @@ namespace MyApp
             bodyGrid.BackColor = Color.FromArgb(243, 247, 252);
             bodyGrid.ColumnCount = 2;
             bodyGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            bodyGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 300F));
+            bodyGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 400F));
             bodyGrid.Controls.Add(leftGrid, 0, 0);
             bodyGrid.Controls.Add(rightColumn, 1, 0);
             bodyGrid.Dock = DockStyle.Fill;
@@ -1488,7 +1482,7 @@ namespace MyApp
             rightColumn.RowCount = 2;
             rightColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 44F));
             rightColumn.RowStyles.Add(new RowStyle(SizeType.Percent, 56F));
-            rightColumn.Size = new Size(300, 692);
+            rightColumn.Size = new Size(400, 692);
             rightColumn.TabIndex = 1;
             // 
             // alertsCard
@@ -1504,7 +1498,7 @@ namespace MyApp
             alertsCard.Name = "alertsCard";
             alertsCard.Padding = new Padding(16, 12, 16, 12);
             alertsCard.Radius = 10;
-            alertsCard.Size = new Size(300, 288);
+            alertsCard.Size = new Size(400, 288);
             alertsCard.TabIndex = 0;
             // 
             // alertsEmpty
@@ -1574,7 +1568,7 @@ namespace MyApp
             activityCard.Name = "activityCard";
             activityCard.Padding = new Padding(16, 12, 16, 12);
             activityCard.Radius = 10;
-            activityCard.Size = new Size(300, 388);
+            activityCard.Size = new Size(400, 388);
             activityCard.TabIndex = 1;
             // 
             // activityEmpty
@@ -1653,7 +1647,6 @@ namespace MyApp
             topBar.BackColor = Color.White;
             topBar.Controls.Add(pageTitle);
             topBar.Controls.Add(pageSubtitle);
-            topBar.Controls.Add(searchBox);
             topBar.Controls.Add(notificationButton);
             topBar.Controls.Add(userChip);
             topBar.Dock = DockStyle.Top;
@@ -1662,7 +1655,7 @@ namespace MyApp
             topBar.Name = "topBar";
             topBar.Padding = new Padding(0, 0, 0, 1);
             topBar.Side = MyApp.Controls.Edge.Bottom;
-            topBar.Size = new Size(1036, 68);
+            topBar.Size = new Size(1036, 85);
             topBar.TabIndex = 1;
             // 
             // pageTitle
@@ -1670,9 +1663,10 @@ namespace MyApp
             pageTitle.BackColor = Color.White;
             pageTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold, GraphicsUnit.Point, 0);
             pageTitle.ForeColor = Color.FromArgb(31, 42, 60);
-            pageTitle.Location = new Point(24, 12);
+            pageTitle.Location = new Point(24, 10);
             pageTitle.Name = "pageTitle";
-            pageTitle.Size = new Size(320, 26);
+            pageTitle.Size = new Size(706, 34);
+            pageTitle.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             pageTitle.TabIndex = 0;
             pageTitle.Text = "Dashboard";
             pageTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -1683,74 +1677,21 @@ namespace MyApp
             pageSubtitle.BackColor = Color.White;
             pageSubtitle.Font = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
             pageSubtitle.ForeColor = Color.FromArgb(122, 136, 156);
-            pageSubtitle.Location = new Point(24, 38);
+            pageSubtitle.Location = new Point(24, 48);
             pageSubtitle.Name = "pageSubtitle";
-            pageSubtitle.Size = new Size(420, 18);
+            pageSubtitle.Size = new Size(706, 22);
+            pageSubtitle.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             pageSubtitle.TabIndex = 1;
             pageSubtitle.Text = "Welcome back, Admin! Here's what's happening today.";
             pageSubtitle.TextAlign = ContentAlignment.MiddleLeft;
             pageSubtitle.UseMnemonic = false;
-            // 
-            // searchBox
-            // 
-            searchBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            searchBox.BorderColor = Color.FromArgb(227, 233, 242);
-            searchBox.Controls.Add(searchHost);
-            searchBox.Controls.Add(searchIcon);
-            searchBox.CornerColor = Color.White;
-            searchBox.FillColor = Color.White;
-            searchBox.Location = new Point(470, 15);
-            searchBox.Margin = new Padding(0);
-            searchBox.Name = "searchBox";
-            searchBox.Padding = new Padding(10, 3, 10, 3);
-            searchBox.Radius = 19;
-            searchBox.Size = new Size(300, 38);
-            searchBox.TabIndex = 2;
-            // 
-            // searchHost
-            // 
-            searchHost.BackColor = Color.White;
-            searchHost.Controls.Add(searchTextBox);
-            searchHost.Dock = DockStyle.Fill;
-            searchHost.Location = new Point(38, 3);
-            searchHost.Name = "searchHost";
-            searchHost.Padding = new Padding(0, 8, 0, 0);
-            searchHost.Size = new Size(252, 32);
-            searchHost.TabIndex = 0;
-            // 
-            // searchTextBox
-            // 
-            searchTextBox.BackColor = Color.White;
-            searchTextBox.BorderStyle = BorderStyle.None;
-            searchTextBox.Dock = DockStyle.Fill;
-            searchTextBox.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            searchTextBox.ForeColor = Color.FromArgb(31, 42, 60);
-            searchTextBox.Location = new Point(0, 8);
-            searchTextBox.Name = "searchTextBox";
-            searchTextBox.PlaceholderText = "Search here...";
-            searchTextBox.Size = new Size(252, 22);
-            searchTextBox.TabIndex = 0;
-            // 
-            // searchIcon
-            // 
-            searchIcon.BackColor = Color.White;
-            searchIcon.Dock = DockStyle.Left;
-            searchIcon.Font = new Font("Segoe MDL2 Assets", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            searchIcon.ForeColor = Color.FromArgb(122, 136, 156);
-            searchIcon.Location = new Point(10, 3);
-            searchIcon.Name = "searchIcon";
-            searchIcon.Size = new Size(28, 32);
-            searchIcon.TabIndex = 1;
-            searchIcon.Text = "";
-            searchIcon.TextAlign = ContentAlignment.MiddleCenter;
-            searchIcon.UseMnemonic = false;
             // 
             // notificationButton
             // 
             notificationButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             notificationButton.BackColor = Color.White;
             notificationButton.Glyph = "";
-            notificationButton.Location = new Point(786, 15);
+            notificationButton.Location = new Point(746, 23);
             notificationButton.Name = "notificationButton";
             notificationButton.Size = new Size(38, 38);
             notificationButton.TabIndex = 3;
@@ -1764,9 +1705,9 @@ namespace MyApp
             userChip.Controls.Add(userRoleLabel);
             userChip.Controls.Add(userChevron);
             userChip.Cursor = Cursors.Hand;
-            userChip.Location = new Point(836, 12);
+            userChip.Location = new Point(796, 20);
             userChip.Name = "userChip";
-            userChip.Size = new Size(176, 44);
+            userChip.Size = new Size(216, 44);
             userChip.TabIndex = 4;
             // 
             // userAvatar
@@ -1790,7 +1731,7 @@ namespace MyApp
             userNameLabel.ForeColor = Color.FromArgb(31, 42, 60);
             userNameLabel.Location = new Point(44, 6);
             userNameLabel.Name = "userNameLabel";
-            userNameLabel.Size = new Size(108, 18);
+            userNameLabel.Size = new Size(148, 18);
             userNameLabel.TabIndex = 1;
             userNameLabel.Text = "Admin";
             userNameLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1803,7 +1744,7 @@ namespace MyApp
             userRoleLabel.ForeColor = Color.FromArgb(122, 136, 156);
             userRoleLabel.Location = new Point(44, 24);
             userRoleLabel.Name = "userRoleLabel";
-            userRoleLabel.Size = new Size(108, 16);
+            userRoleLabel.Size = new Size(148, 16);
             userRoleLabel.TabIndex = 2;
             userRoleLabel.Text = "Admin";
             userRoleLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -1814,7 +1755,7 @@ namespace MyApp
             userChevron.BackColor = Color.White;
             userChevron.Font = new Font("Segoe MDL2 Assets", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             userChevron.ForeColor = Color.FromArgb(122, 136, 156);
-            userChevron.Location = new Point(154, 12);
+            userChevron.Location = new Point(194, 12);
             userChevron.Name = "userChevron";
             userChevron.Size = new Size(20, 20);
             userChevron.TabIndex = 3;
@@ -1967,14 +1908,14 @@ namespace MyApp
             sidebarBrand.Name = "sidebarBrand";
             sidebarBrand.Padding = new Padding(0, 0, 0, 1);
             sidebarBrand.Side = MyApp.Controls.Edge.Bottom;
-            sidebarBrand.Size = new Size(243, 78);
+            sidebarBrand.Size = new Size(243, 85);
             sidebarBrand.TabIndex = 2;
             // 
             // brandLogo
             // 
             brandLogo.BackColor = Color.White;
             brandLogo.FillColor = Color.FromArgb(234, 242, 253);
-            brandLogo.Location = new Point(16, 18);
+            brandLogo.Location = new Point(16, 22);
             brandLogo.Name = "brandLogo";
             brandLogo.PawColor = Color.FromArgb(58, 123, 213);
             brandLogo.Size = new Size(42, 42);
@@ -2068,9 +2009,6 @@ namespace MyApp
             activityCard.ResumeLayout(false);
             activityHeader.ResumeLayout(false);
             topBar.ResumeLayout(false);
-            searchBox.ResumeLayout(false);
-            searchHost.ResumeLayout(false);
-            searchHost.PerformLayout();
             userChip.ResumeLayout(false);
             sidebar.ResumeLayout(false);
             navPanel.ResumeLayout(false);
@@ -2190,10 +2128,6 @@ namespace MyApp
         private MyApp.Controls.EdgePanel topBar;
         private System.Windows.Forms.Label pageTitle;
         private System.Windows.Forms.Label pageSubtitle;
-        private MyApp.Controls.CardPanel searchBox;
-        private System.Windows.Forms.Panel searchHost;
-        private System.Windows.Forms.TextBox searchTextBox;
-        private System.Windows.Forms.Label searchIcon;
         private MyApp.Controls.IconButton notificationButton;
         private System.Windows.Forms.Panel userChip;
         private MyApp.Controls.IconBadge userAvatar;

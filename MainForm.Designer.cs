@@ -147,10 +147,6 @@ namespace MyApp
             topBar = new MyApp.Controls.EdgePanel();
             pageTitle = new Label();
             pageSubtitle = new Label();
-            searchBox = new MyApp.Controls.CardPanel();
-            searchHost = new Panel();
-            searchTextBox = new TextBox();
-            searchIcon = new Label();
             notificationButton = new MyApp.Controls.IconButton();
             userChip = new Panel();
             userAvatar = new MyApp.Controls.IconBadge();
@@ -221,8 +217,6 @@ namespace MyApp
             quickGrid.SuspendLayout();
             quickHeader.SuspendLayout();
             topBar.SuspendLayout();
-            searchBox.SuspendLayout();
-            searchHost.SuspendLayout();
             userChip.SuspendLayout();
             sidebar.SuspendLayout();
             navPanel.SuspendLayout();
@@ -2024,7 +2018,6 @@ namespace MyApp
             topBar.BackColor = Color.White;
             topBar.Controls.Add(pageTitle);
             topBar.Controls.Add(pageSubtitle);
-            topBar.Controls.Add(searchBox);
             topBar.Controls.Add(notificationButton);
             topBar.Controls.Add(userChip);
             topBar.Dock = DockStyle.Top;
@@ -2043,7 +2036,8 @@ namespace MyApp
             pageTitle.ForeColor = Color.FromArgb(31, 42, 60);
             pageTitle.Location = new Point(24, 12);
             pageTitle.Name = "pageTitle";
-            pageTitle.Size = new Size(320, 26);
+            pageTitle.Size = new Size(706, 26);
+            pageTitle.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             pageTitle.TabIndex = 0;
             pageTitle.Text = "Staff Dashboard";
             pageTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -2056,72 +2050,19 @@ namespace MyApp
             pageSubtitle.ForeColor = Color.FromArgb(122, 136, 156);
             pageSubtitle.Location = new Point(24, 38);
             pageSubtitle.Name = "pageSubtitle";
-            pageSubtitle.Size = new Size(320, 18);
+            pageSubtitle.Size = new Size(706, 18);
+            pageSubtitle.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             pageSubtitle.TabIndex = 1;
             pageSubtitle.Text = "Here's what's happening today.";
             pageSubtitle.TextAlign = ContentAlignment.MiddleLeft;
             pageSubtitle.UseMnemonic = false;
-            // 
-            // searchBox
-            // 
-            searchBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            searchBox.BorderColor = Color.FromArgb(227, 233, 242);
-            searchBox.Controls.Add(searchHost);
-            searchBox.Controls.Add(searchIcon);
-            searchBox.CornerColor = Color.White;
-            searchBox.FillColor = Color.White;
-            searchBox.Location = new Point(470, 15);
-            searchBox.Margin = new Padding(0);
-            searchBox.Name = "searchBox";
-            searchBox.Padding = new Padding(10, 3, 10, 3);
-            searchBox.Radius = 19;
-            searchBox.Size = new Size(300, 38);
-            searchBox.TabIndex = 2;
-            // 
-            // searchHost
-            // 
-            searchHost.BackColor = Color.White;
-            searchHost.Controls.Add(searchTextBox);
-            searchHost.Dock = DockStyle.Fill;
-            searchHost.Location = new Point(38, 3);
-            searchHost.Name = "searchHost";
-            searchHost.Padding = new Padding(0, 8, 0, 0);
-            searchHost.Size = new Size(252, 32);
-            searchHost.TabIndex = 0;
-            // 
-            // searchTextBox
-            // 
-            searchTextBox.BackColor = Color.White;
-            searchTextBox.BorderStyle = BorderStyle.None;
-            searchTextBox.Dock = DockStyle.Fill;
-            searchTextBox.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            searchTextBox.ForeColor = Color.FromArgb(31, 42, 60);
-            searchTextBox.Location = new Point(0, 8);
-            searchTextBox.Name = "searchTextBox";
-            searchTextBox.PlaceholderText = "Search here...";
-            searchTextBox.Size = new Size(252, 17);
-            searchTextBox.TabIndex = 0;
-            // 
-            // searchIcon
-            // 
-            searchIcon.BackColor = Color.White;
-            searchIcon.Dock = DockStyle.Left;
-            searchIcon.Font = new Font("Segoe MDL2 Assets", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            searchIcon.ForeColor = Color.FromArgb(122, 136, 156);
-            searchIcon.Location = new Point(10, 3);
-            searchIcon.Name = "searchIcon";
-            searchIcon.Size = new Size(28, 32);
-            searchIcon.TabIndex = 1;
-            searchIcon.Text = "";
-            searchIcon.TextAlign = ContentAlignment.MiddleCenter;
-            searchIcon.UseMnemonic = false;
             // 
             // notificationButton
             // 
             notificationButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             notificationButton.BackColor = Color.White;
             notificationButton.Glyph = "";
-            notificationButton.Location = new Point(786, 15);
+            notificationButton.Location = new Point(746, 15);
             notificationButton.Name = "notificationButton";
             notificationButton.Size = new Size(38, 38);
             notificationButton.TabIndex = 3;
@@ -2136,9 +2077,9 @@ namespace MyApp
             userChip.Controls.Add(userRoleLabel);
             userChip.Controls.Add(userChevron);
             userChip.Cursor = Cursors.Hand;
-            userChip.Location = new Point(836, 12);
+            userChip.Location = new Point(796, 12);
             userChip.Name = "userChip";
-            userChip.Size = new Size(176, 44);
+            userChip.Size = new Size(216, 44);
             userChip.TabIndex = 4;
             // 
             // userAvatar
@@ -2162,7 +2103,7 @@ namespace MyApp
             userNameLabel.ForeColor = Color.FromArgb(31, 42, 60);
             userNameLabel.Location = new Point(44, 6);
             userNameLabel.Name = "userNameLabel";
-            userNameLabel.Size = new Size(108, 18);
+            userNameLabel.Size = new Size(148, 18);
             userNameLabel.TabIndex = 1;
             userNameLabel.Text = "Employee";
             userNameLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -2175,7 +2116,7 @@ namespace MyApp
             userRoleLabel.ForeColor = Color.FromArgb(122, 136, 156);
             userRoleLabel.Location = new Point(44, 24);
             userRoleLabel.Name = "userRoleLabel";
-            userRoleLabel.Size = new Size(108, 16);
+            userRoleLabel.Size = new Size(148, 16);
             userRoleLabel.TabIndex = 2;
             userRoleLabel.Text = "Staff";
             userRoleLabel.TextAlign = ContentAlignment.MiddleLeft;
@@ -2186,7 +2127,7 @@ namespace MyApp
             userChevron.BackColor = Color.White;
             userChevron.Font = new Font("Segoe MDL2 Assets", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             userChevron.ForeColor = Color.FromArgb(122, 136, 156);
-            userChevron.Location = new Point(154, 12);
+            userChevron.Location = new Point(194, 12);
             userChevron.Name = "userChevron";
             userChevron.Size = new Size(20, 20);
             userChevron.TabIndex = 3;
@@ -2429,9 +2370,6 @@ namespace MyApp
             quickGrid.ResumeLayout(false);
             quickHeader.ResumeLayout(false);
             topBar.ResumeLayout(false);
-            searchBox.ResumeLayout(false);
-            searchHost.ResumeLayout(false);
-            searchHost.PerformLayout();
             userChip.ResumeLayout(false);
             sidebar.ResumeLayout(false);
             navPanel.ResumeLayout(false);
@@ -2571,10 +2509,6 @@ namespace MyApp
         private MyApp.Controls.EdgePanel topBar;
         private System.Windows.Forms.Label pageTitle;
         private System.Windows.Forms.Label pageSubtitle;
-        private MyApp.Controls.CardPanel searchBox;
-        private System.Windows.Forms.Panel searchHost;
-        private System.Windows.Forms.TextBox searchTextBox;
-        private System.Windows.Forms.Label searchIcon;
         private MyApp.Controls.IconButton notificationButton;
         private System.Windows.Forms.Panel userChip;
         private MyApp.Controls.IconBadge userAvatar;

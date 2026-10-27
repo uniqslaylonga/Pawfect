@@ -367,49 +367,22 @@ internal partial class AdminForm : Form
         _roomList.BringToFront();   // same layering the Alerts and Activity lists use
     }
 
-    private sealed record RoomLine(string Name, string Type, string Status, string Next, int Today);
+    private sealed record RoomLine(string Name, string Status, string Next);
 
+    /// <summary>Active rooms with a live status worked out from the appointments (dbo.Rooms has no Status column).</summary>
     private static List<RoomLine> LoadRooms()
     {
-        var rooms = new List<(int Id, string Name, string Type, string Status)>();
-        var next = new Dictionary<int, (DateTime Start, string Pet)>();
-        var count = new Dictionary<int, int>();
-
-        using var conn = new Microsoft.Data.SqlClient.SqlConnection(Database.ConnectionString);
-        conn.Open();
-
-        using (var cmd = new Microsoft.Data.SqlClient.SqlCommand(
-            "SELECT RoomId, Name, RoomType, Status FROM dbo.Rooms WHERE IsActive = 1 ORDER BY Name", conn))
-        using (var r = cmd.ExecuteReader())
-            while (r.Read())
-                rooms.Add((r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3)));
-
-        try
-        {
-            using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
-                @"SELECT a.RoomId, a.StartTime, p.Name
-              FROM dbo.Appointments a
-              JOIN dbo.Pets p ON p.PetId = a.PetId
-              WHERE a.RoomId IS NOT NULL AND a.Status <> N'Cancelled'
-                AND CAST(a.StartTime AS DATE) = @d
-              ORDER BY a.StartTime", conn);
-            cmd.Parameters.Add("@d", System.Data.SqlDbType.Date).Value = DateTime.Today;
-            using var r = cmd.ExecuteReader();
-            while (r.Read())
-            {
-                int id = r.GetInt32(0);
-                var start = r.GetDateTime(1);
-                count[id] = count.GetValueOrDefault(id) + 1;
-                if (start >= DateTime.Now && !next.ContainsKey(id))
-                    next[id] = (start, r.GetString(2));
-            }
-        }
-        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 207 or 208) { }   // appointment columns differ: skip schedules
-
-        return rooms.Select(x => new RoomLine(
-            x.Name, x.Type, x.Status,
-            next.TryGetValue(x.Id, out var n) ? $"Next: {n.Start:h:mm tt} · {n.Pet}" : "Nothing else booked today",
-            count.GetValueOrDefault(x.Id))).ToList();
+        var now = DateTime.Now;
+        return RoomScheduleRepository.GetRooms(now)
+            .Where(r => r.Active)
+            .Select(r => new RoomLine(
+                r.Name,
+                r.State switch { RoomState.InUse => "Occupied", RoomState.Sanitizing => "Sanitizing", _ => "Available" },
+                r.State == RoomState.InUse && r.Until is { } until ? $"In use until {until:h:mm tt}"
+                : r.State == RoomState.Sanitizing && r.Until is { } ready ? $"Ready at {ready:h:mm tt}"
+                : r.Next is { } next ? $"Next: {next:h:mm tt}"
+                : "Nothing else booked"))
+            .ToList();
     }
 
     private void RefreshRoomMonitor()
@@ -455,7 +428,7 @@ internal partial class AdminForm : Form
                 var r = rooms[i];
                 var row = new DashboardRowView(
                     r.Name,
-                    $"{r.Type} · {r.Next}",
+                    r.Next,
                     r.Status,
                     r.Status switch { "Available" => Theme.Green, "Occupied" => Theme.Danger, _ => Theme.Orange });
                 row.Dock = DockStyle.Top;
