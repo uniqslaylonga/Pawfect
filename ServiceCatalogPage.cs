@@ -9,7 +9,7 @@ namespace MyApp;
 /// <summary>
 /// Service Catalog Management screen. Layout lives in ServiceCatalogPage.Designer.cs, so open this file's designer
 /// in Visual Studio to move or restyle anything. Everything shown comes from dbo.Services / dbo.Appointments through
-/// Load(); with no services the tiles show 0 and the table, popular list and category counts stay empty.
+/// LoadData(); with no services the tiles show 0 and the table, popular list and category counts stay empty.
 /// </summary>
 internal partial class ServiceCatalogPage : UserControl
 {
@@ -108,7 +108,7 @@ internal partial class ServiceCatalogPage : UserControl
     // ------------------------------------------------------------------ data
 
     /// <summary>Stores the full service list and booking counts from the database, then shows them through the current filters.</summary>
-    public void Load(List<ServiceRepository.ServiceRow> services, Dictionary<int, ServiceRepository.Bookings> bookings)
+    public void LoadData(List<ServiceRepository.ServiceRow> services, Dictionary<int, ServiceRepository.Bookings> bookings)
     {
         _all = services;
         _bookings = bookings;

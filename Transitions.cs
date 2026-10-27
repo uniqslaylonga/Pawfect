@@ -7,7 +7,7 @@ namespace MyApp;
 /// <summary>Master switch for every animation in this file. false = pages and screens change instantly.</summary>
 internal static class Transitions
 {
-    public const bool Enabled = true;
+    public static readonly bool Enabled = true;
 }
 
 /// <summary>

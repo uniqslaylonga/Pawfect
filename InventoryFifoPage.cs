@@ -7,7 +7,7 @@ namespace MyApp;
 /// <summary>
 /// Inventory &amp; FIFO Management screen. Layout lives in InventoryFifoPage.Designer.cs, so open this file's designer
 /// in Visual Studio to move or restyle anything. Everything shown comes from dbo.Products / dbo.StockBatches through
-/// Load(); with no products the counts show 0 and the table and alert lists stay empty.
+/// LoadData(); with no products the counts show 0 and the table and alert lists stay empty.
 /// </summary>
 internal partial class InventoryFifoPage : UserControl
 {
@@ -104,7 +104,7 @@ internal partial class InventoryFifoPage : UserControl
     // ------------------------------------------------------------------ data
 
     /// <summary>Stores the products and batches from the database, then shows them through the current filters.</summary>
-    public void Load(List<InventoryRow> rows, int productsAddedThisMonth, int unitsReceivedThisMonth)
+    public void LoadData(List<InventoryRow> rows, int productsAddedThisMonth, int unitsReceivedThisMonth)
     {
         _all = rows;
         _productsAdded = productsAddedThisMonth;

@@ -591,7 +591,7 @@ internal partial class AdminForm : Form
         {
             var rows = InventoryData.GetRows();
             var (added, received) = InventoryData.GetMonthStats();
-            inventoryPage.Load(rows, added, received);
+            inventoryPage.LoadData(rows, added, received);
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
@@ -649,7 +649,7 @@ internal partial class AdminForm : Form
     {
         try
         {
-            servicesPage.Load(ServiceRepository.GetAll(), ServiceRepository.GetBookings());
+            servicesPage.LoadData(ServiceRepository.GetAll(), ServiceRepository.GetBookings());
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {

@@ -146,7 +146,7 @@ internal sealed partial class AddPetForm : Form
             {
                 e.SuppressKeyPress = true;
                 if (VaccineStepVisible || ServiceStepVisible) ContinueWithPet();
-                else if (selectPanel.Visible) { if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
+                else if (selectPanel.Visible) { if (_historyView is { Visible: true }) _ = SendHistoryAsync(); else if (addPetView.Visible) SavePet(); else ContinueWithPet(); }
                 else if (_otpBoxes.Any(b => b.Focused) || verifyButton.Enabled) VerifyCode();
                 else SendOtp();
             }
@@ -543,6 +543,7 @@ internal sealed partial class AddPetForm : Form
     {
         tabMyPets.Active = !addNew;
         tabAddPet.Active = addNew;
+        HideHistoryTab();   // the Transaction History tab (AddPetForm.History.cs) is switched off whenever one of the other two is chosen
         myPetsView.Visible = !addNew;
         addPetView.Visible = addNew;
         continueButton.Visible = !addNew;
@@ -634,6 +635,7 @@ internal sealed partial class AddPetForm : Form
         else subtitleLabel.Text = "Choose an existing pet or register a new one.";
         stepContact.State = StepState.Done;
         stepSelect.State = StepState.Active;
+        EnsureHistoryTab();   // third tab: Transaction History (emailed to the customer)
         LoadPets();
         ShowTab(addNew: false);   // no pets yet: the list just shows the "New Pet?" tile
     }

@@ -152,7 +152,7 @@ internal partial class ReportsAuditingPage : UserControl
 
     // ---- date range
 
-    private static (DateTime Start, DateTime End) Bounds(RangeKind kind, DateTime anchor)
+    private static (DateTime Start, DateTime End) RangeBounds(RangeKind kind, DateTime anchor)
     {
         switch (kind)
         {
@@ -184,7 +184,7 @@ internal partial class ReportsAuditingPage : UserControl
             case RangeKind.Day:
                 return _anchor.ToString("MMM d, yyyy", culture);
             case RangeKind.Week:
-                var (start, end) = Bounds(RangeKind.Week, _anchor);
+                var (start, end) = RangeBounds(RangeKind.Week, _anchor);
                 return start.ToString("MMM d", culture) + " – " + end.AddDays(-1).ToString("MMM d, yyyy", culture);
             case RangeKind.Month:
                 return _anchor.ToString("MMMM yyyy", culture);
@@ -210,7 +210,7 @@ internal partial class ReportsAuditingPage : UserControl
         }
 
         var next = Shift(_kind, _anchor, direction);
-        if (direction > 0 && Bounds(_kind, next).Start > DateTime.Today)
+        if (direction > 0 && RangeBounds(_kind, next).Start > DateTime.Today)
         {
             // Nothing to show in the future: stay on the current period.
             if (wasAll)
@@ -248,7 +248,7 @@ internal partial class ReportsAuditingPage : UserControl
         var lastMonth = today.AddMonths(-1);
         Add("All dates", RangeKind.All, today, _kind == RangeKind.All);
         Add("Today", RangeKind.Day, today, _kind == RangeKind.Day && _anchor.Date == today);
-        Add("This week", RangeKind.Week, today, _kind == RangeKind.Week && Bounds(RangeKind.Week, _anchor).Start == Bounds(RangeKind.Week, today).Start);
+        Add("This week", RangeKind.Week, today, _kind == RangeKind.Week && RangeBounds(RangeKind.Week, _anchor).Start == RangeBounds(RangeKind.Week, today).Start);
         Add("This month", RangeKind.Month, today, _kind == RangeKind.Month && _anchor.Year == today.Year && _anchor.Month == today.Month);
         Add("Last month", RangeKind.Month, lastMonth, _kind == RangeKind.Month && _anchor.Year == lastMonth.Year && _anchor.Month == lastMonth.Month);
         _rangeMenu.Show(auditDateRange, new Point(0, auditDateRange.Height + 2));
@@ -265,14 +265,14 @@ internal partial class ReportsAuditingPage : UserControl
         if (_kind == RangeKind.All)
         {
             // Everything is shown, so the "vs." line compares this month with last month.
-            var thisMonth = Bounds(RangeKind.Month, DateTime.Today);
-            var lastMonth = Bounds(RangeKind.Month, DateTime.Today.AddMonths(-1));
+            var thisMonth = RangeBounds(RangeKind.Month, DateTime.Today);
+            var lastMonth = RangeBounds(RangeKind.Month, DateTime.Today.AddMonths(-1));
             return new AuditQuery(Make(null, null), Make(thisMonth.Start, thisMonth.End), Make(lastMonth.Start, lastMonth.End),
                 CurrentTab, "this month vs. last month");
         }
 
-        var now = Bounds(_kind, _anchor);
-        var before = Bounds(_kind, Shift(_kind, _anchor, -1));
+        var now = RangeBounds(_kind, _anchor);
+        var before = RangeBounds(_kind, Shift(_kind, _anchor, -1));
         string label = _kind switch
         {
             RangeKind.Day => "vs. previous day",

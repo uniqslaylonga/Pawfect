@@ -18,6 +18,7 @@ internal sealed class PawButton : Button
     private PawButtonKind _kind = PawButtonKind.Outline;
     private bool _hover;
     private bool _down;
+    private int _radius = 8;
 
     public PawButton()
     {
@@ -27,10 +28,18 @@ internal sealed class PawButton : Button
         Font = Theme.Face(9f, FontStyle.Bold);
         Size = new Size(100, 36);
         UseVisualStyleBackColor = false;
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.ResizeRedraw, true);
     }
+
+    // OnPaint paints the whole surface (including the parent-coloured corners), so skip the native background.
+    protected override void OnPaintBackground(PaintEventArgs pevent) { }
 
     [Category("Pawfect"), DefaultValue(PawButtonKind.Outline)]
     public PawButtonKind Kind { get => _kind; set { _kind = value; Invalidate(); } }
+
+    [Category("Pawfect"), DefaultValue(8)]
+    public int Radius { get => _radius; set { _radius = Math.Max(0, value); Invalidate(); } }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
     protected override void OnMouseLeave(EventArgs e) { _hover = false; _down = false; Invalidate(); base.OnMouseLeave(e); }
@@ -63,11 +72,12 @@ internal sealed class PawButton : Button
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.PixelOffsetMode = PixelOffsetMode.Half;
         using (var back = new SolidBrush(Parent?.BackColor ?? Color.White))
             g.FillRectangle(back, ClientRectangle);
 
         var (fill, border, fore) = Look();
-        using (var path = Ui.RoundRect(new RectangleF(0.5f, 0.5f, Width - 2, Height - 2), 8))
+        using (var path = Ui.RoundRect(new RectangleF(0.5f, 0.5f, Width - 1, Height - 1), _radius))
         using (var b = new SolidBrush(fill))
         using (var pen = new Pen(border))
         {
@@ -78,7 +88,7 @@ internal sealed class PawButton : Button
         // Keyboard focus ring (only when tabbing, so mouse clicks stay clean).
         if (Focused && ShowFocusCues && Enabled)
         {
-            using var ring = Ui.RoundRect(new RectangleF(2.5f, 2.5f, Width - 6, Height - 6), 6);
+            using var ring = Ui.RoundRect(new RectangleF(2.5f, 2.5f, Width - 6, Height - 6), Math.Max(0, _radius - 2));
             using var pen = new Pen(_kind == PawButtonKind.Outline ? Theme.Primary : Color.FromArgb(200, Color.White));
             g.DrawPath(pen, ring);
         }
