@@ -90,8 +90,8 @@ internal partial class AdminForm : Form
         };
 
         inventoryPage.ViewBatchesRequested += (_, _) => inventoryPage.ShowAllBatches();
-        inventoryPage.ViewAllAlertsRequested += (_, _) => inventoryPage.FilterByStatus(inventoryPage.HasExpired ? "Expired" : "Near Expiry");
-        inventoryPage.ViewAllLowStockRequested += (_, _) => inventoryPage.FilterByStatus(inventoryPage.HasLowStock ? "Low Stock" : "Out of Stock");
+        inventoryPage.ViewAllAlertsRequested += (_, _) => inventoryPage.FilterByStatus("Out of Stock");
+        inventoryPage.ViewAllLowStockRequested += (_, _) => inventoryPage.FilterByStatus("Low Stock");
         inventoryPage.GenerateReportRequested += (_, _) => ExportInventoryReport();
 
         // Reports & Financial Auditing: the page asks for data, this form reads it and hands it back.
@@ -320,6 +320,8 @@ internal partial class AdminForm : Form
         var wheel = new WheelScroller(this, () => new[] { _alertsList, _activityList });
         Application.AddMessageFilter(wheel);
         FormClosed += (_, _) => Application.RemoveMessageFilter(wheel);
+        SetupRoomMonitor();
+        RefreshRoomMonitor();
     }
 
     /// <summary>Routes mouse-wheel turns to the dashboard list under the pointer.</summary>
@@ -348,6 +350,119 @@ internal partial class AdminForm : Form
             }
             return false;
         }
+
+    }
+
+    private Panel? _roomList;
+
+    /// <summary>Turns the Quick Metrics card into Room Monitoring. Call once, from the constructor.</summary>
+    private void SetupRoomMonitor()
+    {
+        metricsTitle.Text = "Room Monitoring";
+        metricsTitle.AutoEllipsis = true;
+        metricsBody.Visible = false;   // the old three metric tiles
+
+        _roomList = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
+        metricsCard.Controls.Add(_roomList);
+        _roomList.BringToFront();   // same layering the Alerts and Activity lists use
+    }
+
+    private sealed record RoomLine(string Name, string Type, string Status, string Next, int Today);
+
+    private static List<RoomLine> LoadRooms()
+    {
+        var rooms = new List<(int Id, string Name, string Type, string Status)>();
+        var next = new Dictionary<int, (DateTime Start, string Pet)>();
+        var count = new Dictionary<int, int>();
+
+        using var conn = new Microsoft.Data.SqlClient.SqlConnection(Database.ConnectionString);
+        conn.Open();
+
+        using (var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+            "SELECT RoomId, Name, RoomType, Status FROM dbo.Rooms WHERE IsActive = 1 ORDER BY Name", conn))
+        using (var r = cmd.ExecuteReader())
+            while (r.Read())
+                rooms.Add((r.GetInt32(0), r.GetString(1), r.GetString(2), r.GetString(3)));
+
+        try
+        {
+            using var cmd = new Microsoft.Data.SqlClient.SqlCommand(
+                @"SELECT a.RoomId, a.StartTime, p.Name
+              FROM dbo.Appointments a
+              JOIN dbo.Pets p ON p.PetId = a.PetId
+              WHERE a.RoomId IS NOT NULL AND a.Status <> N'Cancelled'
+                AND CAST(a.StartTime AS DATE) = @d
+              ORDER BY a.StartTime", conn);
+            cmd.Parameters.Add("@d", System.Data.SqlDbType.Date).Value = DateTime.Today;
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+            {
+                int id = r.GetInt32(0);
+                var start = r.GetDateTime(1);
+                count[id] = count.GetValueOrDefault(id) + 1;
+                if (start >= DateTime.Now && !next.ContainsKey(id))
+                    next[id] = (start, r.GetString(2));
+            }
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number is 207 or 208) { }   // appointment columns differ: skip schedules
+
+        return rooms.Select(x => new RoomLine(
+            x.Name, x.Type, x.Status,
+            next.TryGetValue(x.Id, out var n) ? $"Next: {n.Start:h:mm tt} · {n.Pet}" : "Nothing else booked today",
+            count.GetValueOrDefault(x.Id))).ToList();
+    }
+
+    private void RefreshRoomMonitor()
+    {
+        if (_roomList is null) return;
+
+        List<RoomLine> rooms;
+        try { rooms = LoadRooms(); }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            Msg.Show("Could not load rooms: " + ex.Message);
+            return;
+        }
+
+        metricsTitle.Text = rooms.Count == 0
+            ? "Room Monitoring"
+            : $"Room Monitoring ({rooms.Count(r => r.Status == "Available")}/{rooms.Count} free)";
+
+        _roomList.SuspendLayout();
+        foreach (var old in _roomList.Controls.Cast<Control>().ToList())
+        {
+            _roomList.Controls.Remove(old);
+            old.Dispose();
+        }
+
+        if (rooms.Count == 0)
+        {
+            _roomList.Controls.Add(new Label
+            {
+                Text = "No rooms yet.",
+                Dock = DockStyle.Top,
+                Height = 60,
+                TextAlign = ContentAlignment.MiddleCenter,
+                ForeColor = Theme.Muted,
+                BackColor = Color.White,
+            });
+        }
+        else
+        {
+            // Rows dock to the top, so add last-to-first to keep the first room on top.
+            for (int i = rooms.Count - 1; i >= 0; i--)
+            {
+                var r = rooms[i];
+                var row = new DashboardRowView(
+                    r.Name,
+                    $"{r.Type} · {r.Next}",
+                    r.Status,
+                    r.Status switch { "Available" => Theme.Green, "Occupied" => Theme.Danger, _ => Theme.Orange });
+                row.Dock = DockStyle.Top;
+                _roomList.Controls.Add(row);
+            }
+        }
+        _roomList.ResumeLayout(true);
     }
 
     private enum GrossPeriod { Daily, Weekly, Monthly }

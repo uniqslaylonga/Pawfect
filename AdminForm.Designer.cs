@@ -596,7 +596,7 @@ namespace MyApp
             grossTitle.ForeColor = Color.FromArgb(31, 42, 60);
             grossTitle.Location = new Point(36, 0);
             grossTitle.Name = "grossTitle";
-            grossTitle.Size = new Size(174, 32);
+            grossTitle.Size = new Size(120, 32);
             grossTitle.TabIndex = 0;
             grossTitle.Text = "Gross Revenue Summary";
             grossTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -629,16 +629,16 @@ namespace MyApp
             // 
             // grossTabs
             // 
+            grossTabs.AutoSize = true;
+            grossTabs.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             grossTabs.BackColor = Color.White;
             grossTabs.Controls.Add(grossDailyTab);
             grossTabs.Controls.Add(grossWeeklyTab);
             grossTabs.Controls.Add(grossMonthlyTab);
-            grossTabs.AutoSize = true;
-            grossTabs.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             grossTabs.Dock = DockStyle.Right;
-            grossTabs.Location = new Point(196, 0);
+            grossTabs.Location = new Point(156, 0);
             grossTabs.Name = "grossTabs";
-            grossTabs.Size = new Size(218, 32);
+            grossTabs.Size = new Size(258, 32);
             grossTabs.TabIndex = 2;
             grossTabs.WrapContents = false;
             // 
@@ -650,7 +650,7 @@ namespace MyApp
             grossDailyTab.Location = new Point(0, 3);
             grossDailyTab.Margin = new Padding(0, 3, 8, 3);
             grossDailyTab.Name = "grossDailyTab";
-            grossDailyTab.Size = new Size(57, 26);
+            grossDailyTab.Size = new Size(67, 26);
             grossDailyTab.TabIndex = 0;
             grossDailyTab.Text = "Daily";
             // 
@@ -658,10 +658,10 @@ namespace MyApp
             // 
             grossWeeklyTab.BackColor = Color.White;
             grossWeeklyTab.Font = new Font("Segoe UI", 8.5F);
-            grossWeeklyTab.Location = new Point(65, 3);
+            grossWeeklyTab.Location = new Point(75, 3);
             grossWeeklyTab.Margin = new Padding(0, 3, 8, 3);
             grossWeeklyTab.Name = "grossWeeklyTab";
-            grossWeeklyTab.Size = new Size(69, 26);
+            grossWeeklyTab.Size = new Size(80, 26);
             grossWeeklyTab.TabIndex = 1;
             grossWeeklyTab.Text = "Weekly";
             // 
@@ -669,10 +669,10 @@ namespace MyApp
             // 
             grossMonthlyTab.BackColor = Color.White;
             grossMonthlyTab.Font = new Font("Segoe UI", 8.5F);
-            grossMonthlyTab.Location = new Point(142, 3);
+            grossMonthlyTab.Location = new Point(163, 3);
             grossMonthlyTab.Margin = new Padding(0, 3, 8, 3);
             grossMonthlyTab.Name = "grossMonthlyTab";
-            grossMonthlyTab.Size = new Size(76, 26);
+            grossMonthlyTab.Size = new Size(87, 26);
             grossMonthlyTab.TabIndex = 2;
             grossMonthlyTab.Text = "Monthly";
             // 
@@ -1613,7 +1613,7 @@ namespace MyApp
             activityTitle.ForeColor = Color.FromArgb(31, 42, 60);
             activityTitle.Location = new Point(28, 0);
             activityTitle.Name = "activityTitle";
-            activityTitle.Size = new Size(178, 34);
+            activityTitle.Size = new Size(164, 34);
             activityTitle.TabIndex = 0;
             activityTitle.Text = "Recent Activity";
             activityTitle.TextAlign = ContentAlignment.MiddleLeft;
@@ -1640,9 +1640,8 @@ namespace MyApp
             activityLink.Dock = DockStyle.Right;
             activityLink.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold, GraphicsUnit.Point, 0);
             activityLink.ForeColor = Color.FromArgb(58, 123, 213);
-            activityLink.Location = new Point(206, 0);
+            activityLink.Location = new Point(192, 0);
             activityLink.Name = "activityLink";
-            activityLink.AutoEllipsis = false;
             activityLink.Size = new Size(76, 34);
             activityLink.TabIndex = 2;
             activityLink.Text = "View All →";
@@ -1729,7 +1728,7 @@ namespace MyApp
             searchTextBox.Location = new Point(0, 8);
             searchTextBox.Name = "searchTextBox";
             searchTextBox.PlaceholderText = "Search here...";
-            searchTextBox.Size = new Size(252, 17);
+            searchTextBox.Size = new Size(252, 22);
             searchTextBox.TabIndex = 0;
             // 
             // searchIcon
@@ -2010,7 +2009,7 @@ namespace MyApp
             // 
             // AdminForm
             // 
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleDimensions = new SizeF(120F, 120F);
             AutoScaleMode = AutoScaleMode.Dpi;
             BackColor = Color.FromArgb(243, 247, 252);
             ClientSize = new Size(1280, 800);
@@ -2035,6 +2034,7 @@ namespace MyApp
             grossCard.ResumeLayout(false);
             grossHeader.ResumeLayout(false);
             grossTop.ResumeLayout(false);
+            grossTop.PerformLayout();
             grossIconHost.ResumeLayout(false);
             grossTabs.ResumeLayout(false);
             donutCard.ResumeLayout(false);

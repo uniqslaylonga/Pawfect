@@ -348,8 +348,19 @@ internal partial class InventoryFifoPage : UserControl
                 p.QtyOnHand <= 0 ? $"Out of stock (reorder level {p.ReorderLevel})" : $"{p.QtyOnHand} left (reorder at {p.ReorderLevel})",
                 p.Code, p.QtyOnHand <= 0 ? Theme.Danger : Theme.Orange), p.Name))
             .ToList();
-        FillList(lowStockList, lowStockEmpty, low);
+        FillList(alertsList, alertsEmpty, alerts);
+
+        // Alerts: products with nothing on the shelf come first, then the alerts that were already built above.
+        var outOfStock = _all.GroupBy(r => r.ProductId).Select(g => g.First())
+            .Where(p => p.QtyOnHand <= 0)
+            .OrderBy(p => p.Name)
+            .Select(p => Clickable(new DashboardRowView(p.Name,
+                $"Out of stock (reorder level {p.ReorderLevel})",
+                p.Code, Theme.Danger), p.Name))
+            .ToList();
+        FillList(alertsList, alertsEmpty, outOfStock.Concat(alerts).ToList());
     }
+    
 
     /// <summary>Makes a side-list row clickable: it narrows the table to that product.</summary>
     private DashboardRowView Clickable(DashboardRowView row, string productName)
