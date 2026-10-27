@@ -1775,7 +1775,7 @@ namespace MyApp
             sidebar.Name = "sidebar";
             sidebar.Padding = new Padding(0, 0, 1, 0);
             sidebar.Side = MyApp.Controls.Edge.Right;
-            sidebar.Size = new Size(244, 800);
+            sidebar.Size = new Size(305, 800);
             sidebar.TabIndex = 1;
             // 
             // navPanel
@@ -1789,10 +1789,10 @@ namespace MyApp
             navPanel.Controls.Add(auditNav);
             navPanel.Dock = DockStyle.Fill;
             navPanel.FlowDirection = FlowDirection.TopDown;
-            navPanel.Location = new Point(0, 78);
+            navPanel.Location = new Point(0, 98);
             navPanel.Name = "navPanel";
-            navPanel.Padding = new Padding(12, 14, 12, 0);
-            navPanel.Size = new Size(243, 656);
+            navPanel.Padding = new Padding(15, 18, 15, 0);
+            navPanel.Size = new Size(304, 820);
             navPanel.TabIndex = 0;
             navPanel.WrapContents = false;
             // 
@@ -1802,10 +1802,10 @@ namespace MyApp
             dashboardNav.BackColor = Color.White;
             dashboardNav.Font = new Font("Segoe UI", 9F);
             dashboardNav.Glyph = "";
-            dashboardNav.Location = new Point(12, 14);
-            dashboardNav.Margin = new Padding(0, 0, 0, 4);
+            dashboardNav.Location = new Point(15, 18);
+            dashboardNav.Margin = new Padding(0, 0, 0, 5);
             dashboardNav.Name = "dashboardNav";
-            dashboardNav.Size = new Size(219, 42);
+            dashboardNav.Size = new Size(274, 52);
             dashboardNav.TabIndex = 0;
             dashboardNav.Text = "Dashboard";
             // 
@@ -1814,10 +1814,10 @@ namespace MyApp
             employeesNav.BackColor = Color.White;
             employeesNav.Font = new Font("Segoe UI", 9F);
             employeesNav.Glyph = "";
-            employeesNav.Location = new Point(12, 60);
-            employeesNav.Margin = new Padding(0, 0, 0, 4);
+            employeesNav.Location = new Point(15, 75);
+            employeesNav.Margin = new Padding(0, 0, 0, 5);
             employeesNav.Name = "employeesNav";
-            employeesNav.Size = new Size(219, 58);
+            employeesNav.Size = new Size(274, 72);
             employeesNav.TabIndex = 1;
             employeesNav.Text = "Employee & User Management";
             // 
@@ -1826,10 +1826,10 @@ namespace MyApp
             servicesNav.BackColor = Color.White;
             servicesNav.Font = new Font("Segoe UI", 9F);
             servicesNav.Glyph = "";
-            servicesNav.Location = new Point(12, 122);
-            servicesNav.Margin = new Padding(0, 0, 0, 4);
+            servicesNav.Location = new Point(15, 152);
+            servicesNav.Margin = new Padding(0, 0, 0, 5);
             servicesNav.Name = "servicesNav";
-            servicesNav.Size = new Size(219, 42);
+            servicesNav.Size = new Size(274, 52);
             servicesNav.TabIndex = 2;
             servicesNav.Text = "Service Catalog";
             servicesNav.Click += servicesNav_Click;
@@ -1839,10 +1839,10 @@ namespace MyApp
             inventoryNav.BackColor = Color.White;
             inventoryNav.Font = new Font("Segoe UI", 9F);
             inventoryNav.Glyph = "";
-            inventoryNav.Location = new Point(12, 168);
-            inventoryNav.Margin = new Padding(0, 0, 0, 4);
+            inventoryNav.Location = new Point(15, 210);
+            inventoryNav.Margin = new Padding(0, 0, 0, 5);
             inventoryNav.Name = "inventoryNav";
-            inventoryNav.Size = new Size(219, 42);
+            inventoryNav.Size = new Size(274, 52);
             inventoryNav.TabIndex = 3;
             inventoryNav.Text = "Inventory & FIFO";
             // 
@@ -1851,10 +1851,10 @@ namespace MyApp
             reportsNav.BackColor = Color.White;
             reportsNav.Font = new Font("Segoe UI", 9F);
             reportsNav.Glyph = "";
-            reportsNav.Location = new Point(12, 214);
-            reportsNav.Margin = new Padding(0, 0, 0, 4);
+            reportsNav.Location = new Point(15, 268);
+            reportsNav.Margin = new Padding(0, 0, 0, 5);
             reportsNav.Name = "reportsNav";
-            reportsNav.Size = new Size(219, 58);
+            reportsNav.Size = new Size(274, 72);
             reportsNav.TabIndex = 4;
             reportsNav.Text = "Reports & Financial Auditing";
             // 
@@ -1863,10 +1863,10 @@ namespace MyApp
             auditNav.BackColor = Color.White;
             auditNav.Font = new Font("Segoe UI", 9F);
             auditNav.Glyph = "";
-            auditNav.Location = new Point(12, 276);
-            auditNav.Margin = new Padding(0, 0, 0, 4);
+            auditNav.Location = new Point(15, 345);
+            auditNav.Margin = new Padding(0, 0, 0, 5);
             auditNav.Name = "auditNav";
-            auditNav.Size = new Size(219, 42);
+            auditNav.Size = new Size(274, 52);
             auditNav.TabIndex = 5;
             auditNav.Text = "Audit Trail / Activity Logs";
             // 
@@ -1878,9 +1878,9 @@ namespace MyApp
             sidebarFooter.EdgeColor = Color.FromArgb(227, 233, 242);
             sidebarFooter.Location = new Point(0, 734);
             sidebarFooter.Name = "sidebarFooter";
-            sidebarFooter.Padding = new Padding(12);
+            sidebarFooter.Padding = new Padding(15);
             sidebarFooter.Side = MyApp.Controls.Edge.Top;
-            sidebarFooter.Size = new Size(243, 66);
+            sidebarFooter.Size = new Size(304, 82);
             sidebarFooter.TabIndex = 1;
             // 
             // logoutNav
@@ -1889,9 +1889,9 @@ namespace MyApp
             logoutNav.Dock = DockStyle.Fill;
             logoutNav.Font = new Font("Segoe UI", 9F);
             logoutNav.Glyph = "";
-            logoutNav.Location = new Point(12, 12);
+            logoutNav.Location = new Point(15, 15);
             logoutNav.Name = "logoutNav";
-            logoutNav.Size = new Size(219, 42);
+            logoutNav.Size = new Size(274, 52);
             logoutNav.TabIndex = 0;
             logoutNav.Text = "Log Out";
             logoutNav.Click += logoutNav_Click;
@@ -1908,17 +1908,17 @@ namespace MyApp
             sidebarBrand.Name = "sidebarBrand";
             sidebarBrand.Padding = new Padding(0, 0, 0, 1);
             sidebarBrand.Side = MyApp.Controls.Edge.Bottom;
-            sidebarBrand.Size = new Size(243, 85);
+            sidebarBrand.Size = new Size(304, 98);
             sidebarBrand.TabIndex = 2;
             // 
             // brandLogo
             // 
             brandLogo.BackColor = Color.White;
             brandLogo.FillColor = Color.FromArgb(234, 242, 253);
-            brandLogo.Location = new Point(16, 22);
+            brandLogo.Location = new Point(20, 23);
             brandLogo.Name = "brandLogo";
             brandLogo.PawColor = Color.FromArgb(58, 123, 213);
-            brandLogo.Size = new Size(42, 42);
+            brandLogo.Size = new Size(52, 52);
             brandLogo.TabIndex = 0;
             brandLogo.TabStop = false;
             // 
@@ -1927,9 +1927,9 @@ namespace MyApp
             brandName.BackColor = Color.White;
             brandName.Font = new Font("Segoe UI", 11F, FontStyle.Bold, GraphicsUnit.Point, 0);
             brandName.ForeColor = Color.FromArgb(31, 42, 60);
-            brandName.Location = new Point(66, 21);
+            brandName.Location = new Point(82, 26);
             brandName.Name = "brandName";
-            brandName.Size = new Size(170, 22);
+            brandName.Size = new Size(212, 28);
             brandName.TabIndex = 1;
             brandName.Text = "Pawfect Admin";
             brandName.TextAlign = ContentAlignment.MiddleLeft;
@@ -1940,9 +1940,9 @@ namespace MyApp
             brandTagline.BackColor = Color.White;
             brandTagline.Font = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
             brandTagline.ForeColor = Color.FromArgb(122, 136, 156);
-            brandTagline.Location = new Point(66, 43);
+            brandTagline.Location = new Point(82, 54);
             brandTagline.Name = "brandTagline";
-            brandTagline.Size = new Size(170, 16);
+            brandTagline.Size = new Size(212, 20);
             brandTagline.TabIndex = 2;
             brandTagline.Text = "Pet Care. Made Simple.";
             brandTagline.TextAlign = ContentAlignment.MiddleLeft;
