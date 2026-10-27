@@ -638,7 +638,7 @@ internal partial class MainForm
         void Add(string text, string glyph, MenuTone tone, AppointmentStatus status)
             => menu.AddAction(text, glyph, tone, () => ChangeStatus(item, status));
 
-        // Admit, Start service and Finish grooming live on the View card (see ShowAppointmentDetails).
+        // Admit lives on the View card (see ShowAppointmentDetails); service starts and finishes by itself on the schedule.
         // Admitted and later visits can't be cancelled; use Reschedule on the View card instead.
         if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
         if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", "\uE777", MenuTone.Primary, AppointmentStatus.Pending);
@@ -709,7 +709,7 @@ internal partial class MainForm
         ApplyReviewedStatus(a, status);
     }
 
-    /// <summary>Admit / Start service / Finish grooming chosen from the review card: admitting still needs a groomer and room first.</summary>
+    /// <summary>Admit chosen from the review card: admitting still needs a groomer and room first.</summary>
     private void ApplyReviewedStatus(AppointmentItem item, AppointmentStatus status)
     {
         if (status == AppointmentStatus.Confirmed && (item.Groomer.Length == 0 || item.Room.Length == 0)) EditAppointment(item);

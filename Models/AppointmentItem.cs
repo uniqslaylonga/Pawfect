@@ -46,6 +46,12 @@ internal sealed record AppointmentItem(
     /// <summary>True while the pet is still inside the 14-day immunity window, so it can't be admitted yet.</summary>
     public bool IsHeld => HoldUntil is { } d && d.Date > DateTime.Today;
 
+    /// <summary>
+    /// The status text to show for this appointment. A request is "Triage Pending" only while the pet is inside its 14-day
+    /// immunity window; any other request that is waiting for staff is just "Pending". (The stored status is the same: Pending.)
+    /// </summary>
+    public string StatusLabel => Status == AppointmentStatus.Pending && IsHeld ? "Triage Pending" : AppointmentStatusStyle.Label(Status);
+
     /// <summary>The preferred days as day-of-week values (empty when the customer didn't pick any).</summary>
     public IReadOnlyList<DayOfWeek> PreferredDayList => PreferredDaysText.Parse(PreferredDays);
 }
@@ -102,7 +108,7 @@ internal static class AppointmentStatusStyle
 
     public static string Label(AppointmentStatus status) => status switch
     {
-        AppointmentStatus.Pending => "Triage Pending",
+        AppointmentStatus.Pending => "Pending",
         AppointmentStatus.Confirmed => "Admitted",
         AppointmentStatus.CheckedIn => "In-Service",
         AppointmentStatus.SanitationBuffer => "Sanitation Buffer",
@@ -138,11 +144,11 @@ internal static class AppointmentStatusStyle
     };
 
     /// <summary>Draws the rounded status badge and returns its width.</summary>
-    public static int DrawPill(Graphics g, AppointmentStatus status, int x, int centerY, int maxWidth)
+    public static int DrawPill(Graphics g, AppointmentStatus status, int x, int centerY, int maxWidth, string? label = null)
     {
         var (fore, fill, border) = Pill(status);
         var font = Theme.Face(8f, FontStyle.Bold);
-        string text = Label(status);
+        string text = label ?? Label(status);
         int w = Math.Min(maxWidth, TextRenderer.MeasureText(text, font).Width + 18);
         var rect = new Rectangle(x, centerY - 11, Math.Max(10, w), 22);
 

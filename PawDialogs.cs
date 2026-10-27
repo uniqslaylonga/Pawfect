@@ -188,7 +188,7 @@ internal sealed class AppointmentDetailsDialog : Form
     private const int FormWidth = 580;
     private const int Pad = 24;
 
-    /// <summary>Set when the person pressed Admit, Start service or Finish grooming instead of Close (the caller applies it).</summary>
+    /// <summary>Set when the person pressed Admit instead of Close (the caller applies it).</summary>
     public AppointmentStatus? RequestedStatus { get; private set; }
 
     /// <summary>True when Reschedule was chosen (the caller opens the schedule editor).</summary>
@@ -227,7 +227,7 @@ internal sealed class AppointmentDetailsDialog : Form
         var service = Ui.Text(a.Service, 9.5f, Theme.TextSoft, Color.White);
         service.SetBounds(Pad + 62, 44, FormWidth - Pad - 62 - 130, 22);
 
-        string statusText = AppointmentStatusStyle.Label(a.Status);
+        string statusText = a.StatusLabel;
         int pillW = TextRenderer.MeasureText(statusText, Theme.Face(8f, FontStyle.Bold)).Width + 18;
         using var avatar = AvatarImages.FromBytes(photoBytes);
         var avatarCopy = avatar is null ? null : new Bitmap(avatar);
@@ -258,7 +258,7 @@ internal sealed class AppointmentDetailsDialog : Form
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding |
                     TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
             }
-            AppointmentStatusStyle.DrawPill(g, a.Status, header.Width - Pad - pillW, 42, pillW + 2);
+            AppointmentStatusStyle.DrawPill(g, a.Status, header.Width - Pad - pillW, 42, pillW + 2, statusText);
             using var pen = new Pen(Theme.Border);
             e.Graphics.DrawLine(pen, 0, header.Height - 1, header.Width, header.Height - 1);
         };
@@ -337,11 +337,12 @@ internal sealed class AppointmentDetailsDialog : Form
             return new PawButton { Text = text, Kind = kind, Size = new Size(Math.Max(minWidth, textW + 36), ButtonH) };
         }
 
-        // Queue actions: Triage Pending -> Admit -> Start service (In-Service) -> Finish grooming (Sanitation Buffer).
-        // Ready for Pick-up starts by itself when the 30-minute buffer ends, and Completed happens at billing.
-        bool open = a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn;
+        // Queue actions: Triage Pending -> Admit. After that the visit moves by itself on the schedule: In-Service when its time arrives,
+        // Sanitation Buffer when the service is over, Ready for Pick-up when the 30-minute buffer ends. Completed happens at billing.
+        bool open = a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed;
         bool actions = offerActions && open;
-        var close = MakeButton("Close", actions ? PawButtonKind.Outline : PawButtonKind.Primary, 84);
+        bool canAdmit = actions && a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled;
+        var close = MakeButton("Close", canAdmit ? PawButtonKind.Outline : PawButtonKind.Primary, 84);
         close.DialogResult = DialogResult.OK;
 
         var rightButtons = new List<PawButton>();   // left to right
@@ -358,18 +359,6 @@ internal sealed class AppointmentDetailsDialog : Form
                 var admit = MakeButton(a.Groomer.Length == 0 || a.Room.Length == 0 ? "Schedule and admit" : "Admit", PawButtonKind.Primary, 96);
                 admit.Click += (_, _) => { RequestedStatus = AppointmentStatus.Confirmed; DialogResult = DialogResult.Yes; };
                 rightButtons.Add(admit);
-            }
-            else if (a.Status == AppointmentStatus.Confirmed)
-            {
-                var start = MakeButton("Start service", PawButtonKind.Primary, 96);
-                start.Click += (_, _) => { RequestedStatus = AppointmentStatus.CheckedIn; DialogResult = DialogResult.Yes; };
-                rightButtons.Add(start);
-            }
-            else if (a.Status == AppointmentStatus.CheckedIn)
-            {
-                var finish = MakeButton("Finish grooming", PawButtonKind.Primary, 96);
-                finish.Click += (_, _) => { RequestedStatus = AppointmentStatus.SanitationBuffer; DialogResult = DialogResult.Yes; };
-                rightButtons.Add(finish);
             }
         }
         rightButtons.Add(close);

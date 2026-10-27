@@ -103,7 +103,7 @@ internal sealed class QueueTicketForm : Form
         }
         string bannerText = _ticket.HoldUntil is { } until
             ? $"Triage Pending \u00B7 14-day immunity ends {until:MMM d, yyyy}"
-            : "Triage Pending \u00B7 Vaccine Clearance";
+            : "Pending \u00B7 Vaccine Clearance";
         string bannerNote = _ticket.HoldUntil is { } until2
             ? $"Your pet can't be admitted before {until2:MMMM d, yyyy}. Please come in on or after that day; staff will check the vaccine booklet."
             : "A staff member will review your vaccine record before your pet is admitted.";

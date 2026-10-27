@@ -460,7 +460,7 @@ internal sealed class AppointmentRowView : Control
 
         // Status
         var c4 = Col(4);
-        AppointmentStatusStyle.DrawPill(g, Item.Status, c4.X + 4, Height / 2, c4.Width - 8);
+        AppointmentStatusStyle.DrawPill(g, Item.Status, c4.X + 4, Height / 2, c4.Width - 8, Item.StatusLabel);
 
         // Actions
         for (int i = 0; i < ActionGlyphs.Length; i++)
@@ -524,7 +524,7 @@ internal sealed class UpcomingItemView : Control
 
         // Reserve room for the status badge on the right.
         var font = Theme.Face(8f, FontStyle.Bold);
-        int pillW = TextRenderer.MeasureText(AppointmentStatusStyle.Label(Item.Status), font).Width + 18;
+        int pillW = TextRenderer.MeasureText(Item.StatusLabel, font).Width + 18;
         int textW = Math.Max(20, Width - 66 - pillW - 8);
 
         TextRenderer.DrawText(g, $"{Item.CustomerName} & {Item.PetName}", Theme.Face(8.5f, FontStyle.Bold),
@@ -532,7 +532,7 @@ internal sealed class UpcomingItemView : Control
         TextRenderer.DrawText(g, Item.Service, Theme.Face(8f),
             new Rectangle(66, 24, textW, 16), Theme.Muted, LineFlags);
 
-        AppointmentStatusStyle.DrawPill(g, Item.Status, Width - pillW, Height / 2, pillW);
+        AppointmentStatusStyle.DrawPill(g, Item.Status, Width - pillW, Height / 2, pillW, Item.StatusLabel);
     }
 }
 

@@ -250,7 +250,7 @@ ORDER BY a.StartTime";
 
         using var conn = Open();
         PetProfiles.EnsureColumns(conn);   // makes sure Pets.PhotoImage exists before it is selected
-        EndFinishedSanitationBuffers(conn);
+        AdvanceScheduledVisits(conn);
         using var cmd = Cmd(conn, sql);
         using var r = cmd.ExecuteReader();
         var list = new List<AppointmentItem>();
@@ -327,6 +327,47 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
         AppointmentStatus.Cancelled        => "N'Pending', N'Confirmed', N'Rescheduled'",
         _ => null,
     };
+
+    /// <summary>
+    /// A visit moves along by itself, on the same clock the room schedule uses:
+    /// Admitted -> In-Service when its scheduled time arrives (only on the day it is booked for, only with a groomer and room, and never
+    /// while the 14-day immunity hold lasts); In-Service -> Sanitation Buffer when the service's duration is over; the buffer then
+    /// ends 30 minutes later (see <see cref="EndFinishedSanitationBuffers"/>). Called whenever the appointment list is loaded
+    /// (the dashboard does that every few seconds), so no background timer is needed.
+    /// </summary>
+    private static void AdvanceScheduledVisits(SqlConnection conn)
+    {
+        try
+        {
+            using (var start = Cmd(conn, @"
+UPDATE dbo.Appointments SET Status = N'CheckedIn'
+WHERE Status = N'Confirmed' AND GroomerId IS NOT NULL AND RoomId IS NOT NULL
+  AND StartTime <= @now AND CAST(StartTime AS DATE) = CAST(@now AS DATE)
+  AND (HoldUntil IS NULL OR HoldUntil <= CAST(@now AS DATE))"))
+            {
+                P(start, "@now", SqlDbType.DateTime2, DateTime.Now);
+                start.ExecuteNonQuery();
+            }
+
+            // The buffer starts when the scheduled grooming ended and runs for the usual 30 minutes from then.
+            using (var finish = Cmd(conn, @"
+UPDATE a SET Status = N'SanitationBuffer', SanitationUntil = DATEADD(MINUTE, s.DurationMinutes + @gap, a.StartTime)
+FROM dbo.Appointments a
+JOIN dbo.Services s ON s.ServiceId = a.ServiceId
+WHERE a.Status = N'CheckedIn' AND DATEADD(MINUTE, s.DurationMinutes, a.StartTime) <= @now"))
+            {
+                P(finish, "@now", SqlDbType.DateTime2, DateTime.Now);
+                P(finish, "@gap", SqlDbType.Int, BookingGapMinutes);
+                finish.ExecuteNonQuery();
+            }
+        }
+        catch (SqlException)
+        {
+            // the columns may not exist yet on a database without permission to alter tables: the list still loads
+        }
+
+        EndFinishedSanitationBuffers(conn);
+    }
 
     /// <summary>
     /// Moves every visit whose 30-minute Sanitation Buffer is over to Ready for Pick-up. Called whenever the appointment list is loaded,
@@ -1099,7 +1140,7 @@ WHERE u.Email = @email AND u.IsActive = 1 AND c.IsActive = 1");
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.QueueNumber, N'')
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.QueueNumber, N''), a.HoldUntil
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -1119,7 +1160,8 @@ ORDER BY a.StartTime DESC";
             Enum.TryParse<AppointmentStatus>(r.GetString(7), out var status);
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status,
-                Groomer: r.GetString(8), Room: r.GetString(9), QueueNumber: r.GetString(10)));
+                Groomer: r.GetString(8), Room: r.GetString(9), QueueNumber: r.GetString(10),
+                HoldUntil: r.IsDBNull(11) ? null : r.GetDateTime(11)));
         }
         return list;
     }

@@ -323,7 +323,7 @@ namespace MyApp
             pendingLabel.Name = "pendingLabel";
             pendingLabel.Size = new Size(125, 18);
             pendingLabel.TabIndex = 3;
-            pendingLabel.Text = "Triage Pending";
+            pendingLabel.Text = "Pending";
             pendingLabel.TextAlign = ContentAlignment.MiddleLeft;
             pendingLabel.UseMnemonic = false;
             // 
@@ -954,7 +954,7 @@ namespace MyApp
             legendPendingLabel.Name = "legendPendingLabel";
             legendPendingLabel.Size = new Size(42, 23);
             legendPendingLabel.TabIndex = 3;
-            legendPendingLabel.Text = "Triage Pending";
+            legendPendingLabel.Text = "Pending";
             legendPendingLabel.TextAlign = ContentAlignment.MiddleLeft;
             legendPendingLabel.UseMnemonic = false;
             // 

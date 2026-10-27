@@ -120,7 +120,7 @@ internal sealed class CustomerPortalForm : Form
             foreach (var a in _appointmentData)
                 _appointments.Items.Add(new ListViewItem(new[]
                 {
-                    a.QueueNumber.Length == 0 ? "\u2014" : a.QueueNumber, a.Start.ToString("ddd, MMM d, yyyy  h:mm tt", culture), a.PetName, a.Service, AppointmentStatusStyle.Label(a.Status),
+                    a.QueueNumber.Length == 0 ? "\u2014" : a.QueueNumber, a.Start.ToString("ddd, MMM d, yyyy  h:mm tt", culture), a.PetName, a.Service, a.StatusLabel,
                     a.Groomer.Length == 0 ? "\u2014" : a.Groomer, a.Room.Length == 0 ? "\u2014" : a.Room,
                 }) { Tag = a });
 

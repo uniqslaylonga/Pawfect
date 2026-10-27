@@ -563,7 +563,7 @@ internal sealed class RoomScheduleDialog : DialogBase
 
     private static string StatusText(string status) => status switch
     {
-        "Pending" => "Triage Pending",
+        "Pending" => "Pending",
         "Confirmed" => "Admitted",
         "CheckedIn" => "In-Service",
         "SanitationBuffer" => "Sanitation Buffer",
