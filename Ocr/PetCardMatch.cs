@@ -135,9 +135,6 @@ internal static class PetCardMatch
     /// <summary>A vaccine only protects the pet this many days after the shot was given.</summary>
     internal const int ImmunityDays = 14;
 
-    /// <summary>True when the card is for a cat (the 14-day immunity rule is checked for cats).</summary>
-    internal static bool IsCat(ScannedCard card)
-        => string.Equals(NormalizeSpecies(card.Species), "Cat", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Vaccines whose 14-day immunity period is not finished yet. A vaccine passes when at least one of its records on the card was given
