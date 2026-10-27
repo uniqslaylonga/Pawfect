@@ -47,10 +47,13 @@ internal sealed record AppointmentItem(
     public bool IsHeld => HoldUntil is { } d && d.Date > DateTime.Today;
 
     /// <summary>
-    /// The status text to show for this appointment. A request is "Triage Pending" only while the pet is inside its 14-day
-    /// immunity window; any other request that is waiting for staff is just "Pending". (The stored status is the same: Pending.)
+    /// The status text to show for this appointment. Every request that is waiting for staff is "Triage Pending", whether or
+    /// not the pet is inside its 14-day immunity window. (The stored status is Pending.)
     /// </summary>
-    public string StatusLabel => Status == AppointmentStatus.Pending && IsHeld ? "Triage Pending" : AppointmentStatusStyle.Label(Status);
+    public string StatusLabel => AppointmentStatusStyle.Label(Status);
+
+    /// <summary>Short note shown next to the status while the pet is held by the 14-day immunity window (empty when not held).</summary>
+    public string HoldNote => IsHeld && HoldUntil is { } d ? $"Immunity ends {d:MMM d, yyyy}" : "";
 
     /// <summary>The preferred days as day-of-week values (empty when the customer didn't pick any).</summary>
     public IReadOnlyList<DayOfWeek> PreferredDayList => PreferredDaysText.Parse(PreferredDays);
@@ -108,7 +111,7 @@ internal static class AppointmentStatusStyle
 
     public static string Label(AppointmentStatus status) => status switch
     {
-        AppointmentStatus.Pending => "Pending",
+        AppointmentStatus.Pending => "Triage Pending",
         AppointmentStatus.Confirmed => "Admitted",
         AppointmentStatus.CheckedIn => "In-Service",
         AppointmentStatus.SanitationBuffer => "Sanitation Buffer",
