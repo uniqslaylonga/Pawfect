@@ -188,7 +188,7 @@ internal sealed class AppointmentDetailsDialog : Form
     private const int FormWidth = 580;
     private const int Pad = 24;
 
-    /// <summary>Set when the person pressed Confirm or Check in instead of Close (the caller applies it).</summary>
+    /// <summary>Set when the person pressed Admit, Start service or Finish grooming instead of Close (the caller applies it).</summary>
     public AppointmentStatus? RequestedStatus { get; private set; }
 
     /// <summary>True when Reschedule was chosen (the caller opens the schedule editor).</summary>
@@ -337,7 +337,9 @@ internal sealed class AppointmentDetailsDialog : Form
             return new PawButton { Text = text, Kind = kind, Size = new Size(Math.Max(minWidth, textW + 36), ButtonH) };
         }
 
-        bool open = a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed;
+        // Queue actions: Triage Pending -> Admit -> Start service (In-Service) -> Finish grooming (Sanitation Buffer).
+        // Ready for Pick-up starts by itself when the 30-minute buffer ends, and Completed happens at billing.
+        bool open = a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled or AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn;
         bool actions = offerActions && open;
         var close = MakeButton("Close", actions ? PawButtonKind.Outline : PawButtonKind.Primary, 84);
         close.DialogResult = DialogResult.OK;
@@ -345,23 +347,35 @@ internal sealed class AppointmentDetailsDialog : Form
         var rightButtons = new List<PawButton>();   // left to right
         if (actions)
         {
+            if (a.Status is not AppointmentStatus.CheckedIn)   // a pet that is already in service can't be rescheduled
+            {
+                var reschedule = MakeButton("Reschedule", PawButtonKind.Outline, 96);
+                reschedule.Click += (_, _) => { RescheduleRequested = true; DialogResult = DialogResult.Yes; };
+                rightButtons.Add(reschedule);
+            }
             if (a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
             {
-                var confirm = MakeButton(a.Groomer.Length == 0 || a.Room.Length == 0 ? "Schedule and confirm" : "Confirm", PawButtonKind.Primary, 96);
-                confirm.Click += (_, _) => { RequestedStatus = AppointmentStatus.Confirmed; DialogResult = DialogResult.Yes; };
-                rightButtons.Add(confirm);
+                var admit = MakeButton(a.Groomer.Length == 0 || a.Room.Length == 0 ? "Schedule and admit" : "Admit", PawButtonKind.Primary, 96);
+                admit.Click += (_, _) => { RequestedStatus = AppointmentStatus.Confirmed; DialogResult = DialogResult.Yes; };
+                rightButtons.Add(admit);
             }
-            var reschedule = MakeButton("Reschedule", PawButtonKind.Outline, 96);
-            reschedule.Click += (_, _) => { RescheduleRequested = true; DialogResult = DialogResult.Yes; };
-            rightButtons.Add(reschedule);
-            var checkIn = MakeButton("Check in", PawButtonKind.Primary, 96);
-            checkIn.Click += (_, _) => { RequestedStatus = AppointmentStatus.CheckedIn; DialogResult = DialogResult.Yes; };
-            rightButtons.Add(checkIn);
+            else if (a.Status == AppointmentStatus.Confirmed)
+            {
+                var start = MakeButton("Start service", PawButtonKind.Primary, 96);
+                start.Click += (_, _) => { RequestedStatus = AppointmentStatus.CheckedIn; DialogResult = DialogResult.Yes; };
+                rightButtons.Add(start);
+            }
+            else if (a.Status == AppointmentStatus.CheckedIn)
+            {
+                var finish = MakeButton("Finish grooming", PawButtonKind.Primary, 96);
+                finish.Click += (_, _) => { RequestedStatus = AppointmentStatus.SanitationBuffer; DialogResult = DialogResult.Yes; };
+                rightButtons.Add(finish);
+            }
         }
         rightButtons.Add(close);
 
         PawButton? cancel = null;
-        // Once an appointment is confirmed or checked in it can no longer be cancelled from here.
+        // Once a pet is admitted (or later in the queue) the visit can no longer be cancelled from here.
         if (a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled)
         {
             cancel = MakeButton("Cancel appointment", PawButtonKind.Danger, 96);

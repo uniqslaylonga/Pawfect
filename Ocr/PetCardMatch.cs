@@ -161,6 +161,27 @@ internal static class PetCardMatch
         return pending;
     }
 
+    /// <summary>
+    /// The day the pet becomes protected: the latest "protected on" date among the vaccines still inside their 14 days.
+    /// Date is null when nothing is pending. Unreadable is true when a pending vaccine has no readable date, so no day can be given.
+    /// </summary>
+    public static (DateTime? Date, bool Unreadable) ImmunityClearance(IEnumerable<ScannedVaccination> rows)
+    {
+        var today = DateTime.Today;
+        DateTime? clear = null;
+        foreach (var group in rows.Where(r => !string.IsNullOrWhiteSpace(r.Vaccine) &&
+                                              !r.Vaccine.Contains("deworm", StringComparison.OrdinalIgnoreCase))
+                                  .GroupBy(r => r.Vaccine.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Any(r => r.Given is { } g && g.Date.AddDays(ImmunityDays) <= today)) continue;
+            var newest = group.Where(r => r.Given is not null).OrderByDescending(r => r.Given).FirstOrDefault();
+            if (newest?.Given is not { } given) return (null, true);
+            var day = given.Date.AddDays(ImmunityDays);
+            if (clear is null || day > clear) clear = day;
+        }
+        return (clear, false);
+    }
+
     // ------------------------------------------------------------------ comparisons
 
     private static string Letters(string s)

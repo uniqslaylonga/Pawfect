@@ -30,7 +30,7 @@ internal sealed record GroomerOption(int Id, string Name);
 internal sealed record RoomOption(int Id, string Name);
 
 /// <summary>The queue ticket a customer gets when an appointment request is saved (it is also an appointment on the staff side).</summary>
-internal sealed record QueueTicket(int AppointmentId, string QueueNumber, string PetName, string PetBreed, string Service, int DurationMinutes);
+internal sealed record QueueTicket(int AppointmentId, string QueueNumber, string PetName, string PetBreed, string Service, int DurationMinutes, DateTime? HoldUntil = null);
 
 /// <summary>Every database call the employee screens make. All of them throw SqlException if the database can't be reached.</summary>
 internal static class EmployeeData
@@ -60,6 +60,17 @@ IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appoint
     ALTER TABLE dbo.Appointments ADD PreferredDays NVARCHAR(40) NULL;
 IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'IsWalkIn') IS NULL
     ALTER TABLE dbo.Appointments ADD IsWalkIn BIT NOT NULL CONSTRAINT DF_Appointments_IsWalkIn DEFAULT 0;
+IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'HoldUntil') IS NULL
+    ALTER TABLE dbo.Appointments ADD HoldUntil DATE NULL;
+IF OBJECT_ID(N'dbo.Appointments', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Appointments', N'SanitationUntil') IS NULL
+    ALTER TABLE dbo.Appointments ADD SanitationUntil DATETIME2 NULL;
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Appointments_Status'
+           AND parent_object_id = OBJECT_ID(N'dbo.Appointments') AND definition NOT LIKE N'%SanitationBuffer%')
+BEGIN
+    ALTER TABLE dbo.Appointments DROP CONSTRAINT CK_Appointments_Status;
+    ALTER TABLE dbo.Appointments ADD CONSTRAINT CK_Appointments_Status
+        CHECK (Status IN (N'Pending', N'Confirmed', N'CheckedIn', N'SanitationBuffer', N'ReadyForPickup', N'Rescheduled', N'Cancelled', N'Completed'));
+END
 IF OBJECT_ID(N'dbo.Customers', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Customers', N'UserId') IS NULL
     ALTER TABLE dbo.Customers ADD UserId INT NULL;
 IF OBJECT_ID(N'dbo.Products', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.Products', N'QtyOnHand') IS NULL
@@ -228,7 +239,7 @@ ORDER BY p.CreatedAt DESC, p.PetId DESC";
     {
         const string sql = @"
 SELECT a.AppointmentId, a.StartTime, c.FullName, c.Phone, p.Name, p.Breed, s.Name, a.Status, s.Category,
-       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId, a.PetId, a.IsWalkIn
+       ISNULL(g.Name, N''), ISNULL(rm.Name, N''), ISNULL(a.Notes, N''), ISNULL(a.QueueNumber, N''), p.PhotoImage, ISNULL(a.PreferredDays, N''), a.ServiceId, a.PetId, a.IsWalkIn, a.HoldUntil, a.SanitationUntil
 FROM dbo.Appointments a
 JOIN dbo.Customers c ON c.CustomerId = a.CustomerId
 JOIN dbo.Pets p      ON p.PetId      = a.PetId
@@ -239,6 +250,7 @@ ORDER BY a.StartTime";
 
         using var conn = Open();
         PetProfiles.EnsureColumns(conn);   // makes sure Pets.PhotoImage exists before it is selected
+        EndFinishedSanitationBuffers(conn);
         using var cmd = Cmd(conn, sql);
         using var r = cmd.ExecuteReader();
         var list = new List<AppointmentItem>();
@@ -248,7 +260,8 @@ ORDER BY a.StartTime";
             list.Add(new AppointmentItem(r.GetInt32(0), r.GetDateTime(1), r.GetString(2), r.GetString(3),
                 r.GetString(4), r.GetString(5), r.GetString(6), status, r.GetString(8),
                 r.GetString(9), r.GetString(10), r.GetString(11), r.GetString(12),
-                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15), r.GetInt32(16), r.GetBoolean(17)));
+                r.IsDBNull(13) ? null : (byte[])r.GetValue(13), r.GetString(14), r.GetInt32(15), r.GetInt32(16), r.GetBoolean(17),
+                r.IsDBNull(18) ? null : r.GetDateTime(18), r.IsDBNull(19) ? null : r.GetDateTime(19)));
         }
         return list;
     }
@@ -299,28 +312,77 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
 
     /// <summary>
     /// The statuses an appointment may be in right now for it to move TO <paramref name="target"/>
-    /// (Pending -> Confirmed -> CheckedIn, Cancelled from any open status, Cancelled -> Pending to restore).
-    /// Completed is not here on purpose: only <see cref="SaveSale"/> completes a visit, and only voiding a sale reopens it.
+    /// The queue runs Triage Pending (Pending) -> Admitted (Confirmed) -> In-Service (CheckedIn) -> Sanitation Buffer -> Ready for Pick-up -> Completed.
+    /// Cancelled is allowed before service starts, and Cancelled -> Pending restores a request.
+    /// Ready for Pick-up is not here on purpose: the 30-minute buffer is mandatory, so it ends by itself (see <see cref="EndFinishedSanitationBuffers"/>).
+    /// Completed is not here either: only <see cref="SaveSale"/> completes a visit, and only voiding a sale reopens it.
     /// </summary>
     private static string? AllowedFrom(AppointmentStatus target) => target switch
     {
-        AppointmentStatus.Pending     => "N'Cancelled'",
-        AppointmentStatus.Confirmed   => "N'Pending', N'Rescheduled'",
-        AppointmentStatus.CheckedIn   => "N'Pending', N'Confirmed', N'Rescheduled'",
-        AppointmentStatus.Rescheduled => "N'Pending', N'Confirmed', N'CheckedIn'",
-        AppointmentStatus.Cancelled   => "N'Pending', N'Confirmed', N'CheckedIn', N'Rescheduled'",
+        AppointmentStatus.Pending          => "N'Cancelled'",
+        AppointmentStatus.Confirmed        => "N'Pending', N'Rescheduled'",
+        AppointmentStatus.CheckedIn        => "N'Confirmed'",
+        AppointmentStatus.SanitationBuffer => "N'CheckedIn'",
+        AppointmentStatus.Rescheduled      => "N'Pending', N'Confirmed', N'CheckedIn'",
+        AppointmentStatus.Cancelled        => "N'Pending', N'Confirmed', N'Rescheduled'",
         _ => null,
     };
+
+    /// <summary>
+    /// Moves every visit whose 30-minute Sanitation Buffer is over to Ready for Pick-up. Called whenever the appointment list is loaded,
+    /// so no background timer is needed.
+    /// </summary>
+    private static void EndFinishedSanitationBuffers(SqlConnection conn)
+    {
+        try
+        {
+            using var cmd = Cmd(conn,
+                "UPDATE dbo.Appointments SET Status = N'ReadyForPickup' WHERE Status = N'SanitationBuffer' AND SanitationUntil IS NOT NULL AND SanitationUntil <= @now");
+            P(cmd, "@now", SqlDbType.DateTime2, DateTime.Now);
+            cmd.ExecuteNonQuery();
+        }
+        catch (SqlException)
+        {
+            // the columns may not exist yet on a database without permission to alter tables: the list still loads
+        }
+    }
+
+    /// <summary>
+    /// 14-day immunity hold: a pet whose vaccine was given less than 14 days ago may be booked, but not admitted, before this date.
+    /// Throws InvalidOperationException when <paramref name="when"/> is earlier than the hold date
+    /// (or, with <paramref name="useScheduledStart"/>, when the appointment's own scheduled day is).
+    /// </summary>
+    private static void CheckImmunityHold(SqlConnection conn, SqlTransaction? tx, int appointmentId, DateTime when, bool useScheduledStart = false)
+    {
+        using var cmd = Cmd(conn, "SELECT HoldUntil, StartTime FROM dbo.Appointments WHERE AppointmentId = @id", tx);
+        P(cmd, "@id", SqlDbType.Int, appointmentId);
+        using var r = cmd.ExecuteReader();
+        if (!r.Read() || r.IsDBNull(0)) return;
+        var hold = r.GetDateTime(0);
+        if (useScheduledStart) when = r.GetDateTime(1);
+        if (hold.Date > when.Date)
+            throw new InvalidOperationException(
+                $"This pet is still inside the 14-day immunity window and can't be admitted before {hold:MMM d, yyyy}.\n\nPick that date or later.");
+    }
 
     /// <summary>Changes the status, but only along an allowed path (see <see cref="AllowedFrom"/>). Throws InvalidOperationException when it isn't allowed.</summary>
     public static void SetAppointmentStatus(int appointmentId, AppointmentStatus status)
     {
         string from = AllowedFrom(status)
-            ?? throw new InvalidOperationException("That status can't be set by hand. A visit becomes Completed when it is billed.");
+            ?? throw new InvalidOperationException("That status can't be set by hand. Ready for Pick-up starts when the sanitation buffer ends, and a visit becomes Completed when it is billed.");
 
         using var conn = Open();
-        using var cmd = Cmd(conn, "UPDATE dbo.Appointments SET Status = @s WHERE AppointmentId = @id AND Status IN (" + from + ")");
+        if (status is AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn)
+            CheckImmunityHold(conn, null, appointmentId, DateTime.Now, useScheduledStart: status == AppointmentStatus.Confirmed);   // Admitted needs a scheduled day after the hold; In-Service needs today to be after it
+
+        using var cmd = Cmd(conn, @"
+UPDATE dbo.Appointments
+SET Status = @s,
+    SanitationUntil = CASE WHEN @s = N'SanitationBuffer' THEN DATEADD(MINUTE, @mins, @now) ELSE SanitationUntil END
+WHERE AppointmentId = @id AND Status IN (" + from + ")");
         P(cmd, "@s", SqlDbType.NVarChar, status.ToString(), 20);
+        P(cmd, "@mins", SqlDbType.Int, BookingGapMinutes);   // the same 30-minute gap the room schedule uses
+        P(cmd, "@now", SqlDbType.DateTime2, DateTime.Now);
         P(cmd, "@id", SqlDbType.Int, appointmentId);
         if (cmd.ExecuteNonQuery() == 0)
             throw new InvalidOperationException(
@@ -356,6 +418,8 @@ VALUES (@c, @p, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = 
             roomId = r.IsDBNull(2) ? null : r.GetInt32(2);
             oldStatus = r.GetString(3);
         }
+
+        CheckImmunityHold(conn, tx, appointmentId, start);   // a held pet can't be moved to a day before its 14 days are over
 
         if (FindScheduleConflict(conn, tx, appointmentId, start, serviceId, groomerId, roomId) is { } conflict)
             throw new InvalidOperationException(conflict);
@@ -565,7 +629,7 @@ WHERE a.AppointmentId <> @id
         (@rm IS NOT NULL AND a.RoomId = @rm
            AND @t < DATEADD(MINUTE, s.DurationMinutes + @gap, a.StartTime)
            AND a.StartTime < DATEADD(MINUTE, @gap, @end))
-     OR (@g IS NOT NULL AND a.GroomerId = @g AND a.Status <> N'Completed'
+     OR (@g IS NOT NULL AND a.GroomerId = @g AND a.Status NOT IN (N'Completed', N'SanitationBuffer', N'ReadyForPickup')
            AND @t < DATEADD(MINUTE, s.DurationMinutes, a.StartTime)
            AND a.StartTime < @end)
       )
@@ -622,11 +686,13 @@ UPDATE a SET
     StartTime = @t
 FROM dbo.Appointments a
 WHERE a.AppointmentId = @id
-  AND a.Status NOT IN (N'Cancelled', N'Completed')
+  AND a.Status NOT IN (N'Cancelled', N'Completed', N'SanitationBuffer', N'ReadyForPickup')
   AND EXISTS (SELECT 1 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = a.CustomerId AND p.IsActive = 1)";
 
         using var conn = Open();
         using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+
+        CheckImmunityHold(conn, tx, appointmentId, start);   // a held pet can't be scheduled or admitted before its 14 days are over
 
         // Checked here again, inside the transaction that saves the change, so a clash that appeared after the dialog's own check is still caught.
         if (FindScheduleConflict(conn, tx, appointmentId, start, serviceId, groomerId, roomId) is { } conflict)
@@ -699,7 +765,7 @@ WHERE AppointmentId = @id
 
     /// <summary>
     /// Voids or refunds a completed sale. Receipts are never deleted so the books stay complete; a voided sale
-    /// puts its appointment back to Checked In so it can be billed again. Returns false if the sale wasn't Completed.
+    /// puts its appointment back to Ready for Pick-up so it can be billed again. Returns false if the sale wasn't Completed.
     /// </summary>
     public static bool ChangeSaleStatus(int transactionId, TransactionStatus newStatus)
     {
@@ -720,7 +786,7 @@ WHERE AppointmentId = @id
         if (newStatus == TransactionStatus.Voided)
         {
             using var cmd = Cmd(conn, @"
-UPDATE a SET Status = N'CheckedIn'
+UPDATE a SET Status = N'ReadyForPickup'
 FROM dbo.Appointments a JOIN dbo.Transactions t ON t.AppointmentId = a.AppointmentId
 WHERE t.TransactionId = @id AND a.Status = N'Completed'", tx);
             P(cmd, "@id", SqlDbType.Int, transactionId);
@@ -1180,7 +1246,7 @@ WHERE AppointmentId = @id AND CustomerId = @c AND Status IN (N'Pending', N'Confi
     /// A customer's appointment request: it is saved as Pending with their preferred day/time and notes, and an
     /// employee sets the real schedule (day, time, groomer, room) from Edit. The pet must belong to the customer.
     /// </summary>
-    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "", string preferredDays = "", bool walkIn = false)
+    public static QueueTicket AddOwnAppointment(int customerId, int petId, int serviceId, DateTime start, string loginEmail, string notes = "", string preferredDays = "", bool walkIn = false, DateTime? holdUntil = null)
     {
         using var conn = Open();
         using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
@@ -1193,9 +1259,9 @@ DECLARE @n INT = ISNULL((SELECT MAX(TRY_CAST(SUBSTRING(QueueNumber, 2, 9) AS INT
                          WHERE CAST(StartTime AS DATE) = CAST(@t AS DATE) AND QueueNumber IS NOT NULL), 0) + 1;
 DECLARE @q NVARCHAR(10) = N'A' + CASE WHEN @n < 100 THEN RIGHT(N'0' + CAST(@n AS NVARCHAR(10)), 2) ELSE CAST(@n AS NVARCHAR(10)) END;
 
-INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, PreferredDays, IsWalkIn)
+INSERT INTO dbo.Appointments (CustomerId, PetId, ServiceId, StartTime, Status, CreatedByUserId, Notes, QueueNumber, PreferredDays, IsWalkIn, HoldUntil)
 OUTPUT INSERTED.AppointmentId, INSERTED.QueueNumber
-SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, NULLIF(@days, N''), @walk
+SELECT @c, p.PetId, @s, @t, N'Pending', (SELECT UserId FROM dbo.Users WHERE Email = @email), NULLIF(@notes, N''), @q, NULLIF(@days, N''), @walk, @hold
 FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx))
         {
             P(cmd, "@c", SqlDbType.Int, customerId);
@@ -1206,6 +1272,7 @@ FROM dbo.Pets p WHERE p.PetId = @p AND p.CustomerId = @c AND p.IsActive = 1", tx
             P(cmd, "@notes", SqlDbType.NVarChar, notes.Trim(), 300);
             P(cmd, "@days", SqlDbType.NVarChar, preferredDays, 40);
             P(cmd, "@walk", SqlDbType.Bit, walkIn);
+            P(cmd, "@hold", SqlDbType.Date, holdUntil?.Date);   // set when the pet is still inside the 14-day immunity window
             using var r = cmd.ExecuteReader();
             if (!r.Read())
                 throw new InvalidOperationException("That pet doesn't belong to this account.");
@@ -1232,6 +1299,6 @@ WHERE a.AppointmentId = @id", tx))
         }
 
         tx.Commit();
-        return new QueueTicket(appointmentId, queueNumber, petName, breed, service, minutes);
+        return new QueueTicket(appointmentId, queueNumber, petName, breed, service, minutes, holdUntil?.Date);
     }
 }

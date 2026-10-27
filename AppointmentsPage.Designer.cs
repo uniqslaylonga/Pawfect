@@ -323,7 +323,7 @@ namespace MyApp
             pendingLabel.Name = "pendingLabel";
             pendingLabel.Size = new Size(125, 18);
             pendingLabel.TabIndex = 3;
-            pendingLabel.Text = "Pending";
+            pendingLabel.Text = "Triage Pending";
             pendingLabel.TextAlign = ContentAlignment.MiddleLeft;
             pendingLabel.UseMnemonic = false;
             // 
@@ -397,7 +397,7 @@ namespace MyApp
             confirmedLabel.Name = "confirmedLabel";
             confirmedLabel.Size = new Size(125, 18);
             confirmedLabel.TabIndex = 3;
-            confirmedLabel.Text = "Confirmed";
+            confirmedLabel.Text = "In Queue";
             confirmedLabel.TextAlign = ContentAlignment.MiddleLeft;
             confirmedLabel.UseMnemonic = false;
             // 
@@ -929,7 +929,7 @@ namespace MyApp
             legendConfirmedLabel.Name = "legendConfirmedLabel";
             legendConfirmedLabel.Size = new Size(51, 20);
             legendConfirmedLabel.TabIndex = 1;
-            legendConfirmedLabel.Text = "Confirmed";
+            legendConfirmedLabel.Text = "Admitted";
             legendConfirmedLabel.TextAlign = ContentAlignment.MiddleLeft;
             legendConfirmedLabel.UseMnemonic = false;
             // 
@@ -954,7 +954,7 @@ namespace MyApp
             legendPendingLabel.Name = "legendPendingLabel";
             legendPendingLabel.Size = new Size(42, 23);
             legendPendingLabel.TabIndex = 3;
-            legendPendingLabel.Text = "Pending";
+            legendPendingLabel.Text = "Triage Pending";
             legendPendingLabel.TextAlign = ContentAlignment.MiddleLeft;
             legendPendingLabel.UseMnemonic = false;
             // 

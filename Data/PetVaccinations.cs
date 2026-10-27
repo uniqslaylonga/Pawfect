@@ -135,6 +135,29 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PetVaccinations
             .Any(g => !g.Any(r => r.Expires is { } e && e.Date >= today));
     }
 
+    /// <summary>
+    /// The first day this pet is past its 14-day immunity period, or null when nothing is pending. Same rule as
+    /// PetCardMatch.ImmunityPending: each vaccine (deworming skipped) is fine once one of its shots is 14 or more days old,
+    /// otherwise the pet waits until its newest shot + 14 days. With several vaccines pending, the latest date wins.
+    /// A shot whose date couldn't be read gives no date to wait for, so it is ignored here.
+    /// </summary>
+    public static DateTime? ImmunityClearDate(IReadOnlyList<PetVaccinationRecord> rows)
+    {
+        var today = DateTime.Today;
+        DateTime? latest = null;
+        foreach (var group in rows
+                     .Where(r => !string.IsNullOrWhiteSpace(r.Vaccine) && !r.Vaccine.Contains("deworm", StringComparison.OrdinalIgnoreCase))
+                     .GroupBy(r => r.Vaccine.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            if (group.Any(r => r.Given is { } g && g.Date.AddDays(PetCardMatch.ImmunityDays) <= today)) continue;
+            var given = group.Where(r => r.Given is not null).Select(r => r.Given!.Value.Date).ToList();
+            if (given.Count == 0) continue;
+            var clear = given.Max().AddDays(PetCardMatch.ImmunityDays);
+            if (latest is null || clear > latest) latest = clear;
+        }
+        return latest;
+    }
+
     public static List<PetVaccinationRecord> GetForPet(int petId)
     {
         using var conn = Open();

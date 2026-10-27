@@ -18,7 +18,7 @@ internal partial class AppointmentsPage : UserControl
     private int _pageIndex;
     private bool _suspendFilter;
     private enum StatusGroup { None, Waiting, Confirmed, WalkIn }
-    private StatusGroup _group;   // set by a stat tile or ShowPending: Waiting = Pending + Rescheduled, Confirmed = Confirmed + Checked in; picking a status in the drop-down clears it
+    private StatusGroup _group;   // set by a stat tile or ShowPending: Waiting = Triage Pending + Rescheduled, In queue = Admitted + In-Service + Sanitation Buffer + Ready for Pick-up; picking a status in the drop-down clears it
     private IReadOnlyList<AppointmentItem> _walkInSales = Array.Empty<AppointmentItem>();   // today's walk-in sales, listed only under the Walk-ins view
     private DateTime? _dayOnly;   // set by ShowToday: list just this one day instead of the whole week
     private bool _building;
@@ -288,7 +288,7 @@ internal partial class AppointmentsPage : UserControl
             .Where(a => _group switch
             {
                 StatusGroup.Waiting => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled,
-                StatusGroup.Confirmed => a.Status is AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn,
+                StatusGroup.Confirmed => IsInQueue(a.Status),
                 StatusGroup.WalkIn => true,
                 _ => status is null || a.Status == status,
             })
@@ -436,13 +436,17 @@ internal partial class AppointmentsPage : UserControl
 
     // ------------------------------------------------------------------ side panels
 
+    /// <summary>Admitted, In-Service, Sanitation Buffer and Ready for Pick-up: the pet has passed triage and is not finished yet.</summary>
+    private static bool IsInQueue(AppointmentStatus s)
+        => s is AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn or AppointmentStatus.SanitationBuffer or AppointmentStatus.ReadyForPickup;
+
     private void UpdateStats()
     {
         var inRange = _all.Where(a => InRange(a.Start)).ToList();
         var today = inRange.Where(a => a.Start.Date == DateTime.Today).ToList();
 
         static bool IsPending(AppointmentItem a) => a.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled;
-        static bool IsConfirmed(AppointmentItem a) => a.Status is AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn;
+        static bool IsConfirmed(AppointmentItem a) => IsInQueue(a.Status);
         static bool IsCancelled(AppointmentItem a) => a.Status == AppointmentStatus.Cancelled;
 
         void SetStat(Label value, Label delta, Func<AppointmentItem, bool> match)

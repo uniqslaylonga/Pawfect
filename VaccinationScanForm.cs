@@ -443,15 +443,22 @@ internal sealed class VaccinationScanForm : DialogBase
                 return;
             }
 
-            // Dogs and cats: a vaccine protects only 14 days after the shot. A card with a vaccine still inside that window is not accepted.
+            // Dogs and cats: a vaccine protects only 14 days after the shot. A card with a vaccine still inside that window is
+            // accepted, but the pet can't be admitted before it ends: the visit is booked and held in Triage Pending until that day.
+            // Only when a date can't be read (so no day can be given) is the card not accepted.
+            DateTime? holdUntil = null;
             var pending = PetCardMatch.ImmunityPending(stamped);
             if (pending.Count > 0)
             {
-                Reject("Card not accepted: the 14-day immunity period after vaccination is not done yet.");
-                using (var dialog = new CardMismatchDialog(pending, "14-day immunity not complete",
-                           "Immunity takes 14 days after the shot. Try again after that.", "GIVEN ON", "PROTECTED ON"))
-                    dialog.ShowDialog(this);
-                return;
+                if (PetCardMatch.ImmunityClearance(stamped).Date is not { } clearDay)
+                {
+                    Reject("Card not accepted: the 14-day immunity period after vaccination is not done yet.");
+                    using (var dialog = new CardMismatchDialog(pending, "14-day immunity not complete",
+                               "Immunity takes 14 days after the shot. Try again after that.", "GIVEN ON", "PROTECTED ON"))
+                        dialog.ShowDialog(this);
+                    return;
+                }
+                holdUntil = clearDay;
             }
 
             // The pet's picture is cut out of the PET PHOTO frame (a failure here never blocks the scan).
@@ -468,8 +475,15 @@ internal sealed class VaccinationScanForm : DialogBase
 
             string status = $"Read {stamped.Count} stamped vaccination(s). Check it looks right.";
             if (skipped > 0) status += $"  {skipped} row(s) without a stamp were left out.";
+            if (holdUntil is { } hold) status += $"  Immunity pending: can be admitted from {hold:MMM d, yyyy}.";
             _status.Text = status;
             SaveButton.Enabled = true;
+
+            if (holdUntil is { } day)
+                Msg.Show(this,
+                    $"Card accepted, but the 14-day immunity period after vaccination is not finished.\n\nYour pet can't be admitted before {day:MMMM d, yyyy}. " +
+                    "You can still book now; the visit stays in Triage Pending until then, and staff will check the booklet again.",
+                    "Pawfect", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {

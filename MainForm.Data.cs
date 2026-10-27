@@ -605,7 +605,7 @@ internal partial class MainForm
 
     private void EditAppointment(AppointmentItem item)
     {
-        // Appointments are only changed through Reschedule, and only while pending, confirmed or rescheduled.
+        // Appointments are only changed through Reschedule, and only while triage pending, admitted or rescheduled.
         if (item.Status is not (AppointmentStatus.Pending or AppointmentStatus.Confirmed or AppointmentStatus.Rescheduled))
         {
             Msg.Show(this,
@@ -638,8 +638,8 @@ internal partial class MainForm
         void Add(string text, string glyph, MenuTone tone, AppointmentStatus status)
             => menu.AddAction(text, glyph, tone, () => ChangeStatus(item, status));
 
-        // Confirm and Check in live on the View card (see ShowAppointmentDetails).
-        // Confirmed and checked-in appointments can't be cancelled; use Reschedule on the View card instead.
+        // Admit, Start service and Finish grooming live on the View card (see ShowAppointmentDetails).
+        // Admitted and later visits can't be cancelled; use Reschedule on the View card instead.
         if (item.Status is AppointmentStatus.Pending or AppointmentStatus.Rescheduled) Add("Cancel appointment", "\uE711", MenuTone.Warning, AppointmentStatus.Cancelled);
         if (item.Status == AppointmentStatus.Cancelled) Add("Restore as pending", "\uE777", MenuTone.Primary, AppointmentStatus.Pending);
 
@@ -664,8 +664,9 @@ internal partial class MainForm
             EmployeeData.SetAppointmentStatus(item.Id, status);
             AuditLog.Record(CurrentUser, status switch
             {
-                AppointmentStatus.Confirmed => "Appointment Confirmed",
-                AppointmentStatus.CheckedIn => "Appointment Checked In",
+                AppointmentStatus.Confirmed => "Pet Admitted",
+                AppointmentStatus.CheckedIn => "Service Started",
+                AppointmentStatus.SanitationBuffer => "Grooming Finished - Sanitation Buffer Started",
                 AppointmentStatus.Cancelled => "Appointment Cancelled",
                 AppointmentStatus.Pending => "Appointment Restored",
                 _ => "Appointment Updated",
@@ -708,7 +709,7 @@ internal partial class MainForm
         ApplyReviewedStatus(a, status);
     }
 
-    /// <summary>Confirm / Check in chosen from the review card: confirming still needs a groomer and room first.</summary>
+    /// <summary>Admit / Start service / Finish grooming chosen from the review card: admitting still needs a groomer and room first.</summary>
     private void ApplyReviewedStatus(AppointmentItem item, AppointmentStatus status)
     {
         if (status == AppointmentStatus.Confirmed && (item.Groomer.Length == 0 || item.Room.Length == 0)) EditAppointment(item);

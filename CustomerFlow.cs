@@ -62,7 +62,17 @@ internal static class CustomerFlow
                 return;
             }
 
-            var ticket = EmployeeData.AddOwnAppointment(customerId, petId, service.Id, DateTime.Now, loginEmail, preferredDays: preferredDays, walkIn: walkIn);   // saved as Pending, so staff see it too
+            // 14-day immunity: a pet whose vaccine was given less than 14 days ago is booked for the day it becomes protected (staff set the
+            // real time). It stays in Triage Pending and can't be admitted before that day, so it is not a walk-in for today.
+            DateTime? holdUntil = PetVaccinations.ImmunityClearDate(PetVaccinations.GetForPet(petId));
+            if (holdUntil is { } held && held.Date <= DateTime.Today) holdUntil = null;
+            DateTime start = holdUntil is { } h ? h.Date.AddHours(9) : DateTime.Now;
+            string notes = holdUntil is { } n
+                ? $"Held for the 14-day immunity period: can't be admitted before {n:MMM d, yyyy}. Re-check the physical booklet when the pet arrives."
+                : "";
+
+            var ticket = EmployeeData.AddOwnAppointment(customerId, petId, service.Id, start, loginEmail, notes: notes, preferredDays: preferredDays,
+                walkIn: walkIn && holdUntil is null, holdUntil: holdUntil);   // saved as Pending (Triage Pending), so staff see it too
             using var ticketForm = new QueueTicketForm(ticket);
             ticketForm.ShowDialog();
         }

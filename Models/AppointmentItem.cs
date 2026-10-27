@@ -80,6 +80,23 @@ internal static class PreferredDaysText
     }
 }
 
+/// <summary>Reads the "can't be admitted before Nov 8, 2026" date out of an appointment's immunity-hold note.</summary>
+internal static class ImmunityHold
+{
+    private static readonly System.Text.RegularExpressions.Regex NoteDate = new(
+        @"immunity[^.]*?before\s+([A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4})",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    public static DateTime? FromNote(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return null;
+        var m = NoteDate.Match(notes);
+        return m.Success && DateTime.TryParse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture,
+                                              System.Globalization.DateTimeStyles.None, out var d)
+            ? d.Date : null;
+    }
+}
+
 /// <summary>Label and colours for each appointment status.</summary>
 internal static class AppointmentStatusStyle
 {

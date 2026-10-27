@@ -101,9 +101,15 @@ internal sealed class QueueTicketForm : Form
             g.FillPath(b, path);
             g.DrawPath(pen, path);
         }
-        TextRenderer.DrawText(g, "Pending Vaccine Clearance", F(9.5f, FontStyle.Bold), banner, fore, Centered);
+        string bannerText = _ticket.HoldUntil is { } until
+            ? $"Triage Pending \u00B7 14-day immunity ends {until:MMM d, yyyy}"
+            : "Triage Pending \u00B7 Vaccine Clearance";
+        string bannerNote = _ticket.HoldUntil is { } until2
+            ? $"Your pet can't be admitted before {until2:MMMM d, yyyy}. Please come in on or after that day; staff will check the vaccine booklet."
+            : "A staff member will review your vaccine record before your pet is admitted.";
+        TextRenderer.DrawText(g, bannerText, F(9.5f, FontStyle.Bold), banner, fore, Centered);
 
-        TextRenderer.DrawText(g, "A staff member will review your vaccine record before your pet is admitted.", F(8f),
+        TextRenderer.DrawText(g, bannerNote, F(8f),
             new Rectangle(inner.X + S(18), banner.Bottom + S(8), inner.Width - S(36), S(34)), Theme.Muted,
             TextFormatFlags.Left | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix);
 
