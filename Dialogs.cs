@@ -324,7 +324,7 @@ internal sealed class EditAppointmentForm : DialogBase
     private readonly PawSelect _room = new();
     private readonly PawDatePicker _date = new();
     private readonly PawTimePicker _time = new();
-    private readonly PawCheckBox _confirm = new() { Text = "Confirm this appointment", Checked = true };
+    private readonly PawCheckBox _confirm = new() { Text = "Admit this pet", Checked = true };
     private readonly PetPictureBox _petPhoto = new("Pet photo", "No photo", new Size(96, 96));
     private readonly PetPictureBox _petCard = new("Vaccination card", "No vaccination card on file", new Size(180, 120));
 
@@ -402,13 +402,12 @@ internal sealed class EditAppointmentForm : DialogBase
         var original = Trim(item.Start);
         bool restricted = _preferred.Count > 0;
         // A pet still inside its 14-day immunity period can't be admitted yet, so every day before that is greyed out.
-        _holdUntil = ImmunityHoldDate(refs.PetId, item.Notes);
+        _holdUntil = item.HoldUntil is { } hold && hold.Date > DateTime.Today ? hold.Date : null;   // saved on the request when it was booked
         // An overdue appointment keeps its own (past) date until a new one is picked, unless the customer's preferred days limit the choice.
         _date.MinDate = _holdUntil ?? (!restricted && original.Date < DateTime.Today ? original.Date : DateTime.Today);
         // Only the customer's preferred weekdays can be picked; the others are greyed out in the calendar.
         _date.AllowedDays = restricted ? _preferred.ToList() : null;
-        // A request that has no real date yet starts on the first preferred day that is on or after the earliest allowed date
-        // (e.g. held until Sun Nov 8 and prefers Fri/Sat -> Fri Nov 13). The calendar opens on that month.
+        // A request that has no real date yet starts on the next day the customer prefers.
         _date.Value = restricted && (original.Date < _date.MinDate || !_preferred.Contains(original.DayOfWeek))
             ? PreferredDaysText.NextOnOrAfter(_date.MinDate, _preferred)
             : original.Date;
@@ -425,21 +424,6 @@ internal sealed class EditAppointmentForm : DialogBase
     }
 
     private static DateTime Trim(DateTime d) => new(d.Year, d.Month, d.Day, d.Hour, d.Minute, 0);
-
-    /// <summary>
-    /// The day the pet's 14-day immunity period ends, or null when it is already over (or there is no hold).
-    /// Taken from the saved vaccinations and from the hold note on the request; if both give a date, the later one wins.
-    /// </summary>
-    private static DateTime? ImmunityHoldDate(int petId, string notes)
-    {
-        DateTime? fromCard = null;
-        try { fromCard = PetVaccinations.ImmunityClearDate(PetVaccinations.GetForPet(petId)); }
-        catch (Exception ex) when (ex is SqlException or InvalidOperationException) { }
-        var fromNote = ImmunityHold.FromNote(notes);
-
-        DateTime? until = fromCard is { } a && fromNote is { } b ? (a > b ? a : b) : fromCard ?? fromNote;
-        return until is { } d && d.Date > DateTime.Today ? d.Date : null;
-    }
 
     private void LoadPetPictures()
     {
@@ -470,8 +454,7 @@ internal sealed class EditAppointmentForm : DialogBase
         }
         if (_holdUntil is { } until && start.Date < until)
         {
-            ShowError($"This pet is still in its 14-day immunity period and can't be admitted before {until.ToString("MMM d, yyyy", CultureInfo.CurrentCulture)}. " +
-                      "Pick that day or later.");
+            ShowError($"This pet is still in its 14-day immunity period and can't be admitted before {until.ToString("MMM d, yyyy", CultureInfo.CurrentCulture)}. Pick that day or later.");
             return;
         }
         if (start != Trim(_item.Start) && start < DateTime.Now.AddMinutes(-1)) { ShowError("Pick a time that hasn't passed yet."); return; }
@@ -482,7 +465,7 @@ internal sealed class EditAppointmentForm : DialogBase
 
         if (confirm && (groomerId is null || roomId is null))
         {
-            ShowError("Choose a groomer and a room to confirm, or untick Confirm.");
+            ShowError("Choose a groomer and a room to admit the pet, or untick Admit this pet.");
             return;
         }
 

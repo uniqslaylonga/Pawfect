@@ -2,12 +2,22 @@
 
 internal enum AppointmentStatus
 {
+    // Queue statuses (the stored text is the member name; the label shown to people is in AppointmentStatusStyle.Label):
+    //   Pending          = Triage Pending      the request is waiting for staff to verify the vaccine record
+    //   Confirmed        = Admitted            passed triage, has a groomer, room and time
+    //   CheckedIn        = In-Service          grooming has started
+    //   SanitationBuffer = Sanitation Buffer   grooming finished; 30-minute sterilization before pick-up
+    //   ReadyForPickup   = Ready for Pick-up   the buffer is over and the pet can go home
+    //   Completed        = Completed           billed
+    // Rescheduled and Cancelled are extras for changes that the queue itself does not describe.
     Pending,
     Confirmed,
     CheckedIn,
+    SanitationBuffer,
+    ReadyForPickup,
+    Completed,
     Rescheduled,
     Cancelled,
-    Completed,
 }
 
 /// <summary>One booked appointment. Fill these from your data source and pass them to <c>AppointmentsPage.SetAppointments</c>.</summary>
@@ -29,8 +39,13 @@ internal sealed record AppointmentItem(
     string PreferredDays = "",   // comma list the customer picked, e.g. "Tue,Wed" (empty = no preference / older requests)
     int ServiceId = 0,           // the exact dbo.Services row booked (the weight band, so billing uses the same price)
     int PetId = 0,               // the pet booked (billing lists only the services that fit this pet)
-    bool IsWalkIn = false)       // the customer came in without a booking (kiosk, or ticked "Walk-in" when staff booked). A negative Id marks a walk-in SALE shown in the list, not a real appointment.
+    bool IsWalkIn = false,       // the customer came in without a booking (kiosk, or ticked "Walk-in" when staff booked). A negative Id marks a walk-in SALE shown in the list, not a real appointment.
+    DateTime? HoldUntil = null,  // 14-day immunity: the pet can't be admitted before this date (null = no hold)
+    DateTime? SanitationUntil = null)   // when the Sanitation Buffer ends (only set while the status is SanitationBuffer or later)
 {
+    /// <summary>True while the pet is still inside the 14-day immunity window, so it can't be admitted yet.</summary>
+    public bool IsHeld => HoldUntil is { } d && d.Date > DateTime.Today;
+
     /// <summary>The preferred days as day-of-week values (empty when the customer didn't pick any).</summary>
     public IReadOnlyList<DayOfWeek> PreferredDayList => PreferredDaysText.Parse(PreferredDays);
 }
@@ -80,23 +95,6 @@ internal static class PreferredDaysText
     }
 }
 
-/// <summary>Reads the "can't be admitted before Nov 8, 2026" date out of an appointment's immunity-hold note.</summary>
-internal static class ImmunityHold
-{
-    private static readonly System.Text.RegularExpressions.Regex NoteDate = new(
-        @"immunity[^.]*?before\s+([A-Za-z]{3,9}\.?\s+\d{1,2},?\s+\d{4})",
-        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-    public static DateTime? FromNote(string? notes)
-    {
-        if (string.IsNullOrWhiteSpace(notes)) return null;
-        var m = NoteDate.Match(notes);
-        return m.Success && DateTime.TryParse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture,
-                                              System.Globalization.DateTimeStyles.None, out var d)
-            ? d.Date : null;
-    }
-}
-
 /// <summary>Label and colours for each appointment status.</summary>
 internal static class AppointmentStatusStyle
 {
@@ -104,9 +102,11 @@ internal static class AppointmentStatusStyle
 
     public static string Label(AppointmentStatus status) => status switch
     {
-        AppointmentStatus.Pending => "Pending",
-        AppointmentStatus.Confirmed => "Confirmed",
-        AppointmentStatus.CheckedIn => "Checked In",
+        AppointmentStatus.Pending => "Triage Pending",
+        AppointmentStatus.Confirmed => "Admitted",
+        AppointmentStatus.CheckedIn => "In-Service",
+        AppointmentStatus.SanitationBuffer => "Sanitation Buffer",
+        AppointmentStatus.ReadyForPickup => "Ready for Pick-up",
         AppointmentStatus.Rescheduled => "Rescheduled",
         AppointmentStatus.Cancelled => "Cancelled",
         AppointmentStatus.Completed => "Completed",
@@ -117,6 +117,8 @@ internal static class AppointmentStatusStyle
     {
         AppointmentStatus.Confirmed => (C("#2E9E5B"), C("#E5F6EC"), C("#BFE5CE")),
         AppointmentStatus.CheckedIn => (C("#0E8F9E"), C("#E0F5F7"), C("#B5E3E8")),
+        AppointmentStatus.SanitationBuffer => (C("#9A6700"), C("#FFF6D6"), C("#F1DC96")),
+        AppointmentStatus.ReadyForPickup => (C("#0F8A6B"), C("#E1F6EF"), C("#B6E4D5")),
         AppointmentStatus.Pending => (C("#C77A0A"), C("#FEF3E0"), C("#F8D9A0")),
         AppointmentStatus.Rescheduled => (C("#7C4DDB"), C("#F1EAFD"), C("#D9C8F8")),
         AppointmentStatus.Cancelled => (C("#D93636"), C("#FDE8E8"), C("#F6C0C0")),
@@ -127,8 +129,8 @@ internal static class AppointmentStatusStyle
     /// <summary>Colour of the small dot shown on the calendar and in its legend.</summary>
     public static Color Marker(AppointmentStatus status) => status switch
     {
-        AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn => Theme.Green,
-        AppointmentStatus.Pending => Theme.Orange,
+        AppointmentStatus.Confirmed or AppointmentStatus.CheckedIn or AppointmentStatus.ReadyForPickup => Theme.Green,
+        AppointmentStatus.Pending or AppointmentStatus.SanitationBuffer => Theme.Orange,
         AppointmentStatus.Rescheduled => Theme.Purple,
         AppointmentStatus.Cancelled => Theme.Danger,
         AppointmentStatus.Completed => Theme.Primary,
