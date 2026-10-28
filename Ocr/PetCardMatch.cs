@@ -5,7 +5,8 @@ using System.Text.RegularExpressions;
 namespace MyApp;
 
 /// <summary>One detail that differs between what the customer entered and what the vaccine card says.</summary>
-internal sealed record PetMismatch(string Field, string Entered, string OnCard);
+/// <param name="Detail">Optional extra line shown when the pop-up is expanded with "See more" (e.g. date given and batch number).</param>
+internal sealed record PetMismatch(string Field, string Entered, string OnCard, string Detail = "");
 
 /// <summary>
 /// Checks that the pet details entered in the Pet Details pop-up agree with the vaccination card that was scanned.
@@ -117,9 +118,13 @@ internal static class PetCardMatch
         {
             if (group.Any(r => r.Expires is { } e && e.Date >= today)) continue;
             var newest = group.Where(r => r.Expires is not null).OrderByDescending(r => r.Expires).FirstOrDefault();
+            var parts = new List<string>();
+            if (newest?.Given is { } given) parts.Add("Given " + given.ToString("MMM d, yyyy", CultureInfo.InvariantCulture));
+            if (newest is not null && newest.BatchNo.Length > 0) parts.Add("Batch " + newest.BatchNo);
+            string detail = string.Join("  \u00B7  ", parts);
             lapsed.Add(newest?.Expires is { } d
-                ? new PetMismatch(group.Key, d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture), "Expired")
-                : new PetMismatch(group.Key, "\u2014", "Expiry not readable"));
+                ? new PetMismatch(group.Key, d.ToString("MMM d, yyyy", CultureInfo.InvariantCulture), "Expired", detail)
+                : new PetMismatch(group.Key, "\u2014", "Expiry not readable", detail));
         }
         return lapsed;
     }
@@ -279,9 +284,15 @@ internal sealed class CardMismatchDialog : Form
     private static readonly Color DangerSoft = Color.FromArgb(254, 242, 242);
     private static readonly Color DangerText = Color.FromArgb(185, 28, 28);
 
+    private const int DetailH = 26, FieldW = 130;
+
     private readonly IReadOnlyList<PetMismatch> _rows;
 
     private readonly string _title, _subtitle, _col2, _col3;
+
+    private readonly PawButton _ok;
+    private readonly Label _more;
+    private bool _expanded;
 
     public CardMismatchDialog(IReadOnlyList<PetMismatch> rows, string title = "Vaccine card doesn't match",
         string subtitle = "The details must be the same as the vaccine card.", string col2 = "YOURS", string col3 = "ON THE CARD")
@@ -295,15 +306,75 @@ internal sealed class CardMismatchDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         DoubleBuffered = true;
-        int tableH = 30 + rows.Count * RowH;
-        ClientSize = new Size(W, HeaderH + tableH + FooterH);
 
-        var ok = new PawButton { Text = "Try again", Kind = PawButtonKind.Primary, Size = new Size(140, 40) };
-        ok.Location = new Point(W - Pad - ok.Width, ClientSize.Height - FooterH + 18);
-        ok.Click += (_, _) => DialogResult = DialogResult.OK;
-        Controls.Add(ok);
-        AcceptButton = ok;
-        CancelButton = ok;
+        _ok = new PawButton { Text = "Try again", Kind = PawButtonKind.Primary, Size = new Size(140, 40) };
+        _ok.Click += (_, _) => DialogResult = DialogResult.OK;
+        Controls.Add(_ok);
+        AcceptButton = _ok;
+        CancelButton = _ok;
+
+        // "See more" only appears when there is something more to see: text that was cut short, or extra details for a row.
+        _more = new Label
+        {
+            Text = "See more",
+            AutoSize = true,
+            Cursor = Cursors.Hand,
+            ForeColor = Theme.Primary,
+            Font = Theme.Face(9.5f, FontStyle.Bold),
+            BackColor = Color.Transparent,
+            Visible = HasMore(),
+        };
+        _more.Click += (_, _) =>
+        {
+            _expanded = !_expanded;
+            _more.Text = _expanded ? "See less" : "See more";
+            int before = Height;
+            ApplyLayout();
+            if (IsHandleCreated) Top -= (Height - before) / 2;   // grow / shrink around the centre
+            Invalidate();
+        };
+        Controls.Add(_more);
+        ApplyLayout();
+    }
+
+    private static readonly TextFormatFlags Measure = TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.WordBreak;
+
+    /// <summary>True when a row's text doesn't fit on one line in its column, or a row carries extra details.</summary>
+    private bool HasMore()
+    {
+        int valueW = (W - Pad * 2 - 150) / 2 - 8;
+        foreach (var r in _rows)
+        {
+            if (r.Detail.Length > 0) return true;
+            if (TextRenderer.MeasureText(r.Field, Theme.Face(9f, FontStyle.Bold)).Width > FieldW) return true;
+            if (TextRenderer.MeasureText(r.Entered, Theme.Face(9.5f)).Width > valueW) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Height of each table row: one fixed height when collapsed; when expanded, tall enough for the full wrapped name plus the detail line.</summary>
+    private int[] RowHeights()
+    {
+        var heights = new int[_rows.Count];
+        int valueW = (W - Pad * 2 - 150) / 2 - 8;
+        for (int i = 0; i < heights.Length; i++)
+        {
+            heights[i] = RowH;
+            if (!_expanded) continue;
+            var r = _rows[i];
+            int fieldH = TextRenderer.MeasureText(r.Field, Theme.Face(9f, FontStyle.Bold), new Size(FieldW, int.MaxValue), Measure).Height;
+            int valueH = TextRenderer.MeasureText(r.Entered, Theme.Face(9.5f), new Size(valueW, int.MaxValue), Measure).Height;
+            heights[i] = Math.Max(RowH, Math.Max(fieldH, valueH) + 20) + (r.Detail.Length > 0 ? DetailH : 0);
+        }
+        return heights;
+    }
+
+    private void ApplyLayout()
+    {
+        int tableH = 30 + RowHeights().Sum();
+        ClientSize = new Size(W, HeaderH + tableH + FooterH);
+        _ok.Location = new Point(W - Pad - _ok.Width, ClientSize.Height - FooterH + 18);
+        _more.Location = new Point(Pad + 4, ClientSize.Height - FooterH + 18 + (_ok.Height - _more.Height) / 2);
     }
 
     protected override void OnPaint(PaintEventArgs e)
@@ -326,7 +397,8 @@ internal sealed class CardMismatchDialog : Form
         // table
         int x = Pad, w = W - Pad * 2, y = HeaderH;
         int c1 = x + 14, c2 = x + 150, c3 = x + 150 + (w - 150) / 2;
-        var tableRect = new Rectangle(x, y, w, 30 + _rows.Count * RowH);
+        var heights = RowHeights();
+        var tableRect = new Rectangle(x, y, w, 30 + heights.Sum());
         using (var path = Ui.RoundRect(tableRect, 12))
         {
             using var fill = new SolidBrush(Color.White);
@@ -341,17 +413,24 @@ internal sealed class CardMismatchDialog : Form
         TextRenderer.DrawText(g, _col2, small, new Rectangle(c2, y, 150, 30), Theme.Muted, L);
         TextRenderer.DrawText(g, _col3, small, new Rectangle(c3, y, 150, 30), Theme.Muted, L);
 
+        // when expanded the text wraps instead of being cut with "..."
+        const TextFormatFlags Wrap = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix;
+        int rowTop = y + 30;
         for (int i = 0; i < _rows.Count; i++)
         {
             var r = _rows[i];
-            int top = y + 30 + i * RowH;
+            int top = rowTop;
+            rowTop += heights[i];
+            int mainH = r.Detail.Length > 0 && _expanded ? heights[i] - DetailH : heights[i];
             using (var pen = new Pen(Theme.Border)) g.DrawLine(pen, x, top, x + w, top);
-            TextRenderer.DrawText(g, r.Field, Theme.Face(9f, FontStyle.Bold), new Rectangle(c1, top, 130, RowH), Theme.Text, L);
-            TextRenderer.DrawText(g, r.Entered.Length == 0 ? "\u2014" : r.Entered, Theme.Face(9.5f), new Rectangle(c2, top, c3 - c2 - 8, RowH), Theme.TextSoft, L);
+            TextRenderer.DrawText(g, r.Field, Theme.Face(9f, FontStyle.Bold), new Rectangle(c1, top, FieldW, mainH), Theme.Text, _expanded ? Wrap : L);
+            TextRenderer.DrawText(g, r.Entered.Length == 0 ? "\u2014" : r.Entered, Theme.Face(9.5f), new Rectangle(c2, top, c3 - c2 - 8, mainH), Theme.TextSoft, _expanded ? Wrap : L);
+            if (_expanded && r.Detail.Length > 0)
+                TextRenderer.DrawText(g, r.Detail, Theme.Face(8.5f), new Rectangle(c1, top + mainH - 6, w - 28, DetailH - 4), Theme.Muted, L);
 
             string card = r.OnCard == "not readable" ? "Couldn't read" : r.OnCard;
             var size = TextRenderer.MeasureText(g, card, Theme.Face(9f, FontStyle.Bold));
-            var chip = new Rectangle(c3, top + (RowH - 28) / 2, Math.Min(x + w - 10 - c3, size.Width + 22), 28);
+            var chip = new Rectangle(c3, top + (mainH - 28) / 2, Math.Min(x + w - 10 - c3, size.Width + 22), 28);
             using (var path = Ui.RoundRect(chip, 14)) { using var b = new SolidBrush(DangerSoft); g.FillPath(b, path); }
             TextRenderer.DrawText(g, card, Theme.Face(9f, FontStyle.Bold), Rectangle.Inflate(chip, -11, 0), DangerText, L);
         }

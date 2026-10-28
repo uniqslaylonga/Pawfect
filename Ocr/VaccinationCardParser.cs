@@ -224,7 +224,10 @@ internal static class VaccinationCardParser
         }
 
         // "5-in-1 DHPPi (Parvo/Distemper)": the bracket only lists what the combined shot covers, so it is not a vaccine of its own.
-        if (tokens.Any(t => t.Name.EndsWith("-in-1") || t.Name is "FVRCP" or "DHLPP" or "DHPP" or "DHPPI" or "DAPP"))
+        // The same goes for a stand-alone shot (Anti-Rabies, Bordetella, ...): a "Parvo" next to it is the bracket of the row above
+        // that was cut into this row, not part of this vaccine ("Parvovirus Anti-Rabies" should just be "Anti-Rabies").
+        if (tokens.Any(t => t.Name.EndsWith("-in-1") || t.Name is "FVRCP" or "DHLPP" or "DHPP" or "DHPPI" or "DAPP"
+                            or "Anti-Rabies" or "Bordetella" or "Deworming" or "FeLV"))
             tokens.RemoveAll(t => t.Name is "Parvovirus" or "Coronavirus");
 
         string vaccine = string.Join(" ", tokens.OrderBy(t => t.Index).Select(t => t.Name).Distinct());
