@@ -51,7 +51,8 @@ internal sealed class RoomManagementPage : UserControl
     {
         try
         {
-            _rooms.SetData(RoomScheduleRepository.GetRooms(DateTime.Now));
+            // Inactive (switched-off) rooms are not listed on this page.
+            _rooms.SetData(RoomScheduleRepository.GetRooms(DateTime.Now).Where(r => r.Active).ToList());
         }
         catch (SqlException ex)
         {
